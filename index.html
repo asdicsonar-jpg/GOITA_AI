@@ -4,6 +4,48 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>ごいた — 能登の伝承遊戯</title>
+  <!-- build: v85.1 / Fix: hold中の提灯列・松明炎グループ(kf-emberflame)が2.7秒で先に消えるバグ修正(hold変種の追加漏れ) -->
+  <!-- build: v85 / キリコ演出の持続化(完了ボタンまで消えない・揺れ続ける)(docs/PLAN_v85_kiriko_hold.md):
+       hold判定はshowWinCutのuseButtonと同型: var hold = !!(app.humanSeat || (opts && opts.button))。
+       人間参加対局・演出みほんはhold=true、観戦(全席AI)はhold=falseのまま(挙動不変)。
+       CSS #kiriko-fire.show.hold 配下にhold変種を追加。ワンショット2.7s(最終フレームopacity:0)を
+          「入場(forwards・可視で終わる)+ 定常ループ(infinite)」に置換: ラッパkfWrapIn(.6s)/
+          kf-blaze・kf-heatは入場(1.2s)+ゆらぎ(infinite・delay=入場尺で衝突回避)/kf-flameは入場
+          (opacity専用.8s)+scaleY・skewXフリッカー(infinite・transform専用で入場と非衝突)/
+          kf-taimatsuは入場(.8s)で保持(内部kf-flは既存infiniteのまま不変)/kf-kirikoはkfRiseHold
+          (.9s・animation-name/durationのみ上書きし既存delay・ease-out・forwardsは温存)/kf-litは
+          kfLitHold(2.2s ease-in-out infinite alternate)。#kiriko-fire.outはanimation:none+
+          transition(opacity .4s)でフェードアウト(forwards保持中のanimationを打ち切ってからtransition
+          を効かせる)。
+       JS kirikoBurn(res, opts)にシグネチャ拡張。冒頭でkirikoRelease(true)(即時清掃)を呼び再入時の
+          hold残留を防止。hold時はstage.classList.add("hold")のみ行い3050ms自動消去タイマーは設定
+          しない(kirikoReleaseが終了を担う)。非hold(観戦)は従来どおり3050msで自動消去。
+       新規kirikoRelease(immediate): hold中でなければ何もしない。.out付与→400ms後にshow/hold/out
+          除去・innerHTML=""・cancelAnimationFrame(app._kirikoSwayRAF)・関連タイマー清掃。
+          immediate=trueは遷移なしで即時清掃(再入用)。
+       showWinCut()の_close()内でkirikoRelease()を1行追加(hold中のみ作用するガードにより観戦時の
+          従来挙動は不変)。演出みほんのkirikoBurn呼び出しにshowWinCutと同一のopts(button:true)を
+          第2引数として渡すよう変更。
+       + 上記v84まで -->
+  <!-- build: v84 / キリコの実写準拠精緻化+振り子物理揺動(docs/PLAN_v84_kiriko.md):
+       D1 kirikoSVGを全面改稿。張り綱(全写真共通の白い綱・担ぎ棒端へ4本)・側面提灯縦列(左右柱に
+          沿って各3個・紅白横縞+吊り紐)・屋根の反り強化(入母屋風・軒裏垂木3本・大棟両端の鳥衾風の
+          跳ね・頂部を宝珠+短い幟に変更)・赤幕の紋を左右対称2つ(x=40/80)・大書パネル直下に彫刻帯
+          (欄間彫刻風のうねり線)・台座の白木井桁格子(2段)・腰提灯列(5→7個)・担ぎ棒(2→4本・木口
+          表現)を追加。viewBoxを0 0 120 320→-24 0 168 330に拡張。kf-lit/kf-banner/kf-hira/kf-mon/
+          kf-maku/kf-emberflameの各クラスと役割・大書の均等配置ロジック(step=48・midY基準)・
+          preserveAspectRatioは維持。描画順は計画書指定(発光→綱→担ぎ棒→台座格子→腰提灯列→胴→
+          ひらひら+紋→赤幕→屋根→側面提灯列)に従う。
+       D2 揺れを「上部が重く下部が支点の振り子」の連続揺動に置換。kfRiseSideキーフレームからrotate
+          成分を削除し、外側kf-kiriko(出現/消滅)と分離した内側ラッパ.kf-sway(will-change:transform)
+          をJS rAFで回転制御。角度式はamp_i(t)=1+noiseStrength*(noise1D(t*noiseHz+seed_i)*2-1)、
+          angle_i(t)=maxAngleDeg*amp_i(t)*sin(2π*speedHz*t+phase_i)(ノイズは振幅に加算)。設定は
+          KIRIKO_SWAY(speedHz/maxAngleDeg/noiseStrength/noiseHz)で一元管理。noise1D()は依存なしの
+          1D value noise(整数格子ハッシュ+smoothstep補間)。kirikoBurn()の再入時・stage消去タイマー
+          (3050ms)で必ずcancelAnimationFrame。reduced-motionはループ側にもガードを設置。
+       + CSS各ポジション幅を約1.4倍(k-l1/r1: min(168px,26vw)等)に再調整。画面中央30%〜70%帯への
+          非侵入を900px/375pxで再検証(詳細はIMPLEMENTATION_REPORT_v84_kiriko.md参照)。
+       + 上記v83まで -->
   <!-- build: v83 / 大漁旗のリアル化(docs/PLAN_v83.md):
        Q1 布を矩形→はためく波打つ輪郭(tb-cloth・clipPathで内容をマスク)に改稿。しわの陰影(tb-fold・
           非同期微アニメ)を追加し、風にうねる立体感を表現。
@@ -1490,6 +1532,35 @@ body.noto #wincut.show .wc-label{animation:wcFude .62s cubic-bezier(.2,.9,.3,1.2
 #kiriko-fire.show{display:block;animation:kfWrap 2.7s ease-out forwards}
 @keyframes kfWrap{0%{opacity:0}7%{opacity:1}70%{opacity:1}100%{opacity:0}}
 @media (prefers-reduced-motion:reduce){#kiriko-fire{display:none!important}}
+/* D4(v85): 持続表示(hold)バリアント。完了ボタンが出るケース(人間参加/演出みほん)は、ワンショット
+   アニメ(2.7s・最終フレームopacity:0)ではなく「入場(forwards)+定常ループ(infinite)」に置換し、
+   kirikoRelease()が.outを付与するまで表示・揺動を継続する。観戦(非hold)は従来のワンショットのまま
+   (このブロックは#kiriko-fire.showに.holdが付いた場合のみ適用され、非hold時の挙動は不変)。
+   詳細はPLAN_v85_kiriko_hold.md参照。 */
+#kiriko-fire.show.hold{animation:kfWrapIn .6s ease-out forwards}
+@keyframes kfWrapIn{0%{opacity:0}100%{opacity:1}}
+#kiriko-fire.out{animation:none;transition:opacity .4s ease-in;opacity:0}
+#kiriko-fire.show.hold .kf-blaze{animation:kfBlazeIn 1.2s ease-out forwards, kfBlazeSway 3.7s ease-in-out 1.2s infinite}
+@keyframes kfBlazeIn{0%{opacity:0;transform:translateY(24%)}60%{opacity:.86;transform:translateY(2%)}100%{opacity:.9;transform:translateY(0)}}
+@keyframes kfBlazeSway{0%,100%{opacity:.9}30%{opacity:.78}55%{opacity:1}78%{opacity:.82}}
+#kiriko-fire.show.hold .kf-heat{animation:kfHeatIn 1.2s ease-out forwards, kfHeatSway 4.3s ease-in-out 1.2s infinite}
+@keyframes kfHeatIn{0%{opacity:0}70%{opacity:.48}100%{opacity:.5}}
+@keyframes kfHeatSway{0%,100%{opacity:.5}38%{opacity:.64}68%{opacity:.4}}
+#kiriko-fire.show.hold .kf-flame{animation:kfFlameIn .8s ease-out forwards, kfFlameFlicker 1.51s ease-in-out infinite}
+@keyframes kfFlameIn{0%{opacity:0}30%{opacity:.95}100%{opacity:.85}}
+@keyframes kfFlameFlicker{0%,100%{transform:scaleY(1) scaleX(1) skewX(0)}25%{transform:scaleY(1.14) scaleX(.94) skewX(-6deg)}50%{transform:scaleY(.92) scaleX(1.05) skewX(5deg)}75%{transform:scaleY(1.08) scaleX(.97) skewX(-4deg)}}
+#kiriko-fire.show.hold .kf-taimatsu{animation:kfTaimatsuInHold .8s ease-out forwards}
+@keyframes kfTaimatsuInHold{0%{opacity:0}100%{opacity:1}}
+#kiriko-fire.show.hold .kf-kiriko{animation-name:kfRiseHold;animation-duration:.9s}
+@keyframes kfRiseHold{0%{opacity:0;transform:translateY(30%) scale(.9)}100%{opacity:1;transform:translateY(0) scale(1)}}
+#kiriko-fire.show.hold .kf-lit{animation:kfLitHold 2.2s ease-in-out infinite alternate}
+@keyframes kfLitHold{0%{opacity:.6}100%{opacity:1}}
+/* Fix(v85.1): 提灯列・松明炎のグループ(kf-emberflame)にhold変種が漏れており、
+   kfEmberFlame(2.7s forwards・最終opacity:0)で完了ボタン前に提灯だけ先に消えるバグを修正。
+   入場0.8s→定常の明滅ループ(blaze/heatと同じ入場+infinite方式・終値を揃えて継ぎ目なし) */
+#kiriko-fire.show.hold .kf-emberflame{animation:kfEmberIn .8s ease-out forwards, kfEmberHold 2.9s ease-in-out .8s infinite}
+@keyframes kfEmberIn{0%{opacity:0}100%{opacity:.95}}
+@keyframes kfEmberHold{0%,100%{opacity:.95}50%{opacity:.72}}
 /* 大かがり火の地明かり(画面下部) */
 #kiriko-fire .kf-blaze{position:absolute;left:0;right:0;bottom:0;height:82%;mix-blend-mode:screen;
   background:
@@ -1521,15 +1592,21 @@ body.noto #wincut.show .wc-label{animation:wcFude .62s cubic-bezier(.2,.9,.3,1.2
 #kiriko-fire .kf-kiriko{position:absolute;bottom:1%;transform-origin:50% 100%;
   filter:drop-shadow(0 0 18px rgba(255,172,72,.82)) drop-shadow(0 0 42px rgba(224,85,58,.52))}
 #kiriko-fire .kf-kiriko svg{display:block;width:100%;height:auto}
+/* D2(v84): 振り子揺動専用の内側ラッパ。外側kf-kiriko(出現/消滅アニメ)とは別要素にしtransform競合を回避。
+   回転はJS(kirikoSwayLoop)がrAFで毎フレームstyle.transformに書き込む。支点は台座下端(50% 100%)。 */
+#kiriko-fire .kf-sway{display:block;width:100%;transform-origin:50% 100%;will-change:transform}
 /* N3(v81): 宇出津は台数が多く2列(または1列)で並ぶため、中央(点数・倍札)を開けて両脇に配置する。
    k-l1/k-r1(tier1で常時)→k-l2/k-r2(tier2で追加)→k-l3/k-r3(tier3で追加)の順に外側へ増やす。
-   全ポジションの左右端が画面幅30%〜70%帯に侵入しないよう幅・位置を設計(900px/375pxで実測検証済み)。 */
-#kiriko-fire .kf-kiriko.k-l1{left:15%;width:min(120px,22vw);margin-left:calc(min(120px,22vw) / -2);z-index:3;animation:kfRiseSide 2.7s ease-out forwards}
-#kiriko-fire .kf-kiriko.k-r1{left:85%;width:min(120px,22vw);margin-left:calc(min(120px,22vw) / -2);z-index:3;animation:kfRiseSide 2.7s ease-out forwards;animation-delay:.06s}
-#kiriko-fire .kf-kiriko.k-l2{left:6%;width:min(96px,18vw);margin-left:calc(min(96px,18vw) / -2);z-index:2;opacity:.9;animation:kfRiseSide 2.7s ease-out forwards;animation-delay:.12s}
-#kiriko-fire .kf-kiriko.k-r2{left:94%;width:min(96px,18vw);margin-left:calc(min(96px,18vw) / -2);z-index:2;opacity:.9;animation:kfRiseSide 2.7s ease-out forwards;animation-delay:.18s}
-#kiriko-fire .kf-kiriko.k-l3{left:1%;width:min(78px,15vw);margin-left:calc(min(78px,15vw) / -2);z-index:1;opacity:.82;animation:kfRiseSide 2.7s ease-out forwards;animation-delay:.24s}
-#kiriko-fire .kf-kiriko.k-r3{left:99%;width:min(78px,15vw);margin-left:calc(min(78px,15vw) / -2);z-index:1;opacity:.82;animation:kfRiseSide 2.7s ease-out forwards;animation-delay:.30s}
+   全ポジションの左右端が画面幅30%〜70%帯に侵入しないよう幅・位置を設計(900px/375pxで実測検証済み)。
+   D2(v84): viewBox拡張(120→168)に伴い幅を約1.4倍に再調整。ただしk-l1/r1はexample値の30vwだと
+   375px幅で右(左)端が中央帯境界(70%/30%)に達し安全マージンがゼロになるため26vwに調整して
+   約2%の余裕を確保(900px/375pxで再計算・検証済み。詳細はIMPLEMENTATION_REPORT_v84_kiriko.md参照)。 */
+#kiriko-fire .kf-kiriko.k-l1{left:15%;width:min(168px,26vw);margin-left:calc(min(168px,26vw) / -2);z-index:3;animation:kfRiseSide 2.7s ease-out forwards}
+#kiriko-fire .kf-kiriko.k-r1{left:85%;width:min(168px,26vw);margin-left:calc(min(168px,26vw) / -2);z-index:3;animation:kfRiseSide 2.7s ease-out forwards;animation-delay:.06s}
+#kiriko-fire .kf-kiriko.k-l2{left:6%;width:min(134px,25vw);margin-left:calc(min(134px,25vw) / -2);z-index:2;opacity:.9;animation:kfRiseSide 2.7s ease-out forwards;animation-delay:.12s}
+#kiriko-fire .kf-kiriko.k-r2{left:94%;width:min(134px,25vw);margin-left:calc(min(134px,25vw) / -2);z-index:2;opacity:.9;animation:kfRiseSide 2.7s ease-out forwards;animation-delay:.18s}
+#kiriko-fire .kf-kiriko.k-l3{left:1%;width:min(109px,21vw);margin-left:calc(min(109px,21vw) / -2);z-index:1;opacity:.82;animation:kfRiseSide 2.7s ease-out forwards;animation-delay:.24s}
+#kiriko-fire .kf-kiriko.k-r3{left:99%;width:min(109px,21vw);margin-left:calc(min(109px,21vw) / -2);z-index:1;opacity:.82;animation:kfRiseSide 2.7s ease-out forwards;animation-delay:.30s}
 /* D2(v75): 柱松明/置松明。キリコ(z1〜3)より奥。幅はviewBoxのアスペクトから自動(svg height:100%) */
 #kiriko-fire .kf-taimatsu{position:absolute;bottom:0;transform:translateX(-50%);transform-origin:50% 100%;
   filter:drop-shadow(0 0 22px rgba(255,160,60,.75)) drop-shadow(0 0 48px rgba(224,85,58,.45));
@@ -1537,8 +1614,9 @@ body.noto #wincut.show .wc-label{animation:wcFude .62s cubic-bezier(.2,.9,.3,1.2
 #kiriko-fire .kf-taimatsu svg{display:block;height:100%;width:auto}
 @keyframes kfTaimatsuIn{0%{opacity:0}8%{opacity:1}70%{opacity:1}100%{opacity:0}}
 /* N3(v81): k-mid廃止によりkfRise(中央用の専用キーフレーム)は不要となったため削除。全ポジションkfRiseSideに統一 */
+/* D2(v84): rotate成分を削除(振り子揺動は内側ラッパ.kf-swayをJS rAFで別途回転させるため競合回避)。translate/opacity/scaleのみ残す */
 @keyframes kfRiseSide{0%{opacity:0;transform:translateY(30%) scale(.9)}16%{opacity:.94;transform:translateY(0) scale(1)}
-  46%{transform:translateY(0) rotate(-2.8deg)}64%{transform:translateY(0) rotate(2.2deg)}70%{opacity:.9}100%{opacity:0;transform:translateY(-6%) scale(1.02)}}
+  70%{opacity:.9}100%{opacity:0;transform:translateY(-6%) scale(1.02)}}
 /* キリコの灯り(SVG内の面)が燃え盛るような明滅 */
 #kiriko-fire .kf-lit{animation:kfLit 2.7s ease-out forwards}
 @keyframes kfLit{0%{opacity:.55}20%{opacity:1}46%{opacity:.82}60%{opacity:1}100%{opacity:.6}}
@@ -10614,10 +10692,11 @@ if (typeof document !== "undefined") (() => {
                 : {winner: "S", koma: "王", pts: 100, dbl: true};
       // L1(v80): 演出を眺めていられるように、タイマー自動復帰(旧3400ms)を廃止し完了ボタンで閉じる。
       //   閉じたら「型」へ復帰(他のモーダルが開いていれば譲る=タイマー版のガードを踏襲)。キリコ・粒子は自走。
-      showWinCut(res, {button: true, onClose: () => {
+      const wcOpts = {button: true, onClose: () => {
         if (!$("ov-modal").classList.contains("show")) openPatterns({scrollToDemos: true});
-      }});
-      kirikoBurn(res);
+      }};
+      showWinCut(res, wcOpts);
+      kirikoBurn(res, wcOpts);   // D4(v85): showWinCutと同一のopts(button:true)を渡し、完了ボタンまでキリコを持続させる
       winParticles(true);
       return;
     }
@@ -11493,6 +11572,43 @@ if (typeof document !== "undefined") (() => {
   //   body.noto(祭り意匠・既定ON)時のみ発火 / reduced-motion時は無効 / 引き分けは無効 / 40点未満は無演出(し倍20点を含む)。
   // C2(v74): キリコの大書。実在のキリコ祭り(石崎奉燈祭等)で使われる「大書」に倣い、縁起の良い三文字熟語をランダムに割り当てる。
   //   同時に立つキリコ間で語が重複しないよう、発火のたびにシャッフルして先頭から必要数を取る。
+  // D2(v84): キリコ振り子揺動の設定(Inspector相当・Unity Mathf.Sin構成のJS変換)。詳細はPLAN_v84_kiriko.md D2参照。
+  var KIRIKO_SWAY = {
+    speedHz: 0.55,        // 揺れの速度(往復/秒)。実物の担ぎ揺れは約0.4〜0.7
+    maxAngleDeg: 12,      // 揺れの最大角度(V字の深さ・度)
+    noiseStrength: 0.35,  // ノイズ強度(0=純sin、1=振幅が0〜2倍で乱れる)
+    noiseHz: 0.8          // ノイズの時間周波数
+  };
+  // 依存なしの1D value noise(整数格子に乱数ハッシュを置きsmoothstepで補間。Mathf.PerlinNoiseの簡易代替)
+  function noise1D(x){
+    var i = Math.floor(x), f = x - i;                                   // 整数格子点と小数部
+    function hash(n){ var s = Math.sin(n * 127.1) * 43758.5453123; return s - Math.floor(s); }  // 大数sinハッシュで[0,1)の疑似乱数
+    var a = hash(i), b = hash(i + 1);                                   // 両端格子点の乱数値
+    var t = f * f * (3 - 2 * f);                                        // smoothstep補間係数(3t^2-2t^3)
+    return a + (b - a) * t;                                             // [0,1)の補間ノイズ値
+  }
+  // D2(v84): キリコ振り子揺動のrAFループ。kirikoBurn()から起動し、stage消去タイマー・再入時に必ずcancelAnimationFrame。
+  //   支点は台座下端(CSSのtransform-origin:50% 100%)。els=.kf-sway要素の配列(外側kf-kirikoとは別要素)。
+  function kirikoSwayLoop(els){
+    try { if (matchMedia("(prefers-reduced-motion:reduce)").matches) return; } catch (e) {}   // ループ側にもreduced-motionガードを設置
+    if (!els || !els.length) return;
+    var seeds = [], phases = [];
+    for (var i = 0; i < els.length; i++) {
+      seeds.push(i * 7.13 + Math.random() * 3);                          // noise1D引数用の個体別シード(6本が同期しない)
+      phases.push(Math.PI / 2 + i * (Math.PI / 3) + (Math.random() - 0.5) * 0.3);  // 振り切り位置(sin=±1付近)から開始+tier順にπ/3ずつずらす+乱数微加算
+    }
+    var t0 = performance.now();                                          // 実時間基準(performance.now)
+    function frame(now){
+      var t = (now - t0) / 1000;                                         // 経過秒
+      for (var j = 0; j < els.length; j++) {
+        var amp = 1 + KIRIKO_SWAY.noiseStrength * (noise1D(t * KIRIKO_SWAY.noiseHz + seeds[j]) * 2 - 1);   // ノイズは振幅に加算(角度自体ではない)
+        var angle = KIRIKO_SWAY.maxAngleDeg * amp * Math.sin(2 * Math.PI * KIRIKO_SWAY.speedHz * t + phases[j]);  // sin波の深いV字往復
+        els[j].style.transform = "rotate(" + angle.toFixed(3) + "deg)";
+      }
+      app._kirikoSwayRAF = requestAnimationFrame(frame);
+    }
+    app._kirikoSwayRAF = requestAnimationFrame(frame);
+  }
   var KIRIKO_DAISHO = ["氣如虹", "慶雲興", "不老門", "豊年萬", "無尽蔵", "彩雲飛", "意如鐵", "誠意明"];
   function kirikoPickDaisho(n){
     var pool = KIRIKO_DAISHO.slice();
@@ -11513,45 +11629,97 @@ if (typeof document !== "undefined") (() => {
     if (pts <= 59) return {n: 4, nf: 10, embers: 96,  taimatsu: [{x: 50, h: .53, pillar: true}, {x: 68, h: .20, pillar: false}]};   /* Fix(v75): h .42→.53(炎冠が背後に隠れる問題を解消。レビュー指摘) */
     return {n: 6, nf: 14, embers: 150, taimatsu: [{x: 50, h: .55, pillar: true}, {x: 22, h: .22, pillar: false}, {x: 78, h: .24, pillar: false}]};
   }
-  // N1(v81): 宇出津の実写(あばれ祭)準拠に全面改稿。赤幕(kf-maku)・ひらひら(kf-hira)・紋(kf-mon)・
-  //   台座の提灯列(kf-lrow)を追加し、屋根をやや拡幅・フレア(反り)させた。担ぎ棒・側面提灯・紙面(大書)・
-  //   発光の骨格は踏襲。座標帯: 屋根36-84 / 赤幕84-98 / ひらひら・紋106-128 / 紙面134-270 / 提灯列277 / 担ぎ棒286-314。
+  // D1(v84): 実写(あばれ祭・石崎奉燈祭)準拠に全面改稿。張り綱・側面提灯縦列(各3)・屋根の反り強化+垂木+
+  //   宝珠幟・紋2つ・彫刻帯・白木井桁格子(2段)・腰提灯7個・担ぎ棒4本を追加。viewBoxを0 0 120 320→
+  //   -24 0 168 330に拡張(綱・担ぎ棒の張り出し用)。kf-lit/kf-banner/kf-hira/kf-mon/kf-maku/kf-emberflame
+  //   の各クラスと役割・大書の均等配置ロジック(step=48・midY基準)・preserveAspectRatioは維持。
+  //   座標帯: 頂部飾り0-34 / 屋根34-92 / 赤幕92-106 / ひらひら・紋108-130 / 紙面134-264 / 彫刻帯264-278 /
+  //   台座格子280-300 / 腰提灯列300-312 / 担ぎ棒305-330。描画順(奥→手前): 発光→綱→担ぎ棒→台座格子→
+  //   腰提灯列→胴(紙面+大書+彫刻帯)→ひらひら+紋→赤幕→屋根→側面提灯列(計画書PLAN_v84_kiriko.md D1)。
   function kirikoSVG(banner){
     var chars = (banner || "").split("");
-    // 紋(kf-mon)・提灯列(kf-lrow)の新設に伴い紙面を再配分。中央基準(y=202)に1〜3文字を均等配置
-    var step = 48, midY = 202, startY = midY - (chars.length - 1) * (step / 2), bx = "";
+    // 大書配置ロジック(維持必須): step=48・中央(midY)基準で1〜3文字を均等配置
+    var step = 48, midY = 199, startY = midY - (chars.length - 1) * (step / 2), bx = "";
     for (var i = 0; i < chars.length; i++) { bx += '<text x="60" y="' + (startY + i*step) + '" class="kf-banner">' + chars[i] + '</text>'; }
-    var lrow = "";   // 台座の小提灯列(実写準拠・5個横並び)
-    [26, 42, 60, 78, 94].forEach(function(lx){
-      lrow += '<ellipse cx="' + lx + '" cy="277" rx="4.4" ry="5.8" fill="url(#kfLantern)" stroke="#b4452f" stroke-width="1"/>';
+    // 腰提灯列(実写準拠・5→7個に増加)。各提灯に吊り紐(縦線)を追加
+    var lrow = "", lstr = "";
+    [12, 28, 44, 60, 76, 92, 108].forEach(function(lx){
+      lstr += '<line x1="' + lx + '" y1="300" x2="' + lx + '" y2="301.6" stroke="#c9b482" stroke-width="1"/>';
+      lrow += '<ellipse cx="' + lx + '" cy="307" rx="4.2" ry="5.2" fill="url(#kfLantern)" stroke="#b4452f" stroke-width="1"/>';
     });
-    var hira = "";   // ひらひら(短冊フリンジ)。紋のため中央を空け左右3枚ずつ
-    [[22,1],[32,2],[42,3],[78,3],[88,2],[98,1]].forEach(function(h, hi){
-      hira += '<rect x="' + (h[0]-3) + '" y="106" width="6" height="22" rx="1.5" class="kf-hira kf-hira' + h[1] + '" fill="' + (hi % 2 === 0 ? "#fdf6e3" : "#c8382a") + '"/>';
+    // 側面提灯縦列(左右柱に沿って各3個。紅白横縞+吊り紐)
+    var srow = "";
+    [6, 114].forEach(function(sx){
+      [140, 185, 230].forEach(function(sy){
+        srow += '<line x1="' + sx + '" y1="' + (sy - 20) + '" x2="' + sx + '" y2="' + (sy - 9) + '" stroke="#2a1a0e" stroke-width="1.2"/>'
+          + '<ellipse cx="' + sx + '" cy="' + sy + '" rx="6.4" ry="9" fill="#fdf6e3" stroke="#b4452f" stroke-width="1"/>'
+          + '<rect x="' + (sx - 6.4) + '" y="' + (sy - 4) + '" width="12.8" height="2.6" fill="#c8382a"/>'
+          + '<rect x="' + (sx - 6.4) + '" y="' + (sy + 1.4) + '" width="12.8" height="2.6" fill="#c8382a"/>';
+      });
     });
+    // ひらひら(短冊フリンジ)。紋2つ(x=40/80)を挟んで外側へ左右3枚ずつ
+    var hira = "";
+    [[8,1],[18,2],[28,3],[92,3],[102,2],[112,1]].forEach(function(h, hi){
+      hira += '<rect x="' + (h[0]-3) + '" y="108" width="6" height="22" rx="1.5" class="kf-hira kf-hira' + h[1] + '" fill="' + (hi % 2 === 0 ? "#fdf6e3" : "#c8382a") + '"/>';
+    });
+    // 張り綱(実写共通の白い綱。頂部付近(y≈40)から担ぎ棒の端(x≈-20/140,y≈300)へ2本ずつ計4本。わずかに撓むQカーブ)
+    var tsuna = ''
+      + '<path d="M26,40 Q3,185 -20,300" stroke="#e8e0d0" stroke-width="1.2" opacity="0.75" fill="none"/>'
+      + '<path d="M40,46 Q12,175 -16,302" stroke="#e8e0d0" stroke-width="1.2" opacity="0.75" fill="none"/>'
+      + '<path d="M94,40 Q117,185 140,300" stroke="#e8e0d0" stroke-width="1.2" opacity="0.75" fill="none"/>'
+      + '<path d="M80,46 Q108,175 136,302" stroke="#e8e0d0" stroke-width="1.2" opacity="0.75" fill="none"/>';
+    // 担ぎ棒(上下2段×2=4本)。木口(端面)を小矩形で表現
+    var kaki = ''
+      + '<g stroke="#a8783c" stroke-width="3.6" stroke-linecap="round"><line x1="-20" y1="308" x2="140" y2="308"/><line x1="-20" y1="314" x2="140" y2="314"/></g>'
+      + '<g stroke="#2a1a0e" stroke-width="3.6" stroke-linecap="round"><line x1="-20" y1="321" x2="140" y2="321"/><line x1="-20" y1="327" x2="140" y2="327"/></g>'
+      + '<g fill="#6b4726" stroke="#3a2716" stroke-width="0.8"><rect x="-23" y="305" width="7" height="12"/><rect x="136" y="305" width="7" height="12"/><rect x="-23" y="318" width="7" height="12"/><rect x="136" y="318" width="7" height="12"/></g>'
+      + '<g stroke="#1a0f08" stroke-width="3" stroke-linecap="round"><line x1="30" y1="305" x2="30" y2="330"/><line x1="90" y1="305" x2="90" y2="330"/></g>';
+    // 台座の白木井桁格子(2段)
+    var kejo = ''
+      + '<g fill="none" stroke="#d9c49a" stroke-width="3" stroke-linecap="round"><rect x="6" y="280" width="108" height="8"/><rect x="6" y="292" width="108" height="8"/></g>'
+      + '<g stroke="#e6d3a4" stroke-width="1.6" opacity="0.8"><line x1="30" y1="280" x2="30" y2="300"/><line x1="60" y1="280" x2="60" y2="300"/><line x1="90" y1="280" x2="90" y2="300"/></g>';
+    // 彫刻帯(大書パネル直下・欄間彫刻風のうねり線2本)
+    var chouko = ''
+      + '<rect x="40" y="264" width="40" height="14" fill="#3a2716"/>'
+      + '<path d="M42,269 Q50,266 58,269 T74,269 T90,269" stroke="#8a6a3a" stroke-width="1" fill="none" opacity="0.7"/>'
+      + '<path d="M42,274 Q50,271 58,274 T74,274 T90,274" stroke="#8a6a3a" stroke-width="1" fill="none" opacity="0.7"/>';
+    // 屋根(入母屋風の反り強化+軒裏垂木3本+大棟両端の鳥衾風の跳ね)
+    var yane = ''
+      + '<path d="M60,36 Q64,38 66,42 L112,80 Q118,84 112,88 L108,90 L66,60 L60,52 L54,60 L12,90 L8,88 Q2,84 8,80 L54,42 Q56,38 60,36 Z" fill="#2a1a0e"/>'
+      + '<path d="M60,42 L100,76 L20,76 Z" fill="#3a2716"/>'
+      + '<g stroke="#5a3d20" stroke-width="1.4" opacity="0.85"><line x1="30" y1="74" x2="26" y2="82"/><line x1="60" y1="76" x2="60" y2="84"/><line x1="90" y1="74" x2="94" y2="82"/></g>'
+      + '<path d="M56,40 Q50,32 55,26" stroke="#1a0f08" stroke-width="2.4" fill="none" stroke-linecap="round"/>'
+      + '<path d="M64,40 Q70,32 65,26" stroke="#1a0f08" stroke-width="2.4" fill="none" stroke-linecap="round"/>';
+    // 頂部飾り: 宝珠+短い幟
+    var hoju = ''
+      + '<line x1="60" y1="4" x2="60" y2="30" stroke="#caa24d" stroke-width="2.4"/>'
+      + '<circle cx="60" cy="10" r="5.4" fill="#e8c86a" stroke="#b4452f" stroke-width="1"/>'
+      + '<path d="M61,14 L76,18 L61,22 Z" fill="#c8382a" opacity="0.9"/>';
     return ''
-      + '<svg viewBox="0 0 120 320" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMax meet">'
+      + '<svg viewBox="-24 0 168 330" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMax meet">'
       +   '<defs>'
       +     '<linearGradient id="kfPaper" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fffdf2"/><stop offset="0.55" stop-color="#fff6dd"/><stop offset="1" stop-color="#ffdca6"/></linearGradient>'
       +     '<radialGradient id="kfGlow" cx="0.5" cy="0.5" r="0.6"><stop offset="0" stop-color="#ffe9a8" stop-opacity="0.9"/><stop offset="1" stop-color="#ffb347" stop-opacity="0"/></radialGradient>'
       +     '<linearGradient id="kfLantern" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffdf8f"/><stop offset="1" stop-color="#ff8a3a"/></linearGradient>'
       +     '<linearGradient id="kfMaku" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#c8453a"/><stop offset="1" stop-color="#9c2a22"/></linearGradient>'
       +   '</defs>'
-      +   '<ellipse class="kf-lit" cx="60" cy="156" rx="54" ry="128" fill="url(#kfGlow)"/>'
-      +   '<g stroke="#d9c49a" stroke-width="4.5" stroke-linecap="round"><line x1="2" y1="297" x2="118" y2="297"/><line x1="2" y1="307" x2="118" y2="307"/></g>'
-      +   '<g stroke="#2a1a0e" stroke-width="4" stroke-linecap="round"><line x1="14" y1="300" x2="106" y2="300"/><line x1="30" y1="286" x2="30" y2="314"/><line x1="90" y1="286" x2="90" y2="314"/><line x1="44" y1="288" x2="76" y2="312"/><line x1="76" y1="288" x2="44" y2="312"/></g>'
-      +   '<g class="kf-emberflame">' + lrow + '</g>'
-      +   '<rect x="40" y="134" width="40" height="136" rx="3" fill="url(#kfPaper)" stroke="#b2392a" stroke-width="2.4"/>'
-      +   '<g stroke="#caa24d" stroke-width="1" opacity="0.5"><line x1="52" y1="140" x2="52" y2="264"/><line x1="68" y1="140" x2="68" y2="264"/></g>'
+      +   '<ellipse class="kf-lit" cx="60" cy="165" rx="58" ry="145" fill="url(#kfGlow)"/>'
+      +   tsuna
+      +   kaki
+      +   kejo
+      +   '<g class="kf-emberflame">' + lstr + lrow + '</g>'
+      +   '<rect x="40" y="134" width="40" height="130" rx="3" fill="url(#kfPaper)" stroke="#b2392a" stroke-width="2.4"/>'
+      +   '<g stroke="#caa24d" stroke-width="1" opacity="0.5"><line x1="52" y1="140" x2="52" y2="258"/><line x1="68" y1="140" x2="68" y2="258"/></g>'
       +   bx
+      +   chouko
       +   hira
-      +   '<g class="kf-mon" fill="none" stroke="#fdf6e3" stroke-width="1.6"><circle cx="60" cy="118" r="9"/><circle cx="60" cy="118" r="5"/><circle cx="60" cy="118" r="1.4" fill="#fdf6e3" stroke="none"/></g>'
-      +   '<path class="kf-maku" d="M20,84 L20,98 Q34,109 48,98 Q62,109 76,98 Q90,109 100,98 L100,84 Z" fill="url(#kfMaku)"/>'
-      +   '<line x1="20" y1="86" x2="100" y2="86" stroke="#e8c86a" stroke-width="1.6" opacity="0.85"/>'
-      +   '<path d="M60 36 L110 76 L100 84 L60 58 L20 84 L10 76 Z" fill="#2a1a0e"/>'
-      +   '<path d="M60 42 L98 74 L22 74 Z" fill="#3a2716"/>'
-      +   '<circle cx="60" cy="30" r="5" fill="#e8c86a"/><rect x="58" y="10" width="4" height="18" fill="#caa24d"/>'
-      +   '<g class="kf-emberflame"><line x1="10" y1="76" x2="10" y2="118" stroke="#2a1a0e" stroke-width="2"/><ellipse cx="10" cy="130" rx="8" ry="11" fill="url(#kfLantern)" stroke="#b4452f" stroke-width="1.4"/><line x1="110" y1="76" x2="110" y2="118" stroke="#2a1a0e" stroke-width="2"/><ellipse cx="110" cy="130" rx="8" ry="11" fill="url(#kfLantern)" stroke="#b4452f" stroke-width="1.4"/></g>'
+      +   '<g class="kf-mon" fill="none" stroke="#fdf6e3" stroke-width="1.5"><circle cx="40" cy="119" r="7"/><circle cx="40" cy="119" r="3.6"/><circle cx="40" cy="119" r="1.1" fill="#fdf6e3" stroke="none"/></g>'
+      +   '<g class="kf-mon" fill="none" stroke="#fdf6e3" stroke-width="1.5"><circle cx="80" cy="119" r="7"/><circle cx="80" cy="119" r="3.6"/><circle cx="80" cy="119" r="1.1" fill="#fdf6e3" stroke="none"/></g>'
+      +   '<path class="kf-maku" d="M20,92 L20,104 Q34,114 48,104 Q62,114 76,104 Q90,114 100,104 L100,92 Z" fill="url(#kfMaku)"/>'
+      +   '<line x1="20" y1="94" x2="100" y2="94" stroke="#e8c86a" stroke-width="1.6" opacity="0.85"/>'
+      +   yane
+      +   hoju
+      +   '<g class="kf-emberflame">' + srow + '</g>'
       + '</svg>';
   }
   // D2(v75): 柱松明(ハシラタイマツ)/置松明(オキタイマツ)。公式サイトの記述と実写に基づく火元の表現。
@@ -11624,13 +11792,36 @@ if (typeof document !== "undefined") (() => {
       (function(el, ms){ setTimeout(function(){ el.remove(); }, ms); })(p, (dur+1.1)*1000);
     }
   }
-  function kirikoBurn(res){
+  // D4(v85): hold中(完了ボタン待ち)のキリコを終了する。hold中でなければ何もしない(非holdは3050msタイマーが管理)。
+  //   immediate=true: 即時清掃(kirikoBurn冒頭からの再入安全用・フェードなし)。
+  //   immediate省略/false: .out付与→400ms後(CSS transition尺と一致)に完全清掃。
+  function kirikoRelease(immediate){
+    var stage = document.getElementById("kiriko-fire");
+    if (!stage || !stage.classList.contains("hold")) return;
+    clearTimeout(app._kirikoOutT);
+    var cleanup = function(){
+      stage.classList.remove("show", "hold", "out");
+      stage.innerHTML = "";
+      cancelAnimationFrame(app._kirikoSwayRAF);
+      clearTimeout(app._kirikoW1); clearTimeout(app._kirikoW2); clearTimeout(app._kirikoW3);
+      clearTimeout(app._kirikoT);
+    };
+    if (immediate) { cleanup(); return; }
+    stage.classList.add("out");
+    app._kirikoOutT = setTimeout(cleanup, 400);
+  }
+  // D4(v85): hold判定はL1(v80)由来のshowWinCut useButtonと同型。完了ボタンが出るケース(人間参加/
+  //   演出みほん)は完了ボタンを押すまでキリコを持続表示する。観戦(全席AI)は従来どおり3050msで自動消滅。
+  function kirikoBurn(res, opts){
+    kirikoRelease(true);   // D4(v85): 再入安全。前回のhold残留を即時清掃してから今回分を構築する
     if (!res || res.draw) return;
     if (!document.body.classList.contains("noto")) return;
     var tier = kirikoTier(res.pts || 0);   // C1(v74): 点数のみでtierを決定
     if (!tier) return;
     var dbl = !!res.dbl;   // 「倍」バッジ表示にのみ使用(tier判定には使わない)
+    var hold = !!(app.humanSeat || (opts && opts.button));   // D4(v85): showWinCutのuseButtonと同型
     try { if (matchMedia("(prefers-reduced-motion:reduce)").matches) return; } catch (e) {}
+    cancelAnimationFrame(app._kirikoSwayRAF);   // D2(v84): kirikoBurn再入時は前回の振り子ループを必ず停止(リーク防止)
     var stage = document.getElementById("kiriko-fire");
     if (!stage) { stage = document.createElement("div"); stage.id = "kiriko-fire"; stage.setAttribute("aria-hidden", "true"); document.body.appendChild(stage); }
     var tms = tier.taimatsu;
@@ -11654,7 +11845,7 @@ if (typeof document !== "undefined") (() => {
     var POS_BY_N = {2: ["k-l1", "k-r1"], 4: ["k-l1", "k-r1", "k-l2", "k-r2"], 6: ["k-l1", "k-r1", "k-l2", "k-r2", "k-l3", "k-r3"]};
     var positions = POS_BY_N[tier.n] || POS_BY_N[2];
     var words = kirikoPickDaisho(positions.length);   // C2(v74): 大書は毎回ランダム・重複なし
-    var kirikoHtml = positions.map(function(pos, i){ return '<div class="kf-kiriko ' + pos + '">' + kirikoSVG(words[i]) + '</div>'; }).join("");
+    var kirikoHtml = positions.map(function(pos, i){ return '<div class="kf-kiriko ' + pos + '"><div class="kf-sway">' + kirikoSVG(words[i]) + '</div></div>'; }).join("");   // D2(v84): 振り子回転用の内側ラッパ
     stage.innerHTML =
       '<div class="kf-blaze" style="--bx:' + tms[0].x + '%"></div>' +   // D2(v75): 地明かりの中心を主松明の位置に
       '<div class="kf-heat"></div>' +
@@ -11662,7 +11853,10 @@ if (typeof document !== "undefined") (() => {
       flames +
       kirikoHtml +
       bai;
-    stage.classList.remove("show"); void stage.offsetWidth; stage.classList.add("show");
+    stage.classList.remove("show", "hold", "out"); void stage.offsetWidth;   // D4(v85): 前回のhold/out残留を確実に払う
+    if (hold) stage.classList.add("hold");
+    stage.classList.add("show");
+    kirikoSwayLoop(Array.prototype.slice.call(stage.querySelectorAll(".kf-sway")));   // D2(v84): 振り子揺動rAFループ開始
     var base = tier.embers;   // C1(v74): tier別の火の粉量。4波に分けて連続放出。D2(v75): 発生源は松明頂部
     spawnKirikoEmbers(base, tms);
     clearTimeout(app._kirikoW1); clearTimeout(app._kirikoW2); clearTimeout(app._kirikoW3);
@@ -11670,7 +11864,11 @@ if (typeof document !== "undefined") (() => {
     app._kirikoW2 = setTimeout(function(){ spawnKirikoEmbers(Math.round(base*0.48), tms); }, 640);
     app._kirikoW3 = setTimeout(function(){ spawnKirikoEmbers(Math.round(base*0.34), tms); }, 1080);
     clearTimeout(app._kirikoT);
-    app._kirikoT = setTimeout(function(){ stage.classList.remove("show"); stage.innerHTML = ""; }, 3050);
+    if (hold) {
+      // D4(v85): hold時は完了ボタン(showWinCutの_close→kirikoRelease)が終了を担うため、自動消去タイマーは設定しない
+    } else {
+      app._kirikoT = setTimeout(function(){ stage.classList.remove("show"); stage.innerHTML = ""; cancelAnimationFrame(app._kirikoSwayRAF); }, 3050);   // D2(v84): 演出終了時に振り子ループを完全停止
+    }
   }
   // L1(v80): 特別上がり(40/50/80/100点・倍・受け上がり)の演出を「眺めていられる」ように完了ボタン対応。
   //   人間参加時(app.humanSeatあり)または opts.button===true(演出みほん)はボタンで閉じるまで持続。
@@ -11697,6 +11895,7 @@ if (typeof document !== "undefined") (() => {
     const useButton = !!(app.humanSeat || (opts && opts.button));
     const _close = () => {
       clearTimeout(app._wcT);
+      kirikoRelease();   // D4(v85): hold中のキリコを、完了ボタン(または観戦1400ms後)のクローズに合わせて解放
       el.classList.add("out");
       app._wcT = setTimeout(() => {
         el.classList.remove("show", "out");
