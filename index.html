@@ -4,6 +4,26 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>ごいた — 能登の伝承遊戯</title>
+  <!-- build: v87.1 / Fix: キリコ持続演出(hold)中に「次の局へ」が押せて演出が新盤面へ残留する問題を修正。
+       (1)startGame冒頭でhold中(かつ.outでない)は遷移をブロックしトースト案内 /
+       (2)振り返り中はkiriko-fireもwincut同様に非表示(閉じれば再表示) /
+       (3)stopToSetupでは即時解放(設定画面への残留防止) -->
+  <!-- build: v87 / 終局後の悪手自動振り返り「悪手ツアー」(docs/PLAN_v87_worst_tour.md):
+       (1) worstRanking(rec): ⚠miss(Solver証明・loss降順→null時deq降順→手番昇順)を常に上位、
+           ☆study(deq降順→手番昇順)を後段に配置。ツアー巡回は上位8件・リストは全件表示 /
+       (2) 終局後、人間参加・観戦でない・cfg.autoWorstTour ON(既定ON)・悪手見込みあり(misses)・
+           チュートリアル/みほん中でない・勝負決着局でない場合に自動でopenReviewOn→ツアー開始。
+           40点以上等の特別演出(wincut hold)時はwincutの_close後に遅延起動(既存opts.onCloseに
+           1フック追加)、それ以外は即起動。アクションバーに「悪手を振り返る」ボタンを追加
+           (ピン0件時は非表示) /
+       (3) tourWhenReady: rec.eqDoneとclarity充填完了を500msポーリングで監視、20秒タイムアウトで
+           暫定開始(注記表示)。app.reviewRec切替で即中止 /
+       (4) #rv-worst(ランキングリスト・タップでシーク)と#rv-tour(悪手k/n・種別・逸失点・
+           勝率ドロップ・一言・前/解き直す/次/終了・自動送り既定ON6秒)を新設。形勢グラフの
+           該当ピンに.tour-now脈動リングを追加。reduced-motionは自動送り無効。「解き直す」は
+           resumeFromMoveへ渡しツアー終了扱い。ピン0件の手動起動は案内2秒表示 /
+       (5) tourStop()を終了ボタン・closeReview・startGame・stopToSetup・openReviewOn(reviewRec
+           切替)の全経路から呼び出し -->
   <!-- build: v86 / Sonar指定の4修正: (1)大漁旗の贈り主を「贈 能登ごいた保存会金沢支部」へ変更(font-size 6.5→5.8) /
        (2)キリコ張り綱の起点を頂部(y=40)→軒下コーナー(y=82/86)へ移し屋根からのはみ出しを解消 /
        (3)大書フォントをYuji Mai(崩し毛筆・連綿)第一候補に変更。グリフ欠落時は文字単位でYuji Bokuへ
@@ -901,6 +921,7 @@ body.noto #yaku-splash .ys-rays{background:conic-gradient(from 0deg, rgba(255,17
 #wincut .wc-done{pointer-events:auto;margin-top:14px;display:none}
 #wincut .wc-done:not([hidden]){display:inline-block}
 body.reviewing #wincut{display:none!important}   /* 振り返り中は演出を重ねない(閉じれば再表示) */
+body.reviewing #kiriko-fire{display:none!important}   /* Fix(v87.1): キリコ持続演出も同様に重ねない(閉じれば再表示・状態は保持) */
 /* C3: 上がりの締め — 金粉パーティクル(v68: 大駒上がり/同駒2倍などの特別な上がりでは.emberを混ぜ、火の粉らしい朱の粒も飛ばす) */
 .gold-p{position:fixed;z-index:83;pointer-events:none;border-radius:50%;
   background:radial-gradient(circle at 40% 35%, #ffe9b0, #c2a35d 70%, rgba(194,163,93,0));
@@ -1038,6 +1059,8 @@ body.nashi-left #actionbar{justify-content:flex-start}
 #rv-graph svg{display:block;width:100%;height:auto}
 #rv-graph .gx-pin{cursor:pointer}
 #rv-graph .gx-pin:hover circle{stroke:var(--kin);stroke-width:1}
+#rv-graph .gx-pin.tour-now .gx-tourring{animation:tourPinPulse 1.3s ease-in-out infinite}
+@keyframes tourPinPulse{0%,100%{opacity:.5}50%{opacity:1}}
 #rv-graph .gx-head{display:flex;align-items:center;gap:6px;font-size:.58rem;color:var(--gin-d);margin-bottom:2px}
 #rv-graph .gx-head .ns{color:var(--aoi)} #rv-graph .gx-head .ew{color:var(--shu)}
 #beliefbox{display:none;flex-direction:column;gap:4px;margin:2px 0;padding:8px 10px;
@@ -1087,6 +1110,36 @@ body.reviewing #board{gap:4px;padding:7px}
 #review .rv-head label{display:flex;align-items:center;gap:5px;font-size:.72rem}
 #review .rv-head .sp{flex:1}
 #rv-list{overflow-y:auto;display:flex;flex-direction:column;gap:2px}
+/* v87: 悪手ツアー — ランキングリスト・ツアーカード */
+#rv-worst{display:none;flex-direction:column;gap:2px;margin:2px 0 4px;padding:6px 8px;
+  background:rgba(20,28,30,.4);border:1px solid var(--line);border-radius:8px;font-size:.68rem;
+  max-height:9.5em;overflow-y:auto}
+#rv-worst.show{display:flex}
+#rv-worst .rw-head{color:var(--gin-d);font-size:.6rem;margin-bottom:2px}
+#rv-worst .rw-item{display:grid;grid-template-columns:1.6em 1.4em 4.6em 1fr;gap:6px;
+  align-items:baseline;padding:3px 4px;border-radius:5px;cursor:pointer}
+#rv-worst .rw-item:hover{background:var(--ink2)}
+#rv-worst .rw-item.cur{background:var(--ink2);outline:1px solid rgba(194,163,93,.5)}
+#rv-worst .rw-rank{color:var(--gin-d);text-align:right;font-variant-numeric:tabular-nums}
+#rv-worst .rw-glyph.miss{color:var(--shu)}
+#rv-worst .rw-glyph.study{color:var(--kin)}
+#rv-worst .rw-no{color:var(--kinari);white-space:nowrap}
+#rv-worst .rw-metrics{color:var(--gin)}
+#rv-tour{display:none;flex-direction:column;gap:5px;margin:0 0 4px;padding:9px 10px;
+  background:rgba(40,44,24,.55);border:1px solid var(--kinari);border-radius:9px;
+  max-height:25vh;overflow-y:auto}
+#rv-tour.show{display:flex}
+#rv-tour .tour-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:.7rem}
+#rv-tour .tour-badge{color:var(--kinari);font-weight:700;letter-spacing:.03em}
+#rv-tour .tour-type.miss{color:var(--shu)}
+#rv-tour .tour-type.study{color:var(--kin)}
+#rv-tour .tour-partial{color:var(--gin-d);font-size:.62rem}
+#rv-tour .tour-body{font-size:.78rem;color:var(--fg)}
+#rv-tour .tour-why{font-size:.7rem;color:var(--gin);line-height:1.5}
+#rv-tour .tour-msg{font-size:.76rem;color:var(--gin);padding:4px 0}
+#rv-tour .tour-nav{display:flex;flex-wrap:wrap;gap:6px;margin-top:2px}
+#rv-tour .tour-nav .btn{padding:3px 10px;font-size:.72rem}
+#rv-tour .tour-auto{display:flex;align-items:center;gap:5px;font-size:.68rem;color:var(--gin-d)}
 .rv-item{display:grid;grid-template-columns:30px 92px 1fr;gap:8px;padding:6px 8px;border-radius:8px;
   font-size:.74rem;cursor:pointer;border:1px solid transparent;align-items:baseline}
 .rv-item:hover{background:var(--ink2)}
@@ -1817,6 +1870,8 @@ body.noto #wincut.show .wc-label{animation:wcFude .62s cubic-bezier(.2,.9,.3,1.2
           <span>カウント表（王/香/しを強調）<span class="desc">自分の視点で場に出ていない駒数を表示します。</span></span></label>
         <label class="toggle"><input type="checkbox" id="cfg-sighonest">
           <span>符丁の正直さコーチ<span class="desc">振り返りで、あなたの攻めが相方へ送った合図と手札の整合を点検します（学習向け）。</span></span></label>
+        <label class="toggle"><input type="checkbox" id="cfg-autoWorstTour" checked>
+          <span>終局後に悪手を自動で振り返る<span class="desc">対局が終わった直後、この局で検出した悪手(⚠読み切り逃し・☆明確局面での逸脱)を悪手度の高い順に自動で巡回表示します（既定ON）。オフでもアクションバーの「悪手を振り返る」から手動で開けます。</span></span></label>
       </details>
     </div>
     <label class="toggle"><input type="checkbox" id="cfg-tempo" checked>
@@ -1934,6 +1989,7 @@ body.noto #wincut.show .wc-label{animation:wcFude .62s cubic-bezier(.2,.9,.3,1.2
       <span class="sp"></span>
       <button class="btn small" id="rv-share">局面を共有</button>
       <button class="btn small" id="rv-close">対局へ戻る</button></div>
+    <div id="rv-tour" role="region" aria-label="悪手ツアー"></div>
     <div id="rv-graph" role="img" aria-label="形勢（南北勝率）推移グラフ。⚠ピンをタップで解き直し"></div>
     <div id="rv-seek-row">
       <button class="btn small" type="button" id="rv-back" aria-label="前の手へ">◀</button>
@@ -1942,6 +1998,7 @@ body.noto #wincut.show .wc-label{animation:wcFude .62s cubic-bezier(.2,.9,.3,1.2
       <span id="rv-seek-lbl" aria-hidden="true"></span>
     </div>
     <div id="rv-legend">✓ AIと一致　⚠ 読み切りの逃し（Solver証明あり・「手順」で読み筋）　☆ 学習対象（明確局面での逸脱）　⚡ 早打ち（思考2秒未満）</div>
+    <div id="rv-worst" role="region" aria-label="悪手ランキング"></div>
     <div id="rv-list"></div>
   </div>
   <details id="legend-wrap"><summary>盤面の記号</summary><div class="panel legend">
@@ -8973,6 +9030,7 @@ if (typeof document !== "undefined") (() => {
     missGuard: {label: "ミスガード", desc: "明確な受けと違う駒を選んだ時だけ軽い確認。誤タップ防止。確認した局は成績集計から除外。"},
     counts: {label: "カウント表（王/香/しを強調）", desc: "自分の視点で場に出ていない駒数を表示します。"},
     sighonest: {label: "符丁の正直さコーチ", desc: "振り返りで、あなたの攻めが相方へ送った合図と手札の整合を点検します（学習向け）。"},
+    autoWorstTour: {label: "終局後に悪手を自動で振り返る", desc: "対局が終わった直後、この局で検出した悪手(⚠読み切り逃し・☆明確局面での逸脱)を悪手度の高い順に自動で巡回表示します（既定ON）。オフでもアクションバーの「悪手を振り返る」から手動で開けます。"},
     tempo: {label: "難所で長考（相手の気配）", desc: "AIが難しいと判断した局面では考える間を延ばし、その席を微かに明滅。即断・長考のテンポから相手の迷いを読めます。"},
     livebar: {label: "形勢バー（対局中の勝率）", desc: "対局中、この局の南北勝率を盤上のバーで表示（将棋の評価バー風）。相手の手札は使わない自視点推定です。"},
     riverseq: {label: "河に手数の番号を表示", desc: "場に出た駒へ「何手目か」の通し番号を小さく重ねます。カウンティングや振り返りの読みに便利（既定OFF）。"},
@@ -8998,7 +9056,7 @@ if (typeof document !== "undefined") (() => {
   const byPts = (a, b) => G.POINTS[b] - G.POINTS[a];
 
   const app = {
-    cfg: {target: 150, speed: 850, mc: true, solver: true, explain: true, hints: true, counts: false, belief: "off", ouSignal: true, reading: true, advice: false, sighonest: false, cand: false, coach: "std", tempo: true, livebar: false, riverseq: false, opMode: "tap", sound: false, haptics: true, cud: false, nashiSide: "right", autoPass: false, theme: "yoai", assistHi: false, missGuard: false, notoAccent: true, srVerbosity: "normal"},
+    cfg: {target: 150, speed: 850, mc: true, solver: true, explain: true, hints: true, counts: false, belief: "off", ouSignal: true, reading: true, advice: false, sighonest: false, cand: false, coach: "std", tempo: true, livebar: false, riverseq: false, opMode: "tap", sound: false, haptics: true, cud: false, nashiSide: "right", autoPass: false, theme: "yoai", assistHi: false, missGuard: false, notoAccent: true, srVerbosity: "normal", autoWorstTour: true},
     tiers: {N: "strong", W: "strong", S: "human", E: "strong"},
     humanSeat: "S",
     scores: {NS: 0, EW: 0}, parent: null, st: null, rng: null,
@@ -9011,6 +9069,7 @@ if (typeof document !== "undefined") (() => {
     oppCounts: {pe: {n: 0, k: 0}, pp: {n: 0, k: 0}, bl: {n: 0, k: 0}}, tblTrust: {n: 0, hit: 0},
     drill: null, puzzleStats: {tried: 0, solved: 0}, preDrill: null,
     review: null,         // {idx} 振り返り中の表示位置
+    tour: null,           // 悪手ツアーの状態(v87) {rec,list,k,playing,timer,waiting,partial,empty}
     turnT0: 0,            // 人間の思考時間計測
   };
   /* ================================================================
@@ -11298,6 +11357,13 @@ if (typeof document !== "undefined") (() => {
    * 局の開始・五し・終局
    * ================================================================ */
   function startGame() {
+    // Fix(v87.1): キリコ持続演出(hold)中は次の局へ遷移できない(演出が新しい盤面へ残留し見づらくなるため)。
+    //   完了ボタン(wc-done)で演出を閉じてから進む。.out(解放フェード中)は残留扱いにしない。
+    { const kf = document.getElementById("kiriko-fire");
+      if (kf && kf.classList.contains("hold") && !kf.classList.contains("out")) {
+        try { toast("上がり演出を「完了」で閉じてから次の局へ進めます"); } catch (e) {}
+        return;
+      } }
     try {
       if (!app.cfg.sound && app.humanSeat && !localStorage.getItem("goita_sound_hint")) {
         localStorage.setItem("goita_sound_hint", "1");
@@ -11315,6 +11381,7 @@ if (typeof document !== "undefined") (() => {
     $("wincut").classList.remove("show", "out");   // L1(v80): 完了ボタン持続化に伴う残留防止
     app.lastWin = null;
     closeReview();
+    tourStop();   // 悪手ツアー(v87): closeReview()内でも呼ばれるが明示のため直接呼ぶ
     let tries = 0;
     const tryDeal = () => {
       if (app.stopped) return;
@@ -12182,6 +12249,9 @@ if (typeof document !== "undefined") (() => {
     if (app.research && app.research.active) { researchAfterDeal(res); return; }   // [研究] 局終了→ログ&遷移
     // T5(v71): 「今日の一手」— この局で最も逸失点の大きかった⚠を検出し、解き直し導線をアクションバーに添える
     const km = app.humanSeat ? keyMoveAddon(app.rec) : null;
+    // 悪手ツアー(v87): 起動判定・ボタンで参照するrecのスナップショット(kmと同じmisses条件で非nullになる)
+    const finishedRec = app.rec;
+    const tourBtn = km ? {label: "悪手を振り返る", fn: () => tourLaunch(finishedRec)} : null;
     if (res.draw) {
       log("流局 — 攻めが流れ、伏せと攻めに必要な2枚が残っていません（無得点）", true);
       kifu(`流局（無得点）  [南北${app.scores.NS} 東西${app.scores.EW}]`);
@@ -12195,7 +12265,8 @@ if (typeof document !== "undefined") (() => {
         actionbar("（観戦中 — 自動で次の局へ）", [rb, {label: "ここで止める", fn: stopToSetup}]);
         app.timer = setTimeout(() => { if (!app.stopped && !app.review) startGame(); }, 1800);
       } else {
-        actionbar(km ? km.html : "", [rb, ...(km ? [km.btn] : []), {label: "次の局へ", primary: true, fn: startGame}]);
+        actionbar(km ? km.html : "", [rb, ...(km ? [km.btn] : []), ...(tourBtn ? [tourBtn] : []), {label: "次の局へ", primary: true, fn: startGame}]);
+        tourAutoMaybe(finishedRec);   // 悪手ツアー(v87): 流局は非special相当のため即起動
       }
       return;
     }
@@ -12209,7 +12280,11 @@ if (typeof document !== "undefined") (() => {
     log(`${SEAT_JA[res.winner]} ${agari}「${res.koma}」${res.dbl ? "（同駒2倍）" : ""} ${res.pts}点 → ${teamJa}`, true);
     kifu(`${agari} ${SEAT_JA[res.winner]}「${res.koma}」${res.dbl ? "×2" : ""} ${res.pts}点  [南北${app.scores.NS} 東西${app.scores.EW}]`);
     $("stamp").classList.remove("show");   // v55: 中央の朱丸(点数+上がり駒)は廃止
-    showWinCut(res);
+    // 悪手ツアー(v87): over/winSpecialをshowWinCut呼び出し前に確定(旧位置から移動)。
+    // special時はwincutの_close後に遅延起動(既存opts.onCloseフローに1フック追加。showWinCut本体は無変更)
+    const over = app.scores.NS >= app.cfg.target || app.scores.EW >= app.cfg.target;
+    const winSpecial = !!res.dbl || !!res.recvFinish || (res.pts || 0) >= 40;   // showWinCut内のspecial判定と同型
+    showWinCut(res, {onClose: () => { if (!over) tourAutoMaybe(finishedRec); }});
     winParticles(!!res.dbl || !!res.recvFinish || (res.pts || 0) >= 40);   // v68: 大駒上がり/王上がり/受け上がり/同駒2倍は火の粉を派手に(showWinCutの特別扱い条件と統一)
     notoWinGlow(res);   // v66【能登・案1】奉燈の暖色グロー
     kirikoBurn(res);    // ⑤(v69) 大駒上がり/倍付け(同駒2倍)上がりで宇出津キリコが炎上・火の粉
@@ -12234,19 +12309,19 @@ if (typeof document !== "undefined") (() => {
     }
     status(`${SEAT_JA[res.winner]}が${res.pts}点で上がり。伏せ駒を公開中。`);
     app.parent = res.winner;
-    const over = app.scores.NS >= app.cfg.target || app.scores.EW >= app.cfg.target;
     const reviewBtn = {label: "振り返り", fn: openReview};
     const shareBtn = {label: "この局を共有", fn: () => shareGame(app.lastRec)};
     const kmBtn = km ? [km.btn] : [];
     const kmHtml = km ? km.html : "";
     if (over) {
-      actionbar(kmHtml, [reviewBtn, shareBtn, ...kmBtn, {label: "結果を見る", primary: true, fn: showMatchEnd}]);
+      actionbar(kmHtml, [reviewBtn, shareBtn, ...kmBtn, ...(tourBtn ? [tourBtn] : []), {label: "結果を見る", primary: true, fn: showMatchEnd}]);
     } else if (!app.humanSeat) {
       actionbar("（観戦中 — 自動で次の局へ）",
         [reviewBtn, shareBtn, {label: "ここで止める", fn: stopToSetup}]);
       app.timer = setTimeout(() => { if (!app.stopped && !app.review) startGame(); }, 1800);
     } else {
-      actionbar(kmHtml, [reviewBtn, shareBtn, ...kmBtn, {label: "次の局へ", primary: true, fn: startGame}]);
+      actionbar(kmHtml, [reviewBtn, shareBtn, ...kmBtn, ...(tourBtn ? [tourBtn] : []), {label: "次の局へ", primary: true, fn: startGame}]);
+      if (!winSpecial) tourAutoMaybe(finishedRec);   // 悪手ツアー(v87): 非special終局は即起動
     }
   }
   function startPractice(rec, idx, drillMeta, label) {
@@ -12556,6 +12631,7 @@ if (typeof document !== "undefined") (() => {
       const pins = eqPinMoves(rec);
       let worst = null;
       for (const pin of pins) if (pin.deq != null && pin.deq > 0.05 && (!worst || pin.deq > worst.deq)) worst = pin;
+      const tourNowI = (app.tour && app.tour.rec === rec && app.tour.list && app.tour.list[app.tour.k]) ? app.tour.list[app.tour.k].i : null;   // v87: ツアー中の該当ピンを強調
       for (const pin of pins) {
         const px = X(pin.i), py = Y(ev(pin.i));
         const isMiss = pin.kind === "miss";
@@ -12564,11 +12640,14 @@ if (typeof document !== "undefined") (() => {
         const drop = (pin.deq != null && pin.deq > 0) ? Math.round(pin.deq * 100) : 0;
         const r = 5.5 + Math.min(4, drop / 8);                       // 勝率急落ほど大きく
         const isWorst = worst && worst.i === pin.i;
+        const isTourNow = tourNowI === pin.i;
         const ring = isWorst
           ? `<circle cx="${px.toFixed(1)}" cy="7" r="${(r + 2.6).toFixed(1)}" fill="none" stroke="${col}" stroke-width="1" opacity="0.75"/>` : "";
-        svg += `<g class="gx-pin" data-i="${pin.i}">` +
+        const tourRing = isTourNow
+          ? `<circle class="gx-tourring" cx="${px.toFixed(1)}" cy="7" r="${(r + 4.4).toFixed(1)}" fill="none" stroke="var(--kinari)" stroke-width="1.4"/>` : "";
+        svg += `<g class="gx-pin${isTourNow ? " tour-now" : ""}" data-i="${pin.i}">` +
           `<line x1="${px.toFixed(1)}" y1="${py.toFixed(1)}" x2="${px.toFixed(1)}" y2="7" stroke="${col}" stroke-width="0.8"/>` +
-          ring +
+          ring + tourRing +
           `<circle cx="${px.toFixed(1)}" cy="7" r="${r.toFixed(1)}" fill="${col}"/>` +
           `<text x="${px.toFixed(1)}" y="9.4" text-anchor="middle" font-size="8" font-weight="700" fill="#1b140f">${glyph}</text>` +
           `<title>第${pin.i + 1}手 ${isMiss ? "読み切り逃し" : "学習対象（明確局面での逸脱）"}` +
@@ -12582,6 +12661,7 @@ if (typeof document !== "undefined") (() => {
     }
     svg += `</svg>`;
     host.innerHTML = head + svg;
+    renderWorstList(rec);   // v87: 悪手ランキングリストをピンと同じタイミングで更新
   }
   // 各plyのNS勝率を自視点MCで計算。clarityAnalyze同様 setTimeout でチャンク化し、進捗を逐次描画。
   function computeEquityCurve(rec) {
@@ -12934,6 +13014,7 @@ if (typeof document !== "undefined") (() => {
   }
   function openReviewOn(rec, idx) {
     if (!rec || !rec.moves.length) return;
+    tourStop();   // 悪手ツアー(v87): 別局への切替・再オープンで前回のツアー状態を必ず清掃
     clearTimeout(app.timer);
     G.SEATS.forEach(x => { const c = cardOf[x]; if (c) c.classList.remove("pondering"); });   // 長考演出の残骸を除去(レビューでカードは可視)
     computeCoach(rec); computeSignals(rec);
@@ -12953,6 +13034,7 @@ if (typeof document !== "undefined") (() => {
   function closeReview() {
     app.review = null;
     clearTimeout(app._eqTimer);
+    tourStop();   // 悪手ツアー(v87): 振り返りを閉じたらツアーも終了
     $("review").classList.remove("show");
     document.body.classList.remove("reviewing");
   }
@@ -13224,6 +13306,215 @@ if (typeof document !== "undefined") (() => {
   }
 
   /* ================================================================
+   * 悪手ツアー (v87・docs/PLAN_v87_worst_tour.md)
+   * 終局後、その局で検出された悪手(⚠読み切り逃し・☆明確局面での逸脱)を悪手度合いの高い順に
+   * 自動で巡回表示する。既存のeqPinMoves/computeEquityCurve/clarityAnalyze/reviewSeekTo/
+   * resumeFromMove/openReviewOnを再利用し、本節はランキング生成・巡回制御・UIのみを新設する。
+   * ================================================================ */
+  // 悪手ランキング: eqPinMoves(rec)の結果を並べ替えて返す(全件。巡回時の上位8件制限は呼び出し側で行う)。
+  // グループ1: ⚠miss(Solver証明あり)を常に上位。miss内は loss(逸失点・厳密値)降順→lossがnullならdeq降順→手番昇順
+  // グループ2: ☆study。study内は deq(勝率急落幅)降順→手番昇順(deqはMC推定でノイズがあるためmissと混在ソートしない)
+  function worstRanking(rec) {
+    const pins = eqPinMoves(rec);
+    const miss = pins.filter(p => p.kind === "miss");
+    const study = pins.filter(p => p.kind === "study");
+    const byDeqThenI = (a, b) => {
+      const ad = a.deq, bd = b.deq;
+      if (ad != null && bd != null && ad !== bd) return bd - ad;
+      if (ad != null && bd == null) return -1;
+      if (ad == null && bd != null) return 1;
+      return a.i - b.i;
+    };
+    miss.sort((a, b) => {
+      const al = a.loss, bl = b.loss;
+      if (al != null && bl != null) return (al !== bl) ? (bl - al) : (a.i - b.i);
+      if (al != null && bl == null) return -1;
+      if (al == null && bl != null) return 1;
+      return byDeqThenI(a, b);   // 両者lossなし → deq降順→手番昇順
+    });
+    study.sort(byDeqThenI);
+    return miss.concat(study);
+  }
+  // 悪手ツアー起動可否の判定(自動起動・手動ボタン共通で再チェックに使用)。
+  // 条件: 人間参加・cfg ON・チュートリアル/みほん中でない・その局にピン1件以上見込み(rec.missesで代用)。
+  function tourAutoMaybe(rec) {
+    if (!rec || !rec.moves || !rec.moves.length) return;
+    if (!app.humanSeat) return;                 // 観戦は自動起動しない
+    if (!app.cfg.autoWorstTour) return;          // 設定でOFF
+    if (app.tutorial) return;                    // チュートリアル/みほん再生中は起動しない
+    if (!(rec.misses && rec.misses.length)) return;   // ピンの見込みなし(missesは⚠の必要条件と同一集合)
+    tourLaunch(rec);
+  }
+  // 振り返りを開いて分析完了を待ち、揃い次第ツアーを開始する(自動起動・手動ボタン共通の実処理)。
+  function tourLaunch(rec) {
+    openReviewOn(rec);
+    tourWhenReady(rec, (partial) => tourStart(rec, partial));
+  }
+  // clarity充填の残数チェック: 対象(人間の受け/なし・非強制)のうち.clarity未設定のものが残っているか
+  function clarityPending(rec) {
+    return rec.moves.some(mv => mv.human && !mv.forced &&
+      (mv.action.type === "receive" || mv.action.type === "pass") && !mv.clarity);
+  }
+  // rec.eqDone(形勢曲線)とclarity充填の完了を500msごとに監視し、揃ったらcb(false)。
+  // 20秒(500ms×40)経過しても未完了ならcb(true)(暫定開始)。app.reviewRecが別recへ切り替わったら中止する。
+  function tourWhenReady(rec, cb) {
+    clearTimeout(app._tourWaitT);
+    app.tour = {rec, list: [], k: 0, playing: false, timer: null, waiting: true, partial: false};
+    tourRender();
+    let n = 0;
+    const poll = () => {
+      if (app.reviewRec !== rec) return;   // 別局へ切替(openReviewOn側のtourStop()で既に清掃済み)
+      if (rec.eqDone && !clarityPending(rec)) { cb(false); return; }
+      n++;
+      if (n >= 40) { cb(true); return; }
+      app._tourWaitT = setTimeout(poll, 500);
+    };
+    poll();
+  }
+  function tourReducedMotion() {
+    try { return matchMedia("(prefers-reduced-motion:reduce)").matches; } catch (e) { return false; }
+  }
+  function tourStart(rec, partial) {
+    clearTimeout(app._tourWaitT);
+    if (!app.review || app.reviewRec !== rec) return;   // 振り返りを閉じた/別局へ切替済みなら開始しない
+    const list = worstRanking(rec).slice(0, 8);
+    if (!list.length) { tourShowEmpty(rec); return; }
+    app.tour = {rec, list, k: 0, playing: !tourReducedMotion(), timer: null, partial: !!partial};
+    reviewSeekTo(list[0].i);
+    tourRender();
+    tourScheduleAuto();
+  }
+  // ピン0件で起動された場合の案内(2秒表示して自動的に閉じる)
+  function tourShowEmpty(rec) {
+    app.tour = {rec, list: [], k: 0, playing: false, timer: null, empty: true};
+    tourRender();
+    app.tour.timer = setTimeout(() => {
+      tourStop();
+      if (app.reviewRec === rec) renderEquityGraph(rec);
+    }, 2000);
+  }
+  function tourPauseAuto() {
+    if (!app.tour) return;
+    app.tour.playing = false;
+    clearTimeout(app.tour.timer); app.tour.timer = null;
+  }
+  function tourScheduleAuto() {
+    if (!app.tour) return;
+    clearTimeout(app.tour.timer);
+    if (!app.tour.playing || tourReducedMotion()) return;   // reduced-motionは自動送り無効
+    app.tour.timer = setTimeout(() => tourNext(true), 6000);
+  }
+  function tourNext(fromAuto) {
+    if (!app.tour || app.tour.waiting || app.tour.empty) return;
+    if (!fromAuto) tourPauseAuto();   // 手動操作は自動送りを一時停止(トグルで再開)
+    if (app.tour.k < app.tour.list.length) app.tour.k++;
+    if (app.tour.k < app.tour.list.length) {
+      reviewSeekTo(app.tour.list[app.tour.k].i);
+      tourRender();
+      if (fromAuto) tourScheduleAuto();
+    } else {
+      tourRender();   // 最終停留所の後 — 「ツアー終了」表示(自動送りは再スケジュールしない)
+    }
+  }
+  function tourPrev() {
+    if (!app.tour || app.tour.waiting || app.tour.empty) return;
+    tourPauseAuto();
+    if (app.tour.k > 0) { app.tour.k--; reviewSeekTo(app.tour.list[app.tour.k].i); }
+    tourRender();
+  }
+  // 「解き直す」— 既存resumeFromMove(i)へ渡す。ツアーは終了扱い(分岐再開の復帰管理はしない・仕様)。
+  function tourRedo() {
+    if (!app.tour || !app.tour.list.length || !app.tour.list[app.tour.k]) return;
+    const i = app.tour.list[app.tour.k].i;
+    tourStop();
+    resumeFromMove(i);
+  }
+  function tourStop() {
+    if (app.tour && app.tour.timer) clearTimeout(app.tour.timer);
+    clearTimeout(app._tourWaitT);
+    app.tour = null;
+    const host = $("rv-tour");
+    if (host) { host.classList.remove("show"); host.innerHTML = ""; }
+  }
+  function tourRender() {
+    const host = $("rv-tour"); if (!host) return;
+    const t = app.tour;
+    if (!t) { host.classList.remove("show"); host.innerHTML = ""; return; }
+    host.classList.add("show");
+    if (t.empty) { host.innerHTML = `<div class="tour-msg">この局に検出された悪手はありません</div>`; return; }
+    if (t.waiting) {
+      host.innerHTML = `<div class="tour-msg">悪手を解析中… ⚠は確定 / ☆を判定中${t.partial ? "（解析途中・☆は暫定）" : ""}</div>`;
+      return;
+    }
+    if (t.k >= t.list.length) {
+      host.innerHTML = `<div class="tour-msg">ツアー終了</div>` +
+        `<div class="tour-nav"><button type="button" class="btn small" id="tour-again">もう一度</button>` +
+        `<button type="button" class="btn small" id="tour-close">閉じる</button></div>`;
+      return;
+    }
+    const rec = t.rec, pin = t.list[t.k], mv = rec.moves[pin.i];
+    const isMiss = pin.kind === "miss";
+    const typeTxt = isMiss ? "⚠読み切り逃し" : "☆学習対象（明確局面での逸脱）";
+    const lossTxt = pin.loss != null ? `逸失≈${pin.loss}点` : "";
+    const dropTxt = (pin.deq != null && pin.deq > 0) ? `勝率−${Math.round(pin.deq * 100)}%` : "";
+    const metrics = [lossTxt, dropTxt].filter(Boolean).join(" ・ ");
+    const line = (mv.cf && mv.cf.why) ? mv.cf.why
+      : (mv.clarity && !mv.clarity.na ? `際どさ「${mv.clarity.cls}」（差${Math.round(mv.clarity.margin * 100)}%）` : "");
+    host.innerHTML =
+      `<div class="tour-head"><span class="tour-badge">悪手 ${t.k + 1}/${t.list.length}</span>` +
+      `<span class="tour-type ${isMiss ? "miss" : "study"}">${typeTxt}</span>` +
+      (t.partial ? `<span class="tour-partial">（解析途中・☆は暫定）</span>` : "") + `</div>` +
+      `<div class="tour-body">第${pin.i + 1}手${metrics ? " ／ " + metrics : ""}</div>` +
+      (line ? `<div class="tour-why">${line}</div>` : "") +
+      `<div class="tour-nav">` +
+      `<button type="button" class="btn small" id="tour-prev" ${t.k === 0 ? "disabled" : ""}>◀前</button>` +
+      `<button type="button" class="btn small" id="tour-redo">解き直す</button>` +
+      `<button type="button" class="btn small" id="tour-next">次▶</button>` +
+      `<button type="button" class="btn small" id="tour-end">終了</button></div>` +
+      `<label class="tour-auto"><input type="checkbox" id="tour-autoplay" ${t.playing ? "checked" : ""} ${tourReducedMotion() ? "disabled" : ""}> 自動送り（6秒）${tourReducedMotion() ? "（reduced-motion設定により無効）" : ""}</label>`;
+  }
+  // 悪手ランキングリスト(#rv-worst): タップでその手へシーク(既存の解き直し用ピンとは異なりシークのみ)
+  function renderWorstList(rec) {
+    const host = $("rv-worst"); if (!host || !rec) return;
+    const list = worstRanking(rec);
+    if (!list.length) { host.classList.remove("show"); host.innerHTML = ""; return; }
+    host.classList.add("show");
+    host.innerHTML = `<div class="rw-head">悪手ランキング（${list.length}件・悪手度の高い順。タップでその手へ）</div>` +
+      list.map((p, idx) => {
+        const isMiss = p.kind === "miss";
+        const lossTxt = p.loss != null ? `逸失≈${p.loss}点` : "";
+        const dropTxt = (p.deq != null && p.deq > 0) ? `勝率−${Math.round(p.deq * 100)}%` : "";
+        const metrics = [lossTxt, dropTxt].filter(Boolean).join(" ・ ") || "―";
+        const cur = (app.tour && app.tour.list && app.tour.list[app.tour.k] && app.tour.list[app.tour.k].i === p.i) ? " cur" : "";
+        return `<div class="rw-item${cur}" data-i="${p.i}">` +
+          `<span class="rw-rank">${idx + 1}</span>` +
+          `<span class="rw-glyph ${isMiss ? "miss" : "study"}">${isMiss ? "⚠" : "☆"}</span>` +
+          `<span class="rw-no">第${p.i + 1}手</span>` +
+          `<span class="rw-metrics">${metrics}</span></div>`;
+      }).join("");
+  }
+  { const rw = $("rv-worst"); if (rw) rw.addEventListener("click", ev => {
+      const item = ev.target.closest ? ev.target.closest(".rw-item") : null;
+      if (item && item.dataset.i !== undefined) reviewSeekTo(+item.dataset.i);
+    }); }
+  { const rt = $("rv-tour"); if (rt) {
+      rt.addEventListener("click", ev => {
+        const id = ev.target && ev.target.id;
+        if (id === "tour-prev") tourPrev();
+        else if (id === "tour-next") tourNext(false);
+        else if (id === "tour-redo") tourRedo();
+        else if (id === "tour-end" || id === "tour-close") { tourStop(); if (app.reviewRec) renderEquityGraph(app.reviewRec); }
+        else if (id === "tour-again") { if (app.tour && app.tour.rec) tourStart(app.tour.rec, false); }
+      });
+      rt.addEventListener("change", ev => {
+        if (ev.target && ev.target.id === "tour-autoplay" && app.tour) {
+          app.tour.playing = ev.target.checked;
+          if (app.tour.playing) tourScheduleAuto(); else { clearTimeout(app.tour.timer); app.tour.timer = null; }
+        }
+      });
+    } }
+
+  /* ================================================================
    * マッチ・画面遷移・設定
    * ================================================================ */
   function newMatch() {
@@ -13251,6 +13542,8 @@ if (typeof document !== "undefined") (() => {
     clearTimeout(app.timer);
     closeModal();
     closeReview();
+    tourStop();   // 悪手ツアー(v87): closeReview()内でも呼ばれるが明示のため直接呼ぶ
+    try { kirikoRelease(true); } catch (e) {}   // Fix(v87.1): 設定画面へ戻る時はキリコ持続演出を即時解放
     $("main-screen").classList.remove("show");
     $("setup-screen").style.display = "flex";
   }
@@ -13320,6 +13613,7 @@ if (typeof document !== "undefined") (() => {
     setChk("cfg-missGuard", app.cfg.missGuard);
     setChk("cfg-counts", app.cfg.counts);
     setChk("cfg-sighonest", app.cfg.sighonest);
+    setChk("cfg-autoWorstTour", app.cfg.autoWorstTour !== false);
     setChk("cfg-tempo", app.cfg.tempo);
     setChk("cfg-livebar", app.cfg.livebar);
     setChk("cfg-riverseq", app.cfg.riverseq);
@@ -13334,6 +13628,7 @@ if (typeof document !== "undefined") (() => {
     app.cfg.hints = $("cfg-hints").checked;
     app.cfg.advice = $("cfg-advice").checked;
     app.cfg.sighonest = $("cfg-sighonest").checked;
+    app.cfg.autoWorstTour = $("cfg-autoWorstTour") ? $("cfg-autoWorstTour").checked : app.cfg.autoWorstTour;
     app.cfg.cand = $("cfg-cand").checked;
     app.cfg.reading = $("cfg-reading") ? $("cfg-reading").checked : app.cfg.reading;
     app.cfg.counts = $("cfg-counts") ? $("cfg-counts").checked : app.cfg.counts;
@@ -14511,6 +14806,8 @@ if (typeof document !== "undefined") (() => {
                 <span>${toggleLabelHtml("counts")}</span></label>
               <label class="toggle"><input type="checkbox" id="s-sighonest" ${app.cfg.sighonest ? "checked" : ""}>
                 <span>${toggleLabelHtml("sighonest")}</span></label>
+              <label class="toggle"><input type="checkbox" id="s-autoWorstTour" ${app.cfg.autoWorstTour !== false ? "checked" : ""}>
+                <span>${toggleLabelHtml("autoWorstTour")}</span></label>
             </details>
           </div>
         </div>
@@ -14641,6 +14938,7 @@ if (typeof document !== "undefined") (() => {
       app.cfg.missGuard = m.querySelector("#s-missGuard") ? m.querySelector("#s-missGuard").checked : app.cfg.missGuard;
       app.cfg.cand = m.querySelector("#s-cand") ? m.querySelector("#s-cand").checked : app.cfg.cand;
       app.cfg.sighonest = m.querySelector("#s-sighonest") ? m.querySelector("#s-sighonest").checked : app.cfg.sighonest;
+      app.cfg.autoWorstTour = m.querySelector("#s-autoWorstTour") ? m.querySelector("#s-autoWorstTour").checked : app.cfg.autoWorstTour;
       app.armedKoma = null;
       saveCfgToStorage();   // O1: 「調整」での変更を保存
       renderAll();
