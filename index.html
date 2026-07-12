@@ -4,6 +4,19 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>ごいた — 能登の伝承遊戯</title>
+  <!-- build: v88 / キリコ意匠の全面改修(Sonar指定・PLAN_v88_kiriko_redesign.md): 白い大文字面が主役の縦長奉燈へ。
+       (1)灯籠面をx=28〜92/y=106〜286(全高55%)に拡大。大書font-size 34→46・step 48→62・midY=196 /
+       (2)上部を赤幕(kf-maku)+白い三つ巴(kf-mon・勾玉3個120°回転配置、同心円は全廃)+吊り提灯4個
+          (kf-hiraを短冊から転用)へ改稿。短冊フリンジは廃止 /
+       (3)台座上に縦長和提灯6個の横一列(kf-emberflame維持)。側面提灯縦列(各3)と屋根上の頂部飾り
+          (宝珠・幟)を全廃 /
+       (4)骨組みを茶色(#8a5a2e/#6b4726/#c99a5b)の柱・梁・横桟で明示し黒い外周を廃止。担ぎ横木は
+          太い2本+支柱2本に整理(木口維持)。張り綱の終点は座標変更に追随 /
+       (5)kfPaperをほぼ白(#ffffff→#fffdf4→#fff3d8)、kfGlow中心を白寄り(#fff8e8)に(外周暖色は維持) /
+       (6)KIRIKO_SWAY.maxAngleDeg 12→3.5(実効最大角3.5×1.35=4.725度)。kirikoTier柱松明h .53/.55→.40/.42、
+          炎の舌fw 58+118→44+80・fh 200+260→150+180・fsc .85+1.35→.7+.9で中央の炎を抑制 /
+       (7)CSS k-l2/r2幅-12%・opacity.78・bottom3%、k-l3/r3幅-15%・opacity.66・bottom4%で左右下のキリコを
+          奥へ引かせ、中央30〜70%帯非侵入制約(N3 v81)は再計算のうえ維持 -->
   <!-- build: v87.1 / Fix: キリコ持続演出(hold)中に「次の局へ」が押せて演出が新盤面へ残留する問題を修正。
        (1)startGame冒頭でhold中(かつ.outでない)は遷移をブロックしトースト案内 /
        (2)振り返り中はkiriko-fireもwincut同様に非表示(閉じれば再表示) /
@@ -1661,10 +1674,12 @@ body.noto #wincut.show .wc-label{animation:wcFude .62s cubic-bezier(.2,.9,.3,1.2
    約2%の余裕を確保(900px/375pxで再計算・検証済み。詳細はIMPLEMENTATION_REPORT_v84_kiriko.md参照)。 */
 #kiriko-fire .kf-kiriko.k-l1{left:15%;width:min(168px,26vw);margin-left:calc(min(168px,26vw) / -2);z-index:3;animation:kfRiseSide 2.7s ease-out forwards}
 #kiriko-fire .kf-kiriko.k-r1{left:85%;width:min(168px,26vw);margin-left:calc(min(168px,26vw) / -2);z-index:3;animation:kfRiseSide 2.7s ease-out forwards;animation-delay:.06s}
-#kiriko-fire .kf-kiriko.k-l2{left:6%;width:min(134px,25vw);margin-left:calc(min(134px,25vw) / -2);z-index:2;opacity:.9;animation:kfRiseSide 2.7s ease-out forwards;animation-delay:.12s}
-#kiriko-fire .kf-kiriko.k-r2{left:94%;width:min(134px,25vw);margin-left:calc(min(134px,25vw) / -2);z-index:2;opacity:.9;animation:kfRiseSide 2.7s ease-out forwards;animation-delay:.18s}
-#kiriko-fire .kf-kiriko.k-l3{left:1%;width:min(109px,21vw);margin-left:calc(min(109px,21vw) / -2);z-index:1;opacity:.82;animation:kfRiseSide 2.7s ease-out forwards;animation-delay:.24s}
-#kiriko-fire .kf-kiriko.k-r3{left:99%;width:min(109px,21vw);margin-left:calc(min(109px,21vw) / -2);z-index:1;opacity:.82;animation:kfRiseSide 2.7s ease-out forwards;animation-delay:.30s}
+/* D9(v88): 左右下のキリコを奥へ(遠近感)。k-l2/r2は幅-12%・opacity.78・bottom3%、k-l3/r3は幅-15%・opacity.66・bottom4%
+   (PLAN_v88_kiriko_redesign.md D9)。中央30%〜70%帯への非侵入制約(N3 v81)は変更後も維持(実装レポートで再計算)。 */
+#kiriko-fire .kf-kiriko.k-l2{left:6%;width:min(118px,22vw);margin-left:calc(min(118px,22vw) / -2);z-index:2;opacity:.78;bottom:3%;animation:kfRiseSide 2.7s ease-out forwards;animation-delay:.12s}
+#kiriko-fire .kf-kiriko.k-r2{left:94%;width:min(118px,22vw);margin-left:calc(min(118px,22vw) / -2);z-index:2;opacity:.78;bottom:3%;animation:kfRiseSide 2.7s ease-out forwards;animation-delay:.18s}
+#kiriko-fire .kf-kiriko.k-l3{left:1%;width:min(93px,17.85vw);margin-left:calc(min(93px,17.85vw) / -2);z-index:1;opacity:.66;bottom:4%;animation:kfRiseSide 2.7s ease-out forwards;animation-delay:.24s}
+#kiriko-fire .kf-kiriko.k-r3{left:99%;width:min(93px,17.85vw);margin-left:calc(min(93px,17.85vw) / -2);z-index:1;opacity:.66;bottom:4%;animation:kfRiseSide 2.7s ease-out forwards;animation-delay:.30s}
 /* D2(v75): 柱松明/置松明。キリコ(z1〜3)より奥。幅はviewBoxのアスペクトから自動(svg height:100%) */
 #kiriko-fire .kf-taimatsu{position:absolute;bottom:0;transform:translateX(-50%);transform-origin:50% 100%;
   filter:drop-shadow(0 0 22px rgba(255,160,60,.75)) drop-shadow(0 0 48px rgba(224,85,58,.45));
@@ -1681,7 +1696,7 @@ body.noto #wincut.show .wc-label{animation:wcFude .62s cubic-bezier(.2,.9,.3,1.2
 #kiriko-fire .kf-emberflame{transform-origin:50% 100%;animation:kfEmberFlame 2.7s ease-out forwards}
 @keyframes kfEmberFlame{0%{opacity:0}22%{opacity:.95}50%{opacity:.72}72%{opacity:.98}100%{opacity:0}}
 /* 奉燈の面の筆文字 */
-#kiriko-fire .kf-banner{fill:#171310;font-family:'Yuji Mai','Yuji Boku','Yuji Syuku','Hiragino Mincho ProN',serif;font-size:34px;font-weight:700;text-anchor:middle;dominant-baseline:middle;
+#kiriko-fire .kf-banner{fill:#171310;font-family:'Yuji Mai','Yuji Boku','Yuji Syuku','Hiragino Mincho ProN',serif;font-size:46px;font-weight:700;text-anchor:middle;dominant-baseline:middle;
   /* P2(v82): v81のKlee One(楷書)から毛筆(Yuji Boku)に復帰し、SVG strokeで「勘亭流風」に肉付け。
      stroke=同色で塗りを太らせ、丸い接合/線端で角を丸め、paint-orderでstrokeを塗りの下に敷く
      (縁取りではなく字画そのものの肥え・懐の詰まりを再現する狙い)。stroke-widthはテスト環境が
@@ -11645,9 +11660,11 @@ if (typeof document !== "undefined") (() => {
   // C2(v74): キリコの大書。実在のキリコ祭り(石崎奉燈祭等)で使われる「大書」に倣い、縁起の良い三文字熟語をランダムに割り当てる。
   //   同時に立つキリコ間で語が重複しないよう、発火のたびにシャッフルして先頭から必要数を取る。
   // D2(v84): キリコ振り子揺動の設定(Inspector相当・Unity Mathf.Sin構成のJS変換)。詳細はPLAN_v84_kiriko.md D2参照。
+  // D1(v88): 揺れを3〜5度に抑制(Sonar指定・PLAN_v88_kiriko_redesign.md D1)。実効最大角 = maxAngleDeg×(1+noiseStrength)。
+  //   3.5×(1+0.35)=4.725度で指定範囲(3〜5度)に収まる。speedHz/noiseStrength/noiseHzは不変。
   var KIRIKO_SWAY = {
     speedHz: 0.55,        // 揺れの速度(往復/秒)。実物の担ぎ揺れは約0.4〜0.7
-    maxAngleDeg: 12,      // 揺れの最大角度(V字の深さ・度)
+    maxAngleDeg: 3.5,     // D1(v88): 揺れの最大角度(V字の深さ・度)。12→3.5(実効最大角は上記コメント参照)
     noiseStrength: 0.35,  // ノイズ強度(0=純sin、1=振幅が0〜2倍で乱れる)
     noiseHz: 0.8          // ノイズの時間周波数
   };
@@ -11698,101 +11715,106 @@ if (typeof document !== "undefined") (() => {
   function kirikoTier(pts){
     if (pts < 40) return null;
     if (pts <= 49) return {n: 2, nf: 6,  embers: 48,  taimatsu: [{x: 58, h: .22, pillar: false}]};
-    if (pts <= 59) return {n: 4, nf: 10, embers: 96,  taimatsu: [{x: 50, h: .53, pillar: true}, {x: 68, h: .20, pillar: false}]};   /* Fix(v75): h .42→.53(炎冠が背後に隠れる問題を解消。レビュー指摘) */
-    return {n: 6, nf: 14, embers: 150, taimatsu: [{x: 50, h: .55, pillar: true}, {x: 22, h: .22, pillar: false}, {x: 78, h: .24, pillar: false}]};
+    if (pts <= 59) return {n: 4, nf: 10, embers: 96,  taimatsu: [{x: 50, h: .40, pillar: true}, {x: 68, h: .20, pillar: false}]};   /* D9(v88): 中央の炎を抑えキリコを主役に。h .53→.40(PLAN_v88_kiriko_redesign.md D9) */
+    return {n: 6, nf: 14, embers: 150, taimatsu: [{x: 50, h: .42, pillar: true}, {x: 22, h: .22, pillar: false}, {x: 78, h: .24, pillar: false}]};   /* D9(v88): h .55→.42 */
   }
-  // D1(v84): 実写(あばれ祭・石崎奉燈祭)準拠に全面改稿。張り綱・側面提灯縦列(各3)・屋根の反り強化+垂木+
-  //   宝珠幟・紋2つ・彫刻帯・白木井桁格子(2段)・腰提灯7個・担ぎ棒4本を追加。viewBoxを0 0 120 320→
-  //   -24 0 168 330に拡張(綱・担ぎ棒の張り出し用)。kf-lit/kf-banner/kf-hira/kf-mon/kf-maku/kf-emberflame
-  //   の各クラスと役割・大書の均等配置ロジック(step=48・midY基準)・preserveAspectRatioは維持。
-  //   座標帯: 頂部飾り0-34 / 屋根34-92 / 赤幕92-106 / ひらひら・紋108-130 / 紙面134-264 / 彫刻帯264-278 /
-  //   台座格子280-300 / 腰提灯列300-312 / 担ぎ棒305-330。描画順(奥→手前): 発光→綱→担ぎ棒→台座格子→
-  //   腰提灯列→胴(紙面+大書+彫刻帯)→ひらひら+紋→赤幕→屋根→側面提灯列(計画書PLAN_v84_kiriko.md D1)。
+  // D2(v88): 灯籠面(白い大文字面)を全高の55%に拡大し、赤幕+白い三つ巴+吊り提灯・茶色い木組み・
+  //   縦長和提灯6個の横一列・太い担ぎ横木2本で再構成(PLAN_v88_kiriko_redesign.md D1〜D9)。
+  //   頂部飾り(宝珠・幟)・側面提灯縦列(各3)は全廃(Sonar指定)。座標帯: 屋根30-64 / 赤幕+紋+吊り提灯64-106 /
+  //   灯籠面106-286(高さ180/330=全高55%・幅64/120=53%) / 台座+小提灯列286-310 / 担ぎ横木308-330。
+  //   viewBoxは-24 0 168 330のまま維持。kf-lit/kf-banner/kf-hira/kf-mon/kf-maku/kf-emberflameの
+  //   各クラスと役割・大書の均等配置ロジック(step・midY基準)・張り綱の軒下起点(v86)・平らな正面屋根(v86)・
+  //   Yuji Mai大書(v86)・preserveAspectRatioは維持。柱位置x=24/96は柱中心(cx)として解釈し幅4を左右対称に
+  //   配分(x=22-26/94-98)。灯籠面(x=28-92)との間に2px幅の隙間を確保し、そこに横桟を覗かせる(D5)。
   function kirikoSVG(banner){
     var chars = (banner || "").split("");
-    // 大書配置ロジック(維持必須): step=48・中央(midY)基準で1〜3文字を均等配置
-    var step = 48, midY = 199, startY = midY - (chars.length - 1) * (step / 2), bx = "";
+    // 大書配置ロジック(維持必須・構造は不変): step=62・中央(midY)基準で1〜3文字を均等配置。D2(v88): 34/48→46/62に拡大
+    var step = 62, midY = 196, startY = midY - (chars.length - 1) * (step / 2), bx = "";
     for (var i = 0; i < chars.length; i++) { bx += '<text x="60" y="' + (startY + i*step) + '" class="kf-banner">' + chars[i] + '</text>'; }
-    // 腰提灯列(実写準拠・5→7個に増加)。各提灯に吊り紐(縦線)を追加
-    var lrow = "", lstr = "";
-    [12, 28, 44, 60, 76, 92, 108].forEach(function(lx){
-      lstr += '<line x1="' + lx + '" y1="300" x2="' + lx + '" y2="301.6" stroke="#c9b482" stroke-width="1"/>';
-      lrow += '<ellipse cx="' + lx + '" cy="307" rx="4.2" ry="5.2" fill="url(#kfLantern)" stroke="#b4452f" stroke-width="1"/>';
-    });
-    // 側面提灯縦列(左右柱に沿って各3個。紅白横縞+吊り紐)
-    var srow = "";
-    [6, 114].forEach(function(sx){
-      [140, 185, 230].forEach(function(sy){
-        srow += '<line x1="' + sx + '" y1="' + (sy - 20) + '" x2="' + sx + '" y2="' + (sy - 9) + '" stroke="#2a1a0e" stroke-width="1.2"/>'
-          + '<ellipse cx="' + sx + '" cy="' + sy + '" rx="6.4" ry="9" fill="#fdf6e3" stroke="#b4452f" stroke-width="1"/>'
-          + '<rect x="' + (sx - 6.4) + '" y="' + (sy - 4) + '" width="12.8" height="2.6" fill="#c8382a"/>'
-          + '<rect x="' + (sx - 6.4) + '" y="' + (sy + 1.4) + '" width="12.8" height="2.6" fill="#c8382a"/>';
-      });
-    });
-    // ひらひら(短冊フリンジ)。紋2つ(x=40/80)を挟んで外側へ左右3枚ずつ
+    // D3/D4(v88): 縦長の和提灯(縦楕円+上下の黒キャップ+横桟線2本)を描く共通ヘルパ。「丸い電球」に見えないための桟線・キャップ
+    function waLantern(cx, cy, rx, ry){
+      var capW = +(rx * 1.15).toFixed(1), capH = +(ry * 0.32).toFixed(1);
+      return '<rect x="' + (cx - capW/2).toFixed(1) + '" y="' + (cy - ry - capH).toFixed(1) + '" width="' + capW + '" height="' + capH + '" rx="0.6" fill="#3a2716"/>'
+        + '<ellipse cx="' + cx + '" cy="' + cy + '" rx="' + rx + '" ry="' + ry + '" fill="#fdf6e3" stroke="#b4452f" stroke-width="0.9"/>'
+        + '<rect x="' + (cx - capW/2).toFixed(1) + '" y="' + (cy + ry - capH).toFixed(1) + '" width="' + capW + '" height="' + capH + '" rx="0.6" fill="#3a2716"/>'
+        + '<line x1="' + (cx - rx*0.75).toFixed(1) + '" y1="' + (cy - ry*0.35).toFixed(1) + '" x2="' + (cx + rx*0.75).toFixed(1) + '" y2="' + (cy - ry*0.35).toFixed(1) + '" stroke="#c8382a" stroke-width="0.7" opacity="0.65"/>'
+        + '<line x1="' + (cx - rx*0.75).toFixed(1) + '" y1="' + (cy + ry*0.35).toFixed(1) + '" x2="' + (cx + rx*0.75).toFixed(1) + '" y2="' + (cy + ry*0.35).toFixed(1) + '" stroke="#c8382a" stroke-width="0.7" opacity="0.65"/>';
+    }
+    // D4(v88): 台座上の縦長和提灯6個の横一列(rx≈4.5/ry≈7・x=15〜105均等)。kf-emberflame所属維持(hold明滅の対象)
+    var lrow = "";
+    [15, 33, 51, 69, 87, 105].forEach(function(lx){ lrow += waLantern(lx, 296, 4.5, 7); });
+    // D3(v88): 赤幕下端から吊り下げる縦長の白提灯4個(x=22/48/72/98)。kf-hiraクラスを短冊から転用し
+    //   既存の揺れアニメ(kfHiraA/B・transform-origin:50% 0%)をそのまま流用(CSS無変更)。短冊(フリンジ)は廃止
+    var hiraX = [22, 48, 72, 98], hiraCls = ["kf-hira1", "kf-hira2", "kf-hira3", "kf-hira1"];
     var hira = "";
-    [[8,1],[18,2],[28,3],[92,3],[102,2],[112,1]].forEach(function(h, hi){
-      hira += '<rect x="' + (h[0]-3) + '" y="108" width="6" height="22" rx="1.5" class="kf-hira kf-hira' + h[1] + '" fill="' + (hi % 2 === 0 ? "#fdf6e3" : "#c8382a") + '"/>';
+    hiraX.forEach(function(lx, hi){
+      hira += '<line x1="' + lx + '" y1="84" x2="' + lx + '" y2="92" stroke="#c9b482" stroke-width="1"/>'
+        + '<g class="kf-hira ' + hiraCls[hi] + '">' + waLantern(lx, 99, 3.4, 5.5) + '</g>';
     });
-    // 張り綱(実写共通の白い綱。頂部付近(y≈40)から担ぎ棒の端(x≈-20/140,y≈300)へ2本ずつ計4本。わずかに撓むQカーブ)
+    // D3(v88): 白い三つ巴。勾玉形パス(A=(R,0)から大円弧120°でB=(-R/2,R*0.866)へ、半径R/2の弧2本で
+    //   Oへ絞り込みAへ戻る)を1個作り、120°/240°回転配置で3個構成(同心円は全廃)。幕上の左右2箇所
+    function mitsudomoe(cx, cy, r){
+      var bx2 = (-r * 0.5).toFixed(2), by2 = (r * 0.866).toFixed(2), hr = (r / 2).toFixed(2);
+      var d = 'M' + r + ',0 A' + r + ',' + r + ' 0 0,1 ' + bx2 + ',' + by2 + ' A' + hr + ',' + hr + ' 0 0,0 0,0 A' + hr + ',' + hr + ' 0 0,1 ' + r + ',0 Z';
+      return '<g class="kf-mon" transform="translate(' + cx + ',' + cy + ')" fill="#fdf6e3">'
+        + '<path d="' + d + '"/><path d="' + d + '" transform="rotate(120)"/><path d="' + d + '" transform="rotate(240)"/>'
+        + '</g>';
+    }
+    // D5(v88): 灯籠面左右の縦柱2本(中心x=24/96、幅4、y=64〜296)。柱=#8a5a2e・濃い陰=#6b4726・明るい面=#c99a5b
+    var hashira = ''
+      + '<rect x="22" y="64" width="4" height="232" fill="#8a5a2e"/><rect x="22" y="64" width="1" height="232" fill="#c99a5b"/><rect x="25" y="64" width="1" height="232" fill="#6b4726"/>'
+      + '<rect x="94" y="64" width="4" height="232" fill="#8a5a2e"/><rect x="94" y="64" width="1" height="232" fill="#6b4726"/><rect x="97" y="64" width="1" height="232" fill="#c99a5b"/>';
+    // D5(v88): 横梁(屋根下+面上)・面背後の横桟2本(面の白地の外、柱との2px隙間に覗く短い水平材)。面下の梁は
+    //   台座井桁格子(kejo)の上段バーと共用(同一高さのため重複描画を避ける)
+    var hari = ''
+      + '<rect x="20" y="58" width="80" height="6" fill="#8a5a2e"/><rect x="20" y="63" width="80" height="1.5" fill="#6b4726"/>'
+      + '<rect x="24" y="100" width="72" height="6" fill="#8a5a2e"/><rect x="24" y="105" width="72" height="1.5" fill="#6b4726"/>'
+      + '<rect x="25" y="148" width="3" height="4" fill="#6b4726"/><rect x="92" y="148" width="3" height="4" fill="#6b4726"/>'
+      + '<rect x="25" y="228" width="3" height="4" fill="#6b4726"/><rect x="92" y="228" width="3" height="4" fill="#6b4726"/>';
+    // 張り綱(v86の軒下起点を踏襲し座標のみ新屋根・新担ぎ横木に追随。頂部付近(新軒=y66/70)→横木端(x≈-20/140,y≈313/316))
     var tsuna = ''
-      + '<path d="M6,82 Q-3,196 -20,300" stroke="#e8e0d0" stroke-width="1.2" opacity="0.75" fill="none"/>'
-      + '<path d="M14,86 Q3,199 -16,302" stroke="#e8e0d0" stroke-width="1.2" opacity="0.75" fill="none"/>'
-      + '<path d="M114,82 Q123,196 140,300" stroke="#e8e0d0" stroke-width="1.2" opacity="0.75" fill="none"/>'
-      + '<path d="M106,86 Q117,199 136,302" stroke="#e8e0d0" stroke-width="1.2" opacity="0.75" fill="none"/>';
-    // 担ぎ棒(上下2段×2=4本)。木口(端面)を小矩形で表現
+      + '<path d="M6,66 Q-3,190 -20,313" stroke="#e8e0d0" stroke-width="1.2" opacity="0.75" fill="none"/>'
+      + '<path d="M14,70 Q3,193 -16,316" stroke="#e8e0d0" stroke-width="1.2" opacity="0.75" fill="none"/>'
+      + '<path d="M114,66 Q123,190 140,313" stroke="#e8e0d0" stroke-width="1.2" opacity="0.75" fill="none"/>'
+      + '<path d="M106,70 Q117,193 136,316" stroke="#e8e0d0" stroke-width="1.2" opacity="0.75" fill="none"/>';
+    // D7(v88): 担ぎ横木を太い2本(太さ4.5)に整理(木口の端面矩形は維持)。縦の支柱2本で台座と結合
     var kaki = ''
-      + '<g stroke="#a8783c" stroke-width="3.6" stroke-linecap="round"><line x1="-20" y1="308" x2="140" y2="308"/><line x1="-20" y1="314" x2="140" y2="314"/></g>'
-      + '<g stroke="#2a1a0e" stroke-width="3.6" stroke-linecap="round"><line x1="-20" y1="321" x2="140" y2="321"/><line x1="-20" y1="327" x2="140" y2="327"/></g>'
-      + '<g fill="#6b4726" stroke="#3a2716" stroke-width="0.8"><rect x="-23" y="305" width="7" height="12"/><rect x="136" y="305" width="7" height="12"/><rect x="-23" y="318" width="7" height="12"/><rect x="136" y="318" width="7" height="12"/></g>'
-      + '<g stroke="#1a0f08" stroke-width="3" stroke-linecap="round"><line x1="30" y1="305" x2="30" y2="330"/><line x1="90" y1="305" x2="90" y2="330"/></g>';
-    // 台座の白木井桁格子(2段)
+      + '<g stroke="#8a5a2e" stroke-width="4.5" stroke-linecap="round"><line x1="-20" y1="312" x2="140" y2="312"/><line x1="-20" y1="321" x2="140" y2="321"/></g>'
+      + '<g fill="#6b4726" stroke="#3a2716" stroke-width="0.8"><rect x="-23" y="308" width="7" height="18"/><rect x="136" y="308" width="7" height="18"/></g>'
+      + '<g stroke="#6b4726" stroke-width="3" stroke-linecap="round"><line x1="30" y1="306" x2="30" y2="330"/><line x1="90" y1="306" x2="90" y2="330"/></g>';
+    // 台座の白木井桁格子(D5: 茶色系に統一)
     var kejo = ''
-      + '<g fill="none" stroke="#d9c49a" stroke-width="3" stroke-linecap="round"><rect x="6" y="280" width="108" height="8"/><rect x="6" y="292" width="108" height="8"/></g>'
-      + '<g stroke="#e6d3a4" stroke-width="1.6" opacity="0.8"><line x1="30" y1="280" x2="30" y2="300"/><line x1="60" y1="280" x2="60" y2="300"/><line x1="90" y1="280" x2="90" y2="300"/></g>';
-    // 彫刻帯(大書パネル直下・欄間彫刻風のうねり線2本)
-    var chouko = ''
-      + '<rect x="40" y="264" width="40" height="14" fill="#3a2716"/>'
-      + '<path d="M42,269 Q50,266 58,269 T74,269 T90,269" stroke="#8a6a3a" stroke-width="1" fill="none" opacity="0.7"/>'
-      + '<path d="M42,274 Q50,271 58,274 T74,274 T90,274" stroke="#8a6a3a" stroke-width="1" fill="none" opacity="0.7"/>';
-    // 屋根(入母屋風の反り強化+軒裏垂木3本+大棟両端の鳥衾風の跳ね)
+      + '<g fill="none" stroke="#8a5a2e" stroke-width="3" stroke-linecap="round"><rect x="8" y="286" width="104" height="6"/><rect x="8" y="300" width="104" height="6"/></g>'
+      + '<g stroke="#c99a5b" stroke-width="1.6" opacity="0.8"><line x1="30" y1="286" x2="30" y2="306"/><line x1="60" y1="286" x2="60" y2="306"/><line x1="90" y1="286" x2="90" y2="306"/></g>';
+    // 屋根(v86の平らな正面屋根を踏襲・y帯を30-64へ圧縮しD5の茶色系へ再配色)。頂部飾り(宝珠・幟)はD8で全廃。
+    //   Fix(v88-1・目視検証): 当初案の棟端の反り(鳥衾風の跳ね2本+棟包み矩形)が屋根から浮いた角のような
+    //   シルエットに見えたため撤去し、フラットな軒+棟の2面構成のみに簡素化(「屋根の上はすっきり」指定に整合)。
     var yane = ''
-      + '<path d="M2,80 L2,74 Q4,64 16,62 L104,62 Q116,64 118,74 L118,80 Q90,76 60,76 Q30,76 2,80 Z" fill="#2a1a0e"/>'
-      + '<path d="M16,62 L104,62 L96,52 L24,52 Z" fill="#3a2716"/>'
-      + '<rect x="50" y="44" width="20" height="9" rx="2" fill="#1a0f08"/>'
-      + '<g stroke="#5a3d20" stroke-width="1.4" opacity="0.85"><line x1="30" y1="78" x2="30" y2="86"/><line x1="60" y1="77" x2="60" y2="86"/><line x1="90" y1="78" x2="90" y2="86"/></g>'
-      + '<path d="M50,48 Q44,42 46,35" stroke="#1a0f08" stroke-width="2.4" fill="none" stroke-linecap="round"/>'
-      + '<path d="M70,48 Q76,42 74,35" stroke="#1a0f08" stroke-width="2.4" fill="none" stroke-linecap="round"/>';
-    // 頂部飾り: 宝珠+短い幟
-    var hoju = ''
-      + '<line x1="60" y1="4" x2="60" y2="46" stroke="#caa24d" stroke-width="2.4"/>'
-      + '<circle cx="60" cy="10" r="5.4" fill="#e8c86a" stroke="#b4452f" stroke-width="1"/>'
-      + '<path d="M61,14 L76,18 L61,22 Z" fill="#c8382a" opacity="0.9"/>';
+      + '<path d="M2,64 L2,58 Q4,48 16,46 L104,46 Q116,48 118,58 L118,64 Q90,60 60,60 Q30,60 2,64 Z" fill="#6b4726"/>'
+      + '<path d="M16,46 L104,46 L96,36 L24,36 Z" fill="#8a5a2e"/>'
+      + '<g stroke="#c99a5b" stroke-width="1.4" opacity="0.85"><line x1="30" y1="62" x2="30" y2="70"/><line x1="60" y1="61" x2="60" y2="70"/><line x1="90" y1="62" x2="90" y2="70"/></g>';
     return ''
       + '<svg viewBox="-24 0 168 330" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMax meet">'
       +   '<defs>'
-      +     '<linearGradient id="kfPaper" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fffdf2"/><stop offset="0.55" stop-color="#fff6dd"/><stop offset="1" stop-color="#ffdca6"/></linearGradient>'
-      +     '<radialGradient id="kfGlow" cx="0.5" cy="0.5" r="0.6"><stop offset="0" stop-color="#ffe9a8" stop-opacity="0.9"/><stop offset="1" stop-color="#ffb347" stop-opacity="0"/></radialGradient>'
-      +     '<linearGradient id="kfLantern" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffdf8f"/><stop offset="1" stop-color="#ff8a3a"/></linearGradient>'
+      +     '<linearGradient id="kfPaper" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset="0.55" stop-color="#fffdf4"/><stop offset="1" stop-color="#fff3d8"/></linearGradient>'
+      +     '<radialGradient id="kfGlow" cx="0.5" cy="0.5" r="0.6"><stop offset="0" stop-color="#fff8e8" stop-opacity="0.9"/><stop offset="1" stop-color="#ffb347" stop-opacity="0"/></radialGradient>'
       +     '<linearGradient id="kfMaku" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#c8453a"/><stop offset="1" stop-color="#9c2a22"/></linearGradient>'
       +   '</defs>'
       +   '<ellipse class="kf-lit" cx="60" cy="165" rx="58" ry="145" fill="url(#kfGlow)"/>'
       +   tsuna
       +   kaki
       +   kejo
-      +   '<g class="kf-emberflame">' + lstr + lrow + '</g>'
-      +   '<rect x="40" y="134" width="40" height="130" rx="3" fill="url(#kfPaper)" stroke="#b2392a" stroke-width="2.4"/>'
-      +   '<g stroke="#caa24d" stroke-width="1" opacity="0.5"><line x1="52" y1="140" x2="52" y2="258"/><line x1="68" y1="140" x2="68" y2="258"/></g>'
+      +   '<g class="kf-emberflame">' + lrow + '</g>'
+      +   hashira
+      +   hari
+      +   '<rect x="28" y="106" width="64" height="180" rx="3" fill="url(#kfPaper)" stroke="#b2392a" stroke-width="1.2"/>'
       +   bx
-      +   chouko
+      +   '<path class="kf-maku" d="M14,64 L14,74 Q30,84 46,74 Q62,84 78,74 Q94,84 106,74 L106,64 Z" fill="url(#kfMaku)"/>'
+      +   '<line x1="14" y1="66" x2="106" y2="66" stroke="#e8c86a" stroke-width="1.6" opacity="0.85"/>'
+      +   mitsudomoe(40, 74, 8)
+      +   mitsudomoe(80, 74, 8)
       +   hira
-      +   '<g class="kf-mon" fill="none" stroke="#fdf6e3" stroke-width="1.5"><circle cx="40" cy="119" r="7"/><circle cx="40" cy="119" r="3.6"/><circle cx="40" cy="119" r="1.1" fill="#fdf6e3" stroke="none"/></g>'
-      +   '<g class="kf-mon" fill="none" stroke="#fdf6e3" stroke-width="1.5"><circle cx="80" cy="119" r="7"/><circle cx="80" cy="119" r="3.6"/><circle cx="80" cy="119" r="1.1" fill="#fdf6e3" stroke="none"/></g>'
-      +   '<path class="kf-maku" d="M20,92 L20,104 Q34,114 48,104 Q62,114 76,104 Q90,114 100,104 L100,92 Z" fill="url(#kfMaku)"/>'
-      +   '<line x1="20" y1="94" x2="100" y2="94" stroke="#e8c86a" stroke-width="1.6" opacity="0.85"/>'
       +   yane
-      +   hoju
-      +   '<g class="kf-emberflame">' + srow + '</g>'
       + '</svg>';
   }
   // D2(v75): 柱松明(ハシラタイマツ)/置松明(オキタイマツ)。公式サイトの記述と実写に基づく火元の表現。
@@ -11903,9 +11925,9 @@ if (typeof document !== "undefined") (() => {
       // D2(v75): 炎の舌は画面全幅ではなく、各松明の足元±12%に集約(松明が火元である実景に合わせる)
       var tx = tms[i % tms.length].x;
       var lx = Math.max(2, Math.min(98, tx + (Math.random() - 0.5) * 24)).toFixed(1);
-      var fsc = (0.85 + Math.random() * 1.35).toFixed(2);
-      var fw  = (58 + Math.random() * 118).toFixed(0);
-      var fh  = (200 + Math.random() * 260).toFixed(0);
+      var fsc = (0.7 + Math.random() * 0.9).toFixed(2);     /* D9(v88): 炎を縮小(0.85+1.35→0.7+0.9) */
+      var fw  = (44 + Math.random() * 80).toFixed(0);       /* D9(v88): 58+118→44+80 */
+      var fh  = (150 + Math.random() * 180).toFixed(0);     /* D9(v88): 200+260→150+180 */
       var dl  = (Math.random() * 0.5).toFixed(2);
       flames += '<div class="kf-flame" style="left:' + lx + '%;--fsc:' + fsc + ';--fw:' + fw + 'px;--fh:' + fh + 'px;animation-delay:' + dl + 's"></div>';
     }

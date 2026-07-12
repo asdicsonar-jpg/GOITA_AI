@@ -8,7 +8,7 @@
 //
 // 更新時の運用: HTMLを更新するたびに CACHE_NAME を必ずインクリメントすること。
 
-const CACHE_NAME = "goita-v90";
+const CACHE_NAME = "goita-v91";
 
 const PRECACHE_URLS = [
   "./",
