@@ -31,6 +31,8 @@
 2. `sw.js` の `CACHE_NAME` を必ずインクリメントする(例: `goita-v84` → `goita-v85`)。これを忘れると古いキャッシュが残り続け、ユーザーに更新が届かない。
 3. push する。
 
+UI/UXの変更を行う場合は、着手前に `docs/DESIGN_CHARTER.md`（デザイン憲章）を確認する。
+
 index.html は network-first + cache fallback で配信されるため、オンライン時は常に最新版が取得される。CACHE_NAMEのインクリメントは、旧キャッシュの破棄とオフライン起動時に参照される版を確実に更新するために必要。
 
 ## iOSにおけるデータ揮発性の注意
@@ -55,5 +57,6 @@ goita-app/
 ├── .nojekyll
 ├── README.md
 └── docs/
-    └── PLAN_deploy_v84.md
+    ├── PLAN_deploy_v84.md
+    └── DESIGN_CHARTER.md
 ```
