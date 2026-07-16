@@ -4,6 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>ごいた — 能登の伝承遊戯</title>
+  <!-- build: v90.5「演出みほん説明文の是正」(Sonar指示の簡易修正・goita-dev-loop外の直接対応):
+       Sonar指摘: 「型」モーダルの演出みほん説明文が「再生が終わると自動でこの画面に戻ります」の
+       ままだったが、実際はL1(v80)で自動タイマー復帰を廃止し「完了」ボタンで閉じる方式に変更済み
+       (showWinCut/kirikoBurnのopts.button=true・useButton判定)。挙動とテキストが食い違っていた。
+       修正: openPatterns()内のpat-lead文言を「演出は「完了」ボタンを押すまで表示され、押すと自動で
+       この画面に戻ります。」に修正(実装のonClose→openPatterns({scrollToDemos:true})の実挙動と一致)。
+       コード動作自体は無変更(表示テキストのみ)。エンジン(G/G_B)は無改変。CACHE_NAME: v105→v106。 -->
   <!-- build: v90.4「掛け声演出」(PLAN_v90_4_kiriko_koe.md・goita-dev-loopフェーズ2実装・
        Fable5計画/Sonnet5実装):
        Sonar指示: 点数表示欄(wincutのwc-sub)に25%の確率で付記していた囃子詞「イヤサカヨッセ」を廃止し、
@@ -11966,7 +11973,7 @@ if (typeof document !== "undefined") (() => {
       `<p class="pat-lead">ごいたの基本パターン。対局中に光る駒やタグ・推奨ピルと合わせて確認できます。</p>` +
       `<div class="pat-list">${body}</div>` +
       `<h3 class="serif pat-demo-title">演出みほん</h3>` +
-      `<p class="pat-lead">実際の対局で出る演出を再生します。キリコ・炎は「祭り意匠」ON時のみ表示されます。再生が終わると自動でこの画面に戻ります。</p>` +
+      `<p class="pat-lead">実際の対局で出る演出を再生します。キリコ・炎は「祭り意匠」ON時のみ表示されます。演出は「完了」ボタンを押すまで表示され、押すと自動でこの画面に戻ります。</p>` +
       `<div class="pat-demo-btns">${demoBtns}</div>` +
       `<div class="pat-foot"><button class="btn primary" id="pat-close">閉じる</button></div>`);
     const c = m.querySelector("#pat-close"); if (c) c.onclick = closeModal;
