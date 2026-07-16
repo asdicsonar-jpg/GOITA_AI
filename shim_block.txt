@@ -1,0 +1,24 @@
+  if (typeof window !== "undefined") {
+    window.__T = {
+      app, G, G_B, $, modal, closeModal,
+      startGame, humanTurn, onHandTap, renderHandTray, renderAll, getRec, recPattern,
+      seatTag, SEAT_JA, GLOSSARY, GLOSSARY_SKIP_AUTOLINK,
+      seatDisp, teamDisp, boardSummaryText, showYakuSplash,
+      dealAnimAllowed, dealAnimStart, dealCleanup, dealSeatOrder, dealDelayMs, FX, fx,
+      endShiCounts, computeSignals, auditOuShiSignal, askHumanGoshi,
+      renderReviewList, openReviewOn, openReview, computeCoach,
+      rebuildState, branchRecBase, applyAndLog, onGameOver,
+      resumeSavedMatch, resumeFromMove, loadMatchProgress, saveMatchProgress, deleteMatchProgress, normalizeRec,
+      readSetup, enterGame, saveCareerToStorage, loadCareerFromStorage, matchSaveAllowed, saveCfgToStorage,
+      scaffoldStamp, scaffoldStampAllowed, renderKeikoPanel,
+      SCAFFOLDS, gradLoad, gradSave, gradMasteryFor, gradThresholdFor, gradPropose,
+      gradTrialStart, gradDismiss, gradOnGameFinished, gradTrialRevert, gradTrialContinue,
+      openCareer, gradLedgerHtml, fmtMonthDay,
+      SRS_STORAGE_KEY, SRS_STEPS, SRS_MAX_CARDS, SRS_BUDGET_BYTES, CAREER_STORAGE_KEY,
+      addDays, daysBetween, srsLoad, srsSlim, srsAddPuzzle, srsAddJoseki, srsGrade,
+      TOURWIN_STORAGE_KEY, tourWinLoad, tourWinRecord, readinessChecklistHtml, openReadinessChecklist,
+      showMatchEnd, scAllOff, buildTempoStats, tempoHtml,
+      openJoseki, JOSEKI, WHY2JK,
+      slimRecForStorage, TUT, CONCEPT2TUT, DRILLS,
+    };
+  }
