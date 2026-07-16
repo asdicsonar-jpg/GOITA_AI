@@ -4,6 +4,45 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>ごいた — 能登の伝承遊戯</title>
+  <!-- build: v90.4「掛け声演出」(PLAN_v90_4_kiriko_koe.md・goita-dev-loopフェーズ2実装・
+       Fable5計画/Sonnet5実装):
+       Sonar指示: 点数表示欄(wincutのwc-sub)に25%の確率で付記していた囃子詞「イヤサカヨッセ」を廃止し、
+       キリコ炎上演出(kirikoBurn)の周辺に群衆の掛け声「＼イヤサカヨッセ／」「＼サカヨッセ／」が浮かび
+       上がって消えるワンショット演出(kf-koe)へ移設。「情報表示の付記」から「祭りの空間演出」へ。
+       変更1: showWinCut()のwc-sub付記行を削除。subは「席・駒」のみになる。
+       変更2: kirikoBurn()にkf-koeの生成を追加。tier別(n=2/4/6)に応じ2/3/4声、左右列に交互配置(中央の
+       点数・倍札は回避)、約0.3s刻みでずらして群衆感を演出。25%のレア性は廃止しキリコ発火時は毎回
+       出す(装飾レイヤーのワンショット消滅のため頻出しても煩くならず、キリコ自体が大きな上がり限定
+       なので頻度は既に絞られている)。ゲート(noto/tier/fx/reduced-motion)は個別判定を持たず
+       kirikoBurn本体のガードを構造的に継承する。清掃はkirikoRelease()の既存innerHTML=""に相乗り。
+       変更3: CSS #kiriko-fire .kf-koe + @keyframes kfKoe を追加(倍札kf-baiと同系の祭り文字を縮小・
+       1.7秒のワンショットforwardsのみ・憲章§5の無限明滅回避に準拠)。
+       エンジン(G/G_B)は無改変(byte-exact維持)。
+       CACHE_NAME: v104→v105。
+       検証: jsdom単体テスト(test_koe.js、7ケース a〜g)・既存test_f1/f2/f3/test_review_fixes/
+       test_gotae(計30アサーション)の回帰なし・G/G_B/saveCareerToStorage/loadCareerFromStorageの
+       byte-exact(sha256併記)・v90.3→v90.4の全体diffが計画箇所のみであることを確認・4 scriptブロック
+       node --check・禁止語彙0件。 -->
+  <!-- build: v90.3「かかり応え符丁監査誤判定」(PLAN_v90_3_gotae_audit.md・goita-dev-loopフェーズ2
+       実装・Fable5計画/Sonnet5実装):
+       Sonar報告の実局(第4局・親:西)で、相方(北)の香かかりに南(人間)が唯一の香で応えた正しい
+       「かかり応え」が、振り返りの符丁監査で「香ペア（香２枚）の偽宣言」と誤判定される不具合を修正。
+       エンジン読み側はv90.1で応え文脈を除外済み(kakariGotae()のリード限定・かかり不応答の負証拠の
+       led集合)だが、UI層のdetectSignal()には相方の同駒攻め済みを除外するガードが欠けていた。
+       変更1: detectSignal()に「相方が既に同駒を攻めていた場合はnull」のガードを追加(既存の同席
+       再攻めガードの直後・エンジンのled規則と対称)。
+       変更2: computeSignals()のdetectSignal呼び出し前に、G.kakariGotae()を使ったかかり応えの肯定的
+       認識を追加。該当時はmv.sig={type:"kakari_gotae",honest:true,jk:"kakari",...}を設定し、
+       既存JOSEKI.kakari(名称「かかり応え」)にリンクする「（かかり応え）」チップが自動で付く。
+       実装時の是正: 計画のtext案は文末に「（かかり応え）。」を含んでいたが、sigHtml()がjk経由で
+       同名チップを自動追記するため二重表示になる。F-2のteamJa「組組」二重付与と同種の問題と判断し、
+       text側から「（かかり応え）」を除去(チップ側の自動追記のみで表示)。
+       エンジン(G/G_B)は無改変(byte-exact維持)。相方の非リード攻めへの同駒追随は変更1で宣言扱いが
+       消えるのみで肯定表示はしない(エンジンも符丁と読まない文脈のため沈黙が正しい)。
+       CACHE_NAME: v103→v104。
+       検証: jsdom単体テスト(test_gotae.js、7ケース a〜g)・既存test_f1/f2/f3/test_review_fixes
+       (計23アサーション)の回帰なし・G/G_B/saveCareerToStorage/loadCareerFromStorageのbyte-exact
+       (sha256併記)・4 scriptブロックnode --check・禁止語彙0件。 -->
   <!-- build: v90.2 REVIEW修正(goita-dev-loopフェーズ4・REVIEW_REPORT_v90.2.mdのMust-fix 2件対応):
        Must-fix1: showYakuSplash()のteamJaが`sp.team==="NS"?"南北":"東西"`のまま残存し、対局中の
        手役スプラッシュに「自分・南北組」という新旧混在表記が出ていた不具合。onSpecialYaku()と同じ
@@ -1991,6 +2030,20 @@ body.noto #wincut.show .wc-label{animation:wcFude .62s cubic-bezier(.2,.9,.3,1.2
 @keyframes kfBai{0%{opacity:0;transform:translate(-50%,-40%) scale(.4) rotate(-6deg)}
   16%{opacity:1;transform:translate(-50%,-50%) scale(1.12) rotate(2deg)}
   30%{transform:translate(-50%,-50%) scale(1) rotate(0)}72%{opacity:1}100%{opacity:0;transform:translate(-50%,-58%) scale(1.05)}}
+/* N2改(v90.4): 掛け声。倍札(kf-bai)と同系の祭り文字を縮小し、浮かび上がって消えるワンショット。
+   憲章§5(無限明滅回避): forwards一回のみ・hold中も再生しない。reduced-motionは#kiriko-fire自体が
+   display:none(既存1886行)のため個別対応不要。 */
+#kiriko-fire .kf-koe{position:absolute;z-index:6;opacity:0;white-space:nowrap;
+  transform:translate(-50%,10px) scale(var(--ksc,1));
+  font-family:'Yuji Boku','Yuji Syuku',var(--serif);font-size:min(26px,5.6vw);color:#ffe1a0;
+  text-shadow:0 0 8px rgba(255,190,70,.8),0 1px 2px rgba(0,0,0,.55);
+  -webkit-text-stroke:.6px rgba(180,50,26,.7);
+  animation:kfKoe 1.7s ease-out forwards}
+@keyframes kfKoe{
+  0%{opacity:0;transform:translate(-50%,10px) scale(var(--ksc,1))}
+  18%{opacity:1}
+  70%{opacity:.85}
+  100%{opacity:0;transform:translate(-50%,-34px) scale(var(--ksc,1))}}
 /* 火の粉(舞い上がる) */
 .kf-ember{position:fixed;z-index:84;pointer-events:none;border-radius:50%;
   background:radial-gradient(circle at 45% 35%, #fff7da, #ffb44c 52%, rgba(224,85,58,0) 80%);
@@ -12038,6 +12091,9 @@ if (typeof document !== "undefined") (() => {
     const k = a.koma;
     // 符丁は最初の同駒攻め(リード)で送られる。2打目以降の同駒は新たな符丁ではない(既に送信済み)
     if (st.history.some(h => h.seat === seat && h.act === "attack" && h.koma === k)) return null;
+    // v90.3: 相方が既に同駒を攻めていた場合は「応え」であり新たな符丁宣言ではない
+    // (エンジン読み側のled規則・v90.1のリード限定と対称。かかり応え/非リードへの追随の両方を除外)
+    if (st.history.some(h => h.seat === G.partnerOf(seat) && h.act === "attack" && h.koma === k)) return null;
     const attackNo = st.history.filter(h => h.act === "attack").length + 1;  // この攻めの通し番号
     if (["金", "銀", "馬"].includes(k) && attackNo <= 4)
       return {signal_type: "kgb_pair", koma: k, q: `相方は ${k} を2枚以上（ペア）持っていると思いますか？`};
@@ -13174,13 +13230,28 @@ if (typeof document !== "undefined") (() => {
     var positions = POS_BY_N[tier.n] || POS_BY_N[2];
     var words = kirikoPickDaisho(positions.length);   // C2(v74): 大書は毎回ランダム・重複なし
     var kirikoHtml = positions.map(function(pos, i){ return '<div class="kf-kiriko ' + pos + '"><div class="kf-sway">' + kirikoSVG(words[i]) + '</div></div>'; }).join("");   // D2(v84): 振り子回転用の内側ラッパ
+    // N2改(v90.4): あばれ祭の掛け声(実在の掛け声。出典: 日本遺産キリコ祭り公式サイト)。
+    // 旧N2(wincut文末に25%で付記)を廃止し、キリコ周辺に群衆の掛け声として浮かび上がらせる。
+    // ゲート(noto/tier/fx/reduced-motion)はkirikoBurn本体のガードを構造的に継承する(個別判定を持たない)。
+    var KOE = ["＼イヤサカヨッセ／", "＼サカヨッセ／"];
+    var koeN = tier.n === 2 ? 2 : tier.n === 4 ? 3 : 4;   // tier別 2/3/4声(飽和上限4=中央開放と煩雑回避)
+    var koeHtml = "";
+    for (var ki = 0; ki < koeN; ki++) {
+      var kx = (ki % 2 === 0) ? (6 + Math.random() * 22) : (72 + Math.random() * 22);   // 左右列に交互配置・中央(点数/倍札)回避
+      var ky = 50 + Math.random() * 20;                                                  // 画面下半分から立ち上る
+      var kdl = (ki * 0.30 + Math.random() * 0.15).toFixed(2);                           // 約0.3s刻みのずらし=群衆感
+      var ksc = (0.85 + Math.random() * 0.4).toFixed(2);
+      koeHtml += '<div class="kf-koe" style="left:' + kx.toFixed(1) + '%;top:' + ky.toFixed(1) +
+                 '%;--ksc:' + ksc + ';animation-delay:' + kdl + 's">' + KOE[ki % 2] + '</div>';
+    }
     stage.innerHTML =
       '<div class="kf-blaze" style="--bx:' + tms[0].x + '%"></div>' +   // D2(v75): 地明かりの中心を主松明の位置に
       '<div class="kf-heat"></div>' +
       taimatsuHtml +
       flames +
       kirikoHtml +
-      bai;
+      bai +
+      koeHtml;
     stage.classList.remove("show", "hold", "out"); void stage.offsetWidth;   // D4(v85): 前回のhold/out残留を確実に払う
     if (hold) stage.classList.add("hold");
     stage.classList.add("show");
@@ -13213,9 +13284,7 @@ if (typeof document !== "undefined") (() => {
     if (l1) l1.textContent = label;
     if (lp) lp.textContent = String(res.pts);   // D3(v75): 点数は大型表示へ(wc-subからは除去して二重表示を避ける)
     let sub = (seatDisp(res.winner) || res.winner) + "・" + (res.koma || "");
-    // N2(v71): あばれ祭の囃子詞を、noto ON時のみ・大きな上がりで稀に添える(実在の掛け声。出典: 日本遺産キリコ祭り公式サイト)
-    // B-3(v89c): min(結果表示のみ)では囃子詞は添えない
-    if (app.cfg.fxLen !== "min" && app.cfg.notoAccent !== false && Math.random() < 0.25) sub += "　― イヤサカヨッセ";
+    // N2改(v90.4): 囃子詞のwc-sub付記は廃止。掛け声はkirikoBurn()のkf-koe(キリコ周辺の浮遊演出)へ移設。
     if (l2) l2.textContent = sub;
     el.classList.toggle("fx-min", app.cfg.fxLen === "min");   // B-3(v89c): minはwc-sub/wc-ptsのみ(大書系のwc-labelを抑制)
     el.classList.remove("show", "out"); void el.offsetWidth;
@@ -13785,6 +13854,21 @@ if (typeof document !== "undefined") (() => {
       if (mv.action.type !== "attack") return;          // A-1は攻め符丁のみ
       const st = rebuildState(rec, i);
       if (st.phase === "over" || st.actor !== mv.seat) return;
+      // v90.3: かかり応えの認識。相方のリードに同駒で応じた手は正しい協調符丁として肯定表示
+      // (エンジン読み側は同じG.kakariGotae()でリード限定・攻め窓・保有判定を共有し、UI側に
+      // 新ヒューリスティックを増やさない。監査は振り返り(全情報)なのでst.historyは非マスクでよい)
+      let gotae = null;
+      try { gotae = G.kakariGotae({seat: mv.seat, hand: st.hands[mv.seat], hist: st.history}); } catch (e) {}
+      if (gotae && mv.action.koma === gotae) {
+        // 注意(実装時の是正): sigHtml()はmv.sig.jkから既存のJOSEKI[jk].name「かかり応え」を
+        // linkifyJoseki()経由で自動的に文末へ「（かかり応え）」チップとして追記する(kgb_pair/kyo2の
+        // 既存textも同様にjk側の自動チップに任せ、text内に自分でjoseki名を書いていない)。計画のtext案
+        // ("...正しい符丁です（かかり応え）。")のままだと「（かかり応え）（かかり応え）」の二重表示に
+        // なるため、text側からは「（かかり応え）」を除いた(F-2のteamJa「組組」二重付与と同種の是正)。
+        mv.sig = {type: "kakari_gotae", koma: gotae, honest: true, jk: "kakari",
+                  text: "相方の「" + gotae + "」リード（かかり）に同駒で応えています。保有が相方に伝わる正しい符丁です。"};
+        return;
+      }
       const sig = detectSignal(st, mv.seat, mv.action);
       if (!sig) { mv.sig = auditOuShiSignal(rec, st, mv, i); return; }   // 王/し合図の専用honesty監査(結果ベース厳密化)
       const honest = signalTruth(st, mv.seat, sig);      // true=実手札と一致
