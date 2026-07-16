@@ -4,6 +4,46 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>ごいた — 能登の伝承遊戯</title>
+  <!-- build: v90.2 REVIEW修正(goita-dev-loopフェーズ4・REVIEW_REPORT_v90.2.mdのMust-fix 2件対応):
+       Must-fix1: showYakuSplash()のteamJaが`sp.team==="NS"?"南北":"東西"`のまま残存し、対局中の
+       手役スプラッシュに「自分・南北組」という新旧混在表記が出ていた不具合。onSpecialYaku()と同じ
+       teamDisp(sp.team)に統一。teamDispは対局中(humanSeatあり)は「あなた組/相手組」で既に「組」を
+       含むため、`+ (app.humanSeat ? "" : "組")`で観戦時(方位名のまま)のみ「組」を付与する形に修正。
+       Must-fix2: F-1の後片付けタイマー`setTimeout(dealCleanup, fx().dealMs+250)`が、演出プリセット
+       「短め」(dealMs=350ms)では実際の最終駒アニメ完了時刻(870ms=dealDelayMs最大570ms+--dur-move
+       300ms)より先に発火し、アニメ途中で.deal-inが剥がれて瞬間スナップする視覚リグレッションが
+       あった。発火時刻を`Math.max(fx().dealMs, maxDealAnimMs) + 250`(maxDealAnimMsは最終駒の理論
+       完了時刻)に変更し、full/short/minいずれのプリセットでもアニメ完了を待ってから後片付けする
+       よう修正。
+       CACHE_NAME: 据え置き(v103のまま。レビュー裁定「v90.2未配布の前提なら同一デプロイ単位」に
+       従う)。
+       検証: 新規test_review_fixes.js(Must-fix1: 対局中/観戦時の表示文言・Must-fix2: full/short/min
+       3プリセットでのタイマー発火時刻がアニメ完了時刻を下回らないことの機械検査)全PASS。既存
+       test_f1/f2/f3(計18アサーション)の回帰なし。G/G_B/saveCareerToStorage/loadCareerFromStorage
+       のbyte-exact不変。禁止語彙0件。Nice-to-have 5件は計画どおり本コミットでは対応せず(便乗修正
+       禁止の方針)。 -->
+  <!-- build: v90.2「三修正」(PLAN_v90_2_threefixes.md・goita-dev-loopフェーズ2実装・Fable5計画/Sonnet5実装):
+       独立した3件の不具合修正をF-3→F-1→F-2の順で1コミットに実装。3件ともエンジン(G/G_B)非接触・
+       UI層のみで完結することを事前調査で確認済み。
+       F-3: し攻め宣言の「宣言時保有」誤判定を修正。auditOuShiSignal()のshi_sig分岐が、攻め時点の
+       手駒だけを数えて「し4枚→し伏せ→初手しで攻める」(伏せ同駒2倍狙いの正規戦略)を「薄い宣言
+       (3枚)」と誤検知していた。この局で自分が既に伏せたしをshiN計算に加算するよう修正。
+       F-1: 親(人間)の初回伏せ描画で推奨駒(.koma.rec)が飛び出ない不具合を修正。.koma.deal-inの
+       dealInアニメがrecGlowを後勝ちで恒久上書き(fill-mode:both)していた(_dealAnimPendingが
+       bury-phaseの同期描画時点でまだtrueのため)。dealAnimStart()に_dealAnimUntil+250ms後の
+       後片付けタイマー(deal-inクラス+inline animationDelayの除去)を新設。#boardタップでの
+       スキップ経路にも同じ後片付けを即時実行するよう追加。
+       F-2: 席名称を「自分/相方/下家/上家」に変更(Sonar決定: 東=下家・西=上家。G.nextSeat("S")==="E"
+       で実測確認済み)。表示専用のseatDisp()/teamDisp()を新設し、対局中の名札・実況・ログ・振り返り
+       リスト・五し相談モーダル・凡例・設定画面の遊び方説明等、約49箇所のSEAT_JA参照+約45箇所の
+       南北/東西チーム表示を置き換え。観戦時(humanSeatなし)は方位名にフォールバック(構造的に担保)。
+       kifu/recToKifu/viewKifu/declareGoshi/drawBoard/shareRecModal等の棋譜・共有出力系は後方互換の
+       ため方位名(SEAT_JA)のまま意図的に不変。チュートリアル本文(TUT全11巻+kyo巻)は機械置換ではなく
+       文単位で手直し(対訳表は実装レポート添付)。GLOSSARYに「上家」「下家」を追加、凡例に1行追加。
+       CACHE_NAME: v102→v103。
+       検証: jsdom単体テスト(test_f3/test_f1/test_f2、計18アサーション)・エンジンG/G_B+
+       saveCareerToStorage/loadCareerFromStorageのbyte-exact一致(v90b基準)・4 scriptブロック
+       node --check・禁止語彙11+2語(出力DOM)grep0件・axe-core 4テーマ。 -->
   <!-- build: v90e「当日」(PLAN_v90_teacher.md・goita-dev-loopフェーズ2実装・v90シリーズ最終コミット):
        D-1 テンポ計をopenCareer()に追加。moves[].thinkMsを既存のまま集計(新規計測なし)、母数は
        scaffoldStamp()が全10項目OFFだった局のみ(sc無し=v90a以前の記録は母数に含めない・R-e3)。
@@ -2264,6 +2304,7 @@ body.noto #wincut.show .wc-label{animation:wcFude .62s cubic-bezier(.2,.9,.3,1.2
     <span class="lg"><i class="dot foe"></i>敵（東西）</span>
     <span class="lg"><i class="sw atkseat"></i>名札の「攻」＋席の淡い光＝今の攻め手</span>
     <span class="lg"><i class="sw turntoken"></i>真鍮の番札＝今の手番</span>
+    <span class="lg">下家＝自分の次に手番が回る敵、上家＝自分の前に手番を持つ敵</span>
   </div></details>
   <details id="log-wrap"><summary>棋譜ログ</summary><div class="panel" id="log"></div></details>
 </div>
@@ -9337,6 +9378,19 @@ if (typeof document !== "undefined") (() => {
   }
   applySharedToggleLabelsToSetup();
   const SEAT_JA = {N: "北", W: "西", S: "南", E: "東"};
+  // F-2(v90.2): 表示専用の呼称。内部表現・保存・共有(kifu/recToKifu/career)はSEAT_JAのまま不変。
+  // 観戦(humanSeatなし)は方位名にフォールバック(構造的に担保)。相方視点トグル(rv-partner)でも
+  // 「自分」の指す席は常にapp.humanSeat基準で不変(視点は変わっても呼称は変えない)。
+  const seatDisp = s => {
+    const me = app.humanSeat;
+    if (!me) return SEAT_JA[s];
+    if (s === me) return "自分";
+    if (s === G.partnerOf(me)) return "相方";
+    if (s === G.nextSeat(me)) return "下家";       // 実測: 南の次==東
+    return "上家";
+  };
+  const teamDisp = t => !app.humanSeat ? (t === "NS" ? "南北" : "東西")
+                                       : (t === G.team(app.humanSeat) ? "あなた組" : "相手組");
   const TIER_LABEL = {strong: "AI・最強", coop: "AI・対人協調", solver: "AI・標準", basic: "AI・定石", naive: "AI・初心者"};
   const ACT_JA = {bury: "伏せ", attack: "攻め", receive: "受け", pass: "なし"};
   const cardOf = {N: $("card-n"), W: $("card-w"), S: $("card-s"), E: $("card-e")};
@@ -10212,7 +10266,7 @@ if (typeof document !== "undefined") (() => {
         const key = `${rec.matchNo || "?"}-${rec.gameNo || "?"}-${i}`;
         if (!_rebuildWarned.has(key)) {
           _rebuildWarned.add(key);
-          try { log(`⚠ 記録の不整合を検出 — 第${rec.matchNo || "?"}勝負・第${rec.gameNo || "?"}局 #${i + 1}（${SEAT_JA[mv.seat] || mv.seat}）: ${bad}。以降の再生を停止し盤面の駒数破綻を防止しました（版差のあるインポート記録などが原因の可能性）。`, true); } catch (e) {}
+          try { log(`⚠ 記録の不整合を検出 — 第${rec.matchNo || "?"}勝負・第${rec.gameNo || "?"}局 #${i + 1}（${seatDisp(mv.seat) || mv.seat}）: ${bad}。以降の再生を停止し盤面の駒数破綻を防止しました（版差のあるインポート記録などが原因の可能性）。`, true); } catch (e) {}
         }
         break;
       }
@@ -10232,19 +10286,17 @@ if (typeof document !== "undefined") (() => {
     const head = document.createElement("div");
     head.className = "phead";
     head.innerHTML =
-      `<span class="nm ${ally ? "ally" : ""}">${SEAT_JA[s]}</span>` +
-      `<span class="ainame">${isHuman(s) ? "あなた" : TIER_LABEL[app.tiers[s]]}</span>` +
-      (app.humanSeat && s === G.partnerOf(app.humanSeat) ? `<span class="ainame">相方</span>` : "") +
+      `<span class="nm ${ally ? "ally" : ""}">${seatDisp(s)}</span>` +
+      (isHuman(s) ? "" : `<span class="ainame">${TIER_LABEL[app.tiers[s]]}</span>`) +
       (st && st.parent === s ? `<span class="oya">親</span>` : "") +
       `<span class="think" data-think></span>` +
       `<span class="cnt">${st ? "残" + st.hands[s].length : ""}</span>`;
     el.innerHTML = "";
     el.appendChild(head);
     if (st) {
-      const lbl = [SEAT_JA[s]];
+      const lbl = [seatDisp(s)];
       if (st.parent === s) lbl.push("親");
-      lbl.push(isHuman(s) ? "あなた" : TIER_LABEL[app.tiers[s]]);
-      if (app.humanSeat && s === G.partnerOf(app.humanSeat)) lbl.push("相方");
+      if (!isHuman(s)) lbl.push(TIER_LABEL[app.tiers[s]]);
       lbl.push("残" + st.hands[s].length + "枚");
       el.setAttribute("role", "group");
       el.setAttribute("aria-label", lbl.join(" "));
@@ -10319,14 +10371,12 @@ if (typeof document !== "undefined") (() => {
     el.classList.toggle("attacking", !app.review && !!st.pendingAttack && st.attacker === s);
     el.classList.toggle("reach", !app.review && st.phase !== "over" && st.hands[s].length === 2);   // B3: 残2=上がり直前の席オーラ
   }
-  // 席名+関係(あなた/相方/敵)を味方/敵色で。観戦時は関係を省略しチーム色のみ
+  // F-2(v90.2): 席名をseatDisp()に一本化(自分/相方/下家/上家)。旧来の相対suffix（相方/敵）は
+  // 新名称そのものが関係を表すため重複となり廃止。ally/foe色とCUD形状マークは不変。
   function seatTag(s){
     const me = app.humanSeat;
     const ally = me ? G.team(s) === G.team(me) : G.team(s) === "NS";
-    const isYou = me && s === me;
-    const nm = isYou ? "あなた" : SEAT_JA[s];
-    const rel = (me && !isYou) ? (s === G.partnerOf(me) ? "（相方）" : "（敵）") : "";
-    return `<span class="stag ${ally ? "ally" : "foe"}">${nm}${rel}</span>`;
+    return `<span class="stag ${ally ? "ally" : "foe"}">${seatDisp(s)}</span>`;
   }
   function renderStage(st) {
     // 天鳳風・河中心: 中央の攻め駒“複製”表示は廃止（各家の河の .now 強調へ一本化）。
@@ -10346,7 +10396,7 @@ if (typeof document !== "undefined") (() => {
       const resp = st.actor;
       const passed = (st.respQueue && st.respIdx > 0) ? st.respQueue.slice(0, st.respIdx) : [];
       const passTxt = passed.length
-        ? ` <span class="passed">${passed.map(p => SEAT_JA[p]).join("・")}なし</span>` : "";
+        ? ` <span class="passed">${passed.map(p => seatDisp(p)).join("・")}なし</span>` : "";
       idle.innerHTML = `${seatTag(st.attacker)}の攻め → ${seatTag(resp)}が受け${passTxt}`;
       idle.classList.toggle("you", resp === app.humanSeat);
     } else if (st.phase === "over" && app.lastWin) {
@@ -10439,7 +10489,7 @@ if (typeof document !== "undefined") (() => {
     _scShiftDone = true;
   }
   function renderScores() {
-    $("round-label").textContent = app.parent ? `親: ${SEAT_JA[app.parent]}` : "";
+    $("round-label").textContent = app.parent ? `親: ${seatDisp(app.parent)}` : "";
     const tb = $("tug-bar");
     if (tb) {
       applyScoreInkShift(tb);   // v62: 得点数字のink上下余白を均等化(初回のみ計測)
@@ -10458,7 +10508,7 @@ if (typeof document !== "undefined") (() => {
       if (e) { const segE = ewP / 100 * (L / 2); e.style.strokeDasharray = segE + " " + (L - segE); }
       tb.classList.toggle("ns-close", app.scores.NS >= tgt - 20 && app.scores.NS < tgt);
       tb.classList.toggle("ew-close", app.scores.EW >= tgt - 20 && app.scores.EW < tgt);
-      tb.setAttribute("aria-label", `点差ゲージ 南北${app.scores.NS} 対 東西${app.scores.EW}（${tgt}先取）`);
+      tb.setAttribute("aria-label", `点差ゲージ ${teamDisp("NS")}${app.scores.NS} 対 ${teamDisp("EW")}${app.scores.EW}（${tgt}先取）`);
     }
   }
   /* ================================================================
@@ -10492,6 +10542,19 @@ if (typeof document !== "undefined") (() => {
   function dealDelayMs(seat, komaIdx) {
     return dealSeatOrder().indexOf(seat) * 120 + komaIdx * 30;
   }
+  // F-1(v90.2): .deal-inクラス+インラインanimation-delayの後片付け。CSSアニメの fill-mode "both" は
+  // 終了後も最終キーフレーム(dealIn の to{transform:none})を適用し続け、.deal-inクラス自体は
+  // 除去されないため、.koma.rec の静的transform(浮き上がり・recGlow)が恒久的に打ち消されたままになる
+  // (親=人間の局は伏せのpick描画がfinalize→renderAll→step→humanTurn→renderHandTrayと同一同期タスク
+  // 内で走り、.deal-inの消費が次タスクのsetTimeoutより後になるため、親の伏せ描画にだけ.deal-inと
+  // .recが同居する。カスケードは同詳細度(0,2,0)で後方の.koma.deal-inがrecGlowを上書きする)。
+  // 単一ハンドル(_dealCleanupT)で管理し局開始ごとにclearTimeout(残留防止・v77-Fパターン)。
+  function dealCleanup() {
+    document.querySelectorAll(".koma.deal-in").forEach(el => {
+      el.classList.remove("deal-in");
+      el.style.animationDelay = "";
+    });
+  }
   function dealAnimStart() {
     if (!dealAnimAllowed()) { app._dealAnimPending = false; app._dealAnimUntil = 0; return; }
     app._dealAnimPending = true;
@@ -10500,6 +10563,13 @@ if (typeof document !== "undefined") (() => {
     // finalize→renderAll→step→(renderHandTray再呼び出し)は同一タスク内で複数回起き得るため、
     // 「次のタスク」で確実に1度だけ消費する(以後の非同期な再描画には引き継がない=1回性の保証)。
     setTimeout(() => { app._dealAnimPending = false; }, 0);
+    clearTimeout(app._dealCleanupT);
+    // F-1修正(REVIEW_REPORT_v90.2.md Must-fix 2): fx().dealMsだけでは実際の駒アニメ完了時刻に届かない
+    // ケースがある(短めFX.short: dealMs=350msだが、最終駒の開始遅延dealDelayMs最大570ms+アニメ長
+    // --dur-move=300ms=完了870ms > 600ms=350+250のため、アニメ途中で.deal-inが剥がれ瞬間スナップする)。
+    // 最終駒(4席目・8枚目=komaIdx7)の完了時刻を実測どおり計算し、dealMsとの大きい方を採用する。
+    const maxDealAnimMs = (dealSeatOrder().length - 1) * 120 + 7 * 30 + 300;   // 300ms = --dur-move(L525)
+    app._dealCleanupT = setTimeout(dealCleanup, Math.max(fx().dealMs, maxDealAnimMs) + 250);
     if (app.cfg.sound) {
       G.SEATS.forEach((s, i) => setTimeout(() => { try { sound.dealTick(); } catch (e) {} }, i * 120));   // 軽めのclackを席ごとに4回(32連打はしない)
     }
@@ -10520,12 +10590,12 @@ if (typeof document !== "undefined") (() => {
     const info = kessenCheck();
     if (!info) return;
     // SR通知は表示ゲートに関わらず常時(min時も含む)。視覚表示だけがfx().count===0でスキップされる。
-    announce(`決着がかかった局です。南北はあと${info.remNS}点、東西はあと${info.remEW}点。`);
+    announce(`決着がかかった局です。${teamDisp("NS")}はあと${info.remNS}点、${teamDisp("EW")}はあと${info.remEW}点。`);   // F-2(v90.2)
     if (fx().count === 0) return;
     const el = $("kessen"); if (!el) return;
     const subParts = [];
-    if (info.nsIn) subParts.push(`南北 あと${info.remNS}点`);
-    if (info.ewIn) subParts.push(`東西 あと${info.remEW}点`);
+    if (info.nsIn) subParts.push(`${teamDisp("NS")} あと${info.remNS}点`);
+    if (info.ewIn) subParts.push(`${teamDisp("EW")} あと${info.remEW}点`);
     $("kessen-sub").textContent = subParts.join("／");
     el.classList.remove("show"); void el.offsetWidth; el.classList.add("show");   // 連続する決着局でも毎回再生(retrigger)
     clearTimeout(app._kessenT);
@@ -10740,17 +10810,17 @@ if (typeof document !== "undefined") (() => {
     const st = app.st;
     if (!st) return "対局はまだ始まっていません。";
     const hs = app.humanSeat, parts = [];
-    parts.push(`親は${SEAT_JA[st.parent]}`);
+    parts.push(`親は${seatDisp(st.parent)}`);
     if (st.phase === "over") parts.push("この局は終了");
-    else parts.push(`手番は${SEAT_JA[st.actor]}${isHuman(st.actor) ? "（あなた）" : ""}`);
+    else parts.push(`手番は${seatDisp(st.actor)}`);
     if (st.pendingAttack && st.attacker != null)
-      parts.push(`${SEAT_JA[st.attacker]}が${st.pendingAttack}で攻め、受け待ち`);
+      parts.push(`${seatDisp(st.attacker)}が${st.pendingAttack}で攻め、受け待ち`);
     if (hs) {
       const my = G.team(hs) === "NS" ? app.scores.NS : app.scores.EW;
       const op = G.team(hs) === "NS" ? app.scores.EW : app.scores.NS;
       parts.push(`点数 あなた組${my} 対 相手組${op}（${app.cfg.target}先取）`);
     } else parts.push(`点数 南北${app.scores.NS} 対 東西${app.scores.EW}`);
-    parts.push("残り " + G.SEATS.map(s => SEAT_JA[s] + st.hands[s].length).join("・"));
+    parts.push("残り " + G.SEATS.map(s => seatDisp(s) + st.hands[s].length).join("・"));
     if (detail) {
       for (const s of G.SEATS) {
         const seg = [];
@@ -10760,7 +10830,7 @@ if (typeof document !== "undefined") (() => {
         }
         const buries = st.board[s].filter(c => c.def && c.def.type === "bury").length;
         if (buries) seg.push("伏" + buries);
-        if (seg.length) parts.push(`${SEAT_JA[s]}の場 ${seg.join("・")}`);
+        if (seg.length) parts.push(`${seatDisp(s)}の場 ${seg.join("・")}`);
       }
       if (hs && st.hands[hs]) parts.push("あなたの手駒 " + st.hands[hs].slice().sort(byPts).join("・"));
     }
@@ -10820,7 +10890,6 @@ if (typeof document !== "undefined") (() => {
   const COUNT_ORDER = ["王", "飛", "角", "金", "銀", "馬", "香", "し"];
   const BELIEF_LABEL = {A: "数え上げ（一様事前・厳密）", B: "MC 伏せ事前 K160", C: "MC 伏せ事前+「なし」尤度 λ0.2 K256"};
   const BELIEF_LABEL_SHORT = {A: "数え上げ（厳密）", B: "MC K160", C: "MC+行動 K256"};
-  const SEAT_REL = {N: "相方 北", W: "西", E: "東"};
 
   /* ===== 定石レジストリ（§1共有基盤 + (b)カタログをマージ・25定石/9用語） ===== */
   // 各エントリ: name/sum/send/recv/when/cnt/detail  出典: 保存会「ごいた入門」/大会優勝者まとめ/Wikipedia
@@ -11073,7 +11142,9 @@ if (typeof document !== "undefined") (() => {
     "どろ": "150対0の完封。",
     "かかる": "自分の持つ駒を、もう1人の味方も持っている状態。",
     "切る": "同駒が無い時、代わりに王を出すこと（王は飛角金銀馬の代わり）。",
-    "相談": "し5枚を手にした時、取り直すか続けるか協議すること（続行可否のみ発言）。"
+    "相談": "し5枚を手にした時、取り直すか続けるか協議すること（続行可否のみ発言）。",
+    "下家": "自分の次に手番が回る、右隣の敵（画面右）。",   // F-2(v90.2)
+    "上家": "自分の前に手番を持つ、左隣の敵（画面左）。"    // F-2(v90.2)
   };
   // T6(v72): 用語集(GLOSSARY)の語をプレーンテキスト中で見つけたら軽量ポップオーバー用チップへ変換する。
   // linkifyJoseki(定石名→フルモーダル)とは別に、こちらはツールチップ的な軽い表示に留め文脈を壊さない。
@@ -11196,12 +11267,12 @@ if (typeof document !== "undefined") (() => {
   };
   function showJosekiExample(key) {
     const j = JOSEKI[key], jx = JK_EXTRA[key]; if (!j || !jx || !jx.deal) return;
-    const nm = {S:"あなた(南)", N:"相方(北)", E:"東(敵)", W:"西(敵)"};
+    const nm = function(se){ return se === "S" ? "あなた" : seatDisp(se); };   // F-2(v90.2): 席名をseatDisp()に統一
     const rows = ["S","N","E","W"].map(function(se){
-      return '<div class="jk-ex-row"><span class="jk-ex-seat">'+nm[se]+'</span><span class="jk-ex-hand">'+jx.deal[se].join(" ")+'</span></div>';
+      return '<div class="jk-ex-row"><span class="jk-ex-seat">'+nm(se)+'</span><span class="jk-ex-hand">'+jx.deal[se].join(" ")+'</span></div>';
     }).join("");
     modal('<h2 class="serif">例: '+j.name+'</h2>'+
-      '<p class="note">配牌（親＝'+nm[jx.parent||"S"]+'）</p>'+
+      '<p class="note">配牌（親＝'+nm(jx.parent||"S")+'）</p>'+
       '<div class="jk-ex">'+rows+'</div>'+
       '<div class="jk-grid"><div><b>この局面の狙い</b><div>'+(j.send||j.recv||"")+'</div></div>'+
       '<div><b>相方の応じ方</b><div>'+(j.recv||"—")+'</div></div></div>'+
@@ -11267,7 +11338,7 @@ if (typeof document !== "undefined") (() => {
       COUNT_ORDER.map(k => `<th${k === "王" ? ' class="ou"' : ""}>${k}</th>`).join("") + `</tr>`;
     const rows = ["N", "W", "E"].map(p => {
       const pp = b.players[p];
-      return `<tr><td class="pl">${SEAT_REL[p]}<span style="color:var(--gin-d)">${pp.n}</span></td>` +
+      return `<tr><td class="pl">${seatDisp(p)}<span style="color:var(--gin-d)">${pp.n}</span></td>` +   // F-2(v90.2): 信念テーブルの席名もseatDisp()に統一
         COUNT_ORDER.map(k => {
           const v = pp.probs[k];
           const bg = `background:rgba(116,176,161,${(v * 0.5).toFixed(2)})`;
@@ -11291,8 +11362,8 @@ if (typeof document !== "undefined") (() => {
         '<div class="lb-cap"><span class="ns"></span><span class="hint">この局の勝率（自視点推定）</span><span class="ew"></span></div>';
     }
     bar.querySelector(".lb-ns").style.width = nsPct + "%";
-    bar.querySelector(".lb-cap .ns").textContent = "南北 " + nsPct + "%";
-    bar.querySelector(".lb-cap .ew").textContent = "東西 " + (100 - nsPct) + "%";
+    bar.querySelector(".lb-cap .ns").textContent = teamDisp("NS") + " " + nsPct + "%";
+    bar.querySelector(".lb-cap .ew").textContent = teamDisp("EW") + " " + (100 - nsPct) + "%";
   }
   function updateLiveBar() {
     const bar = $("equity-bar"); if (!bar) return;
@@ -12276,14 +12347,14 @@ if (typeof document !== "undefined") (() => {
     const hideKoma = a.type === "bury" && !isHuman(seat) && app.st.phase !== "over";
     const kStr = a.koma ? `「${a.koma}」` : "";
     const tStr = thinkMs != null ? `（${(thinkMs / 1000).toFixed(1)}秒）` : "";
-    log(`${SEAT_JA[seat]}: ${ACT_JA[a.type]}${hideKoma ? "" : kStr}${tStr}`);
+    log(`${seatDisp(seat)}: ${ACT_JA[a.type]}${hideKoma ? "" : kStr}${tStr}`);
     // SR実況: 「西が香で攻め」など(伏せ札は駒名を伏せる)。読み上げ詳細度設定(A6・v71)で粒度を調整:
     // 「要所のみ」は自分の操作結果だけ読み上げ(相手の毎手は省略)、「標準」は全手読み上げ(既定・従来動作)、
     // 「詳しく」は全手+AIの根拠(app.cfg.explain時)も添える。手番開始・上がり等の要所通知は設定に関わらず常時読み上げる。
     const spokenK = (a.koma && !hideKoma) ? a.koma + "で" : "";
     const srV = app.cfg.srVerbosity || "normal";
     if (srV !== "key" || isHuman(seat)) {
-      let srMsg = `${SEAT_JA[seat]}が${spokenK}${ACT_JA[a.type]}`;
+      let srMsg = `${seatDisp(seat)}が${spokenK}${ACT_JA[a.type]}`;
       if (srV === "detail" && !isHuman(seat) && app.cfg.explain && a.why) srMsg += `。${a.why}`;
       announce(srMsg);
     }
@@ -12362,7 +12433,7 @@ if (typeof document !== "undefined") (() => {
     if (isHuman(actor)) { humanTurn(); return; }
     setMyTurn(false);
     renderHandTray(null);   // 相手手番中は手駒を非対話に。打った駒の居残りタップを物理的に無くす
-    status(`${SEAT_JA[actor]}（${TIER_LABEL[app.tiers[actor]]}）が考えています…`);
+    status(`${seatDisp(actor)}（${TIER_LABEL[app.tiers[actor]]}）が考えています…`);
     const tempo = aiTempo(app.st, actor);                 // 局面の難度から「間」を決める
     const card = cardOf[actor], th = card.querySelector("[data-think]");
     if (th) th.textContent = "";   // 名札の思考テキストは廃止(盤上の香煙オーバーレイへ移行)
@@ -12447,7 +12518,7 @@ if (typeof document !== "undefined") (() => {
       renderHandTray("pick", (_twr && _twr.type === "receive" && _twr.koma) ? (k => k === _twr.koma && lr.includes(k)) : (k => lr.includes(k)));
       const _uncut = app.cfg.hints && G.UNCUTTABLE.has(atk) && st.hands[me].includes("王");
       actionbar(
-        `${SEAT_JA[st.attacker]}の「${atk}」${isPartner && app.cfg.hints ? "（味方の攻め）" : ""}${_uncut ? "　※王では切れません（同じ駒でのみ受け可）" : ""}`,
+        `${seatDisp(st.attacker)}の「${atk}」${isPartner && app.cfg.hints ? "（味方の攻め）" : ""}${_uncut ? "　※王では切れません（同じ駒でのみ受け可）" : ""}`,
         (app.tutorial && app.tutorial.awaiting) ? [] : [{label: "なし", fn: () => {
           const ms = Math.round(performance.now() - app.turnT0);
           actionbar(""); $("hand-hint").textContent = "";
@@ -12553,8 +12624,8 @@ if (typeof document !== "undefined") (() => {
       app.rec = {gameNo: app.gameNo, parent: app.parent,
                  initialHands: {N: hands.N.slice(), W: hands.W.slice(), S: hands.S.slice(), E: hands.E.slice()},
                  scoresBefore: {NS: app.scores.NS, EW: app.scores.EW}, moves: []};
-      log(`―― 第${app.gameNo}局（親: ${SEAT_JA[app.parent]}）――`, true);
-      kifu(`―― 第${app.gameNo}局 親:${SEAT_JA[app.parent]} ――`);
+      log(`―― 第${app.gameNo}局（親: ${seatDisp(app.parent)}）――`, true);
+      kifu(`―― 第${app.gameNo}局 親:${SEAT_JA[app.parent]} ――`);   // F-2(v90.2): kifu(棋譜)系は方位名のまま不変
       for (const s of G.SEATS) kifu(`配牌 ${SEAT_JA[s]}: ${hands[s].join("")}`);
       declareGoshi(hands);
       actionbar("");
@@ -12571,7 +12642,7 @@ if (typeof document !== "undefined") (() => {
     const hand = hands[app.humanSeat].slice().sort(byPts);
     const m = modal(`
       <h2 class="serif">五し — 相談</h2>
-      <p>${SEAT_JA[req.holder]}（相方）が「し」を5枚持っています。公式ルールでは<strong>あなたが自分の手駒だけを見て</strong>、続行か配り直しかを決めます。</p>
+      <p>${seatDisp(req.holder)}が「し」を5枚持っています。公式ルールでは<strong>あなたが自分の手駒だけを見て</strong>、続行か配り直しかを決めます。</p>
       <div class="handprev">${hand.map(k => `<span class="koma mini">${k}</span>`).join("")}</div>
       ${req.enemyAlso ? `<p class="note">相手組にも5し保持者がいます。両組の相方がともに望んだ場合のみ配り直しです。</p>` : ""}
       ${app.cfg.hints ? `<p class="note">参考（AI検証値）— 続行が有利な型: ①王2枚＋飛飛/角角/4枚組（+44pt） ②し4枚（+20pt） ③し3枚＋王2枚（+24pt）。それ以外は配り直し優位（−19pt）。</p>` : ""}
@@ -12592,7 +12663,7 @@ if (typeof document !== "undefined") (() => {
         app.rec = {gameNo: app.gameNo, parent: app.parent,
                    initialHands: {N: hands.N.slice(), W: hands.W.slice(), S: hands.S.slice(), E: hands.E.slice()},
                    scoresBefore: {NS: app.scores.NS, EW: app.scores.EW}, moves: []};
-        log(`―― 第${app.gameNo}局（親: ${SEAT_JA[app.parent]}）――`, true);
+        log(`―― 第${app.gameNo}局（親: ${seatDisp(app.parent)}）――`, true);
         declareGoshi(hands);
         dealAnimStart();   // C-1(v89c): 五し続行時も局開始の所作を発火
         scheduleKessen();   // C-3(v89c): 五し続行時も決着局の宣言を発火
@@ -12698,11 +12769,11 @@ if (typeof document !== "undefined") (() => {
   function showYakuSplash(sp, opts) {
     const el = $("yaku-splash"); if (!el || !sp) return;
     const fxv = fx(opts);   // B-3(v89c): 演出量プリセット(demo再生時はopts.fxOverride="full")
-    const seatJa = SEAT_JA[sp.seat] || sp.seat || "";
-    const teamJa = sp.team === "NS" ? "南北" : "東西";
+    const seatJa = seatDisp(sp.seat) || sp.seat || "";
+    const teamJa = teamDisp(sp.team);   // F-2修正(REVIEW_REPORT_v90.2.md Must-fix 1): 南北/東西の旧表記残存を解消。onSpecialYaku()と同じteamDispに統一
     const name = (sp.reason || "手役").replace(new RegExp("^" + (sp.seat || "") + "の"), "").replace(/手役$/, "");
     const eSeat = $("ys-seat"), eName = $("ys-name"), ePts = $("ys-pts");
-    if (eSeat) { eSeat.textContent = seatJa + "・" + teamJa + "組"; eSeat.className = "ys-seat " + (sp.team === "NS" ? "ns" : "ew"); }
+    if (eSeat) { eSeat.textContent = seatJa + "・" + teamJa + (app.humanSeat ? "" : "組"); eSeat.className = "ys-seat " + (sp.team === "NS" ? "ns" : "ew"); }   // teamDispは対局中「あなた組/相手組」で既に「組」を含むため、観戦時(方位名のまま)のみ「組」を付与
     if (eName) eName.textContent = name;
     const _win = sp.pts >= 9999;
     if (ePts) ePts.textContent = _win ? "即勝利" : sp.pts;
@@ -12716,7 +12787,7 @@ if (typeof document !== "undefined") (() => {
         if (_win) {
           const PARTNER = {N: "S", S: "N", W: "E", E: "W"};
           const p = PARTNER[sp.seat];
-          const row = (seat) => `<div class="ys-hand-row"><span class="ys-hand-seat">${SEAT_JA[seat] || seat}</span>${(sp.hands[seat] || []).map(chip).join("")}</div>`;
+          const row = (seat) => `<div class="ys-hand-row"><span class="ys-hand-seat">${seatDisp(seat) || seat}</span>${(sp.hands[seat] || []).map(chip).join("")}</div>`;
           eHand.innerHTML = row(sp.seat) + row(p);
         } else {
           eHand.innerHTML = `<div class="ys-hand-row">${sp.hands[sp.seat].map(chip).join("")}</div>`;
@@ -13141,7 +13212,7 @@ if (typeof document !== "undefined") (() => {
     const l1 = el.querySelector(".wc-label"), l2 = el.querySelector(".wc-sub"), lp = el.querySelector(".wc-pts-num");
     if (l1) l1.textContent = label;
     if (lp) lp.textContent = String(res.pts);   // D3(v75): 点数は大型表示へ(wc-subからは除去して二重表示を避ける)
-    let sub = (SEAT_JA[res.winner] || res.winner) + "・" + (res.koma || "");
+    let sub = (seatDisp(res.winner) || res.winner) + "・" + (res.koma || "");
     // N2(v71): あばれ祭の囃子詞を、noto ON時のみ・大きな上がりで稀に添える(実在の掛け声。出典: 日本遺産キリコ祭り公式サイト)
     // B-3(v89c): min(結果表示のみ)では囃子詞は添えない
     if (app.cfg.fxLen !== "min" && app.cfg.notoAccent !== false && Math.random() < 0.25) sub += "　― イヤサカヨッセ";
@@ -13170,9 +13241,7 @@ if (typeof document !== "undefined") (() => {
     app.rec = null;   // この局は手が指されないため対局記録なし
     app.scores[sp.team] += sp.pts;
     renderScores();
-    const teamJa = app.humanSeat
-      ? (sp.team === G.team(app.humanSeat) ? "あなた組" : "相手組")
-      : (sp.team === "NS" ? "南北組" : "東西組");
+    const teamJa = teamDisp(sp.team);   // F-2(v90.2): あなた組/相手組(または観戦時は南北/東西)に統一
     log(`―― 第${app.gameNo}局 配牌手役 ――`, true);
     log(`${sp.reason} ${sp.pts}点 → ${teamJa}`, true);
     kifu(`―― 第${app.gameNo}局 手役 ${sp.reason} ${sp.pts}点  [南北${app.scores.NS} 東西${app.scores.EW}] ――`);
@@ -13404,7 +13473,7 @@ if (typeof document !== "undefined") (() => {
       const mine = G.team(res.winner) === G.team(app.humanSeat);
       if (mine) { haptic("win"); if (app.cfg.sound) sound.win(); }
       else if (app.cfg.sound) sound.error();
-      announce(`${SEAT_JA[res.winner]}が${res.pts}点で上がり。${mine ? "あなたの勝ちです" : "相手の勝ちです"}`, true);
+      announce(`${seatDisp(res.winner)}が${res.pts}点で上がり。${mine ? "あなたの勝ちです" : "相手の勝ちです"}`, true);
     } else if (res.draw) {
       announce("引き分けです", true);
     }
@@ -13465,12 +13534,10 @@ if (typeof document !== "undefined") (() => {
     const t = G.team(res.winner);
     app.scores[t] += res.pts;
     renderScores();
-    const teamJa = app.humanSeat
-      ? (t === G.team(app.humanSeat) ? "あなた組" : "相手組")
-      : (t === "NS" ? "南北組" : "東西組");
+    const teamJa = teamDisp(t);   // F-2(v90.2): あなた組/相手組(または観戦時は南北/東西)に統一
     const agari = res.recvFinish ? "受け上がり" : "上がり";
-    log(`${SEAT_JA[res.winner]} ${agari}「${res.koma}」${res.dbl ? "（同駒2倍）" : ""} ${res.pts}点 → ${teamJa}`, true);
-    kifu(`${agari} ${SEAT_JA[res.winner]}「${res.koma}」${res.dbl ? "×2" : ""} ${res.pts}点  [南北${app.scores.NS} 東西${app.scores.EW}]`);
+    log(`${seatDisp(res.winner)} ${agari}「${res.koma}」${res.dbl ? "（同駒2倍）" : ""} ${res.pts}点 → ${teamJa}`, true);
+    kifu(`${agari} ${SEAT_JA[res.winner]}「${res.koma}」${res.dbl ? "×2" : ""} ${res.pts}点  [南北${app.scores.NS} 東西${app.scores.EW}]`);   // F-2(v90.2): kifuのスコア行は不変
     $("stamp").classList.remove("show");   // v55: 中央の朱丸(点数+上がり駒)は廃止
     // 悪手ツアー(v87): over/winSpecialをshowWinCut呼び出し前に確定(旧位置から移動)。
     // special時はwincutの_close後に遅延起動(既存opts.onCloseフローに1フック追加。showWinCut本体は無変更)
@@ -13503,7 +13570,7 @@ if (typeof document !== "undefined") (() => {
         }
       }
     }
-    status(`${SEAT_JA[res.winner]}が${res.pts}点で上がり。伏せ駒を公開中。`);
+    status(`${seatDisp(res.winner)}が${res.pts}点で上がり。伏せ駒を公開中。`);
     app.parent = res.winner;
     if (over) deleteMatchProgress(); else saveMatchProgress("between");   // A-1(v89b): マッチ決着時は保存を消す、継続時は局間で保存
     const reviewBtn = {label: "振り返り", fn: openReview};
@@ -13561,7 +13628,7 @@ if (typeof document !== "undefined") (() => {
     if (d && d.pastPin) { pastShowCompare(d); return; }   // R-1(v90d): 通常のverdict/btns構築を経由しない
     const youFinished = res.winner === app.humanSeat;
     log(res.draw ? "流局（練習・無得点）"
-      : `${SEAT_JA[res.winner]} ${res.recvFinish ? "受け上がり" : "上がり"}「${res.koma}」 ${res.pts}点（練習）`, true);
+      : `${seatDisp(res.winner)} ${res.recvFinish ? "受け上がり" : "上がり"}「${res.koma}」 ${res.pts}点（練習）`, true);
     // K3(v79): 上がり演出を実対局(onGameOver)と同じ最新パイプラインに統一。従来この分岐だけが
     // v55で実対局から廃止済みの朱丸スタンプを使い続けていた。流局のみ実対局と同型でスタンプ維持。
     // 得点は動かないため、得点系の演出(flyPoints・綱引きバー更新)は練習では呼ばない。
@@ -13618,9 +13685,10 @@ if (typeof document !== "undefined") (() => {
     // (既存app.puzzleStats={tried,solved}と同型の軽量カウンタ、連続日数等は一切持たない)。
     // 条件: 人間参加・最強AI(EW=strong)・150点以上先取の設定。
     if (app.humanSeat && app.tiers.W === "strong" && app.tiers.E === "strong" && app.cfg.target >= 150) tourWinRecord(!!youWin);   // app.tiersは席(N/W/S/E)キー。EWチームは両席がstrongであることで判定(修正: app.tiers.EWは存在しない)
+    const winTeam = nsWin ? "NS" : "EW";   // F-2(v90.2): teamDisp()はhumanSeat基準で自動的に「あなた組/相手組」化する
     const m = modal(`
-      <h2 class="serif">${youWin === null ? (nsWin ? "南北組の勝ち" : "東西組の勝ち") : (youWin ? "勝利 — あなた組の勝ち" : "敗北 — 相手組の勝ち")}</h2>
-      <p>最終得点　南北 ${app.scores.NS} ／ 東西 ${app.scores.EW}（第${app.gameNo}局まで）</p>
+      <h2 class="serif">${(youWin === null ? "" : (youWin ? "勝利 — " : "敗北 — ")) + teamDisp(winTeam) + "の勝ち"}</h2>
+      <p>最終得点　${teamDisp("NS")} ${app.scores.NS} ／ ${teamDisp("EW")} ${app.scores.EW}（第${app.gameNo}局まで）</p>
       ${app.coachHistory.length ? `<p class="note">コーチ推移（AI一致／読み切り逃し）: ` +
         app.coachHistory.map(c => `${c.hinted ? "推" : ""}第${c.g}局 ${c.agree}/${c.h}・逃し${c.miss}`).join(" → ") +
         `<br>一致は参考指標、「読み切り逃し」はSolver証明に基づく正解基準です。</p>` : ""}
@@ -13691,7 +13759,15 @@ if (typeof document !== "undefined") (() => {
     // し攻め宣言: 自分の最初の攻めが し = 強いし保有(し4枚以上)の合図。honest=し4枚以上。
     const firstAtk = !hist.some(function(h) { return h.seat === seat && h.act === "attack"; });
     if (firstAtk) {
-      const shiN = hand.filter(function(k) { return k === "し"; }).length;
+      // F-3(v90.2): 「宣言時保有」は攻め時点の手駒だけでなく、この局で自分が既に伏せたしも含める。
+      // し4枚→し伏せ→初手しで攻める、は伏せ同駒2倍(倍上がり)狙いの正規戦略形であり、伏せたしは
+      // 消えたのではなく「使用済みの保有」。監査は振り返り(全情報)なので自分の伏せ駒を数えてよい。
+      // st は rebuildState(rec, i) の「手番前」状態なので hand には攻め対象のしがまだ残っている
+      // (攻めに使うし自体の+1補正は不要)。
+      const buriedShi = (rec.moves || []).slice(0, i).filter(function(m) {
+        return m.seat === seat && m.action && m.action.type === "bury" && m.action.koma === "し";
+      }).length;
+      const shiN = hand.filter(function(k) { return k === "し"; }).length + buriedShi;
       const honest = shiN >= 4;
       const wasted = !honest && lost;   // 薄いし攻めで局を落とした(連携の空振り)
       let text;
@@ -13820,7 +13896,7 @@ if (typeof document !== "undefined") (() => {
     const Y = eq => padT + (1 - eq) * ih;
     const ci = app.review ? Math.max(0, Math.min(N, app.review.idx)) : N;
     let head = `<div class="gx-head"><span>形勢（この局の勝率・自視点推定）</span>`;
-    if (cur && cur[ci] != null) head += `<span class="ns">南北 ${Math.round(cur[ci] * 100)}%</span><span>/</span><span class="ew">東西 ${Math.round((1 - cur[ci]) * 100)}%</span>`;
+    if (cur && cur[ci] != null) head += `<span class="ns">${teamDisp("NS")} ${Math.round(cur[ci] * 100)}%</span><span>/</span><span class="ew">${teamDisp("EW")} ${Math.round((1 - cur[ci]) * 100)}%</span>`;
     else head += `<span>計算中…</span>`;
     head += `</div>`;
     let svg = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="形勢推移">`;
@@ -14331,7 +14407,7 @@ if (typeof document !== "undefined") (() => {
       }
       item.innerHTML =
         `<span class="no">${i + 1}</span>` +
-        `<span class="mv"><span class="${G.team(mv.seat) === "NS" ? "ns" : ""}">${SEAT_JA[mv.seat]}</span> ` +
+        `<span class="mv"><span class="${G.team(mv.seat) === "NS" ? "ns" : ""}">${seatDisp(mv.seat)}</span> ` +
         `${ACT_JA[mv.action.type]}${mv.action.koma ? "「" + mv.action.koma + "」" : ""}</span>` +
         `<span class="why">${why}${sigHtml(mv)}` +
         (($("rv-partner") && $("rv-partner").checked && mv.pvNote) ? `<span class="coach pv">👥 ${mv.pvNote}</span>` : "") +
@@ -14381,9 +14457,9 @@ if (typeof document !== "undefined") (() => {
       const probe = G.freshSolverProbe(st, st.actor, false);
       const a = probe ? {type: probe.move.type, koma: probe.move.koma}
                       : G.policyAction(st, st.actor, {mc: false, solver: true});
-      steps.push(`${SEAT_JA[st.actor]}${ACT_JA[a.type]}${a.koma || ""}`);
+      steps.push(`${seatDisp(st.actor)}${ACT_JA[a.type]}${a.koma || ""}`);
       const ev = G.advance(st, a);
-      if (ev.gameOver) { steps.push(`→ ${SEAT_JA[ev.gameOver.winner]}上がり${ev.gameOver.pts}点`); break; }
+      if (ev.gameOver) { steps.push(`→ ${seatDisp(ev.gameOver.winner)}上がり${ev.gameOver.pts}点`); break; }
     }
     mv.lineNote = "想定手順の一例（保証は任意の応手に対し成立）: " + steps.join(" ");
     renderReviewList();
@@ -14740,8 +14816,8 @@ if (typeof document !== "undefined") (() => {
     app.parent = G.SEATS[Math.floor(Math.random() * 4)];
     $("log").innerHTML = "";
     $("handarea").classList.toggle("show", !!app.humanSeat);
-    log(`新しい勝負（先取${app.cfg.target}点）— 最初の親: ${SEAT_JA[app.parent]}`, true);
-    kifu(`ごいた棋譜  先取${app.cfg.target}点  席: ${G.SEATS.map(s => SEAT_JA[s] + "=" + (isHuman(s) ? "人間" : TIER_LABEL[app.tiers[s]])).join(" ")}`);
+    log(`新しい勝負（先取${app.cfg.target}点）— 最初の親: ${seatDisp(app.parent)}`, true);
+    kifu(`ごいた棋譜  先取${app.cfg.target}点  席: ${G.SEATS.map(s => SEAT_JA[s] + "=" + (isHuman(s) ? "人間" : TIER_LABEL[app.tiers[s]])).join(" ")}`);   // F-2(v90.2): kifuヘッダは方位名のまま不変
     renderScores();
     startGame();
   }
@@ -14881,6 +14957,8 @@ if (typeof document !== "undefined") (() => {
       if (!app._dealAnimPending && !app._dealAnimUntil) return;
       document.body.classList.add("deal-done");
       app._dealAnimUntil = performance.now();
+      clearTimeout(app._dealCleanupT);
+      dealCleanup();   // F-1(v90.2): スキップ時も即時に後片付け(恒久上書きの発生源を同様に断つ)
     }); }
   // v90: 番札のリサイズ・回転追随。updateTurnTokenはrenderAll末尾のみから呼ぶ設計のため、ここでは
   // no-anim再配置フラグを立ててrenderAll()を再実行するに留める(直接updateTurnTokenは呼ばない)。
@@ -15036,13 +15114,13 @@ if (typeof document !== "undefined") (() => {
       tiers: {N: "naive", W: "naive", E: "naive"},
       steps: [
         {say: "ごいたへようこそ。能登・宇出津に伝わる、竹製の駒（竹駒）を使う4人対戦の伝承遊戯です。2人ずつ組んで相方と協力し、自分の手駒8枚を誰より早く打ち切ることを目指します。ルールを知らなくても大丈夫、一歩ずつ一緒に進めましょう。", mode: "next"},
-        {say: "盤面は卓を上から見た図です。手前の【南】があなた。正面の【北】が相方（味方）。左右の【東】【西】が相手チームです。味方は青、相手は紫で色分けしています。", spot: "#board", mode: "next"},
+        {say: "盤面は卓を上から見た図です。手前が【自分】。正面が【相方】（味方）。左右が【下家】【上家】という相手チームです。味方は青、相手は紫で色分けしています。", spot: "#board", mode: "next"},
         {say: "画面の一番下に並ぶ8枚が、あなたの手駒です。この8枚をすべて場に出し切れば「上がり」。相方と力を合わせて、先に打ち切るのが目標です。", spot: "#handarea", mode: "next"},
         {say: "手番が来たら、手駒から1枚を表向きに出します。これが「攻め」です。攻められた他の3人は、同じ駒を持っていれば「受け」、無ければ「なし」（パス）になります。", spot: "#stage", mode: "next"},
         {say: "大事なのは、受けた人が次の攻め手になること。受けは“守り”であると同時に、場の主導権を奪い返す手でもあります。", spot: "#stage", mode: "next"},
-        {say: "では実際の流れを見てみましょう。親（その局で最初に打つ人）の東が、まず要らない駒を1枚“伏せ”（裏向き・中身は秘密）に置き、続けて「角」で攻めます。", mode: "auto", auto: [{seat: "E", type: "bury", koma: "香"}, {seat: "E", type: "attack", koma: "角"}]},
-        {say: "北と西は「角」を持っていないので「なし」。あなた（南）は手駒に角があるので、同じ「角」で受けられます。見ていてください — 南が角で受けます。", mode: "auto", auto: [{seat: "N", type: "pass"}, {seat: "W", type: "pass"}, {seat: "S", type: "receive", koma: "角"}]},
-        {say: "受けた南が、次の手番になりました。これが基本のリズムです — 「攻め → 受け（または なし）→ 受けた人が次に攻め」の繰り返しで場が進みます。", mode: "next"},
+        {say: "では実際の流れを見てみましょう。親（その局で最初に打つ人）の下家が、まず要らない駒を1枚“伏せ”（裏向き・中身は秘密）に置き、続けて「角」で攻めます。", mode: "auto", auto: [{seat: "E", type: "bury", koma: "香"}, {seat: "E", type: "attack", koma: "角"}]},
+        {say: "相方と上家は「角」を持っていないので「なし」。あなたは手駒に角があるので、同じ「角」で受けられます。見ていてください — あなたが角で受けます。", mode: "auto", auto: [{seat: "N", type: "pass"}, {seat: "W", type: "pass"}, {seat: "S", type: "receive", koma: "角"}]},
+        {say: "受けたあなたが、次の手番になりました。これが基本のリズムです — 「攻め → 受け（または なし）→ 受けた人が次に攻め」の繰り返しで場が進みます。", mode: "next"},
         {say: "手駒を最後の1枚まで打ち切ると「上がり」。出した駒の点数がチームに入り、先に150点へ届いたチームの勝ちです。では次の巻で、実際にあなたの手で“受け”てみましょう。", mode: "next", finish: true},
             ],
     },
@@ -15050,7 +15128,7 @@ if (typeof document !== "undefined") (() => {
       title: "一の巻「受けの基本」", reveal: false, deal: TUT_DEAL, parent: "E",
       tiers: {N: "naive", W: "naive", E: "naive"},
       steps: [
-        {say: "東が「角」で攻めてきました。よく見てください。", mode: "auto", auto: [{seat: "E", type: "bury", koma: "香"}, {seat: "E", type: "attack", koma: "角"}, {seat: "N", type: "pass"}, {seat: "W", type: "pass"}]},
+        {say: "下家が「角」で攻めてきました。よく見てください。", mode: "auto", auto: [{seat: "E", type: "bury", koma: "香"}, {seat: "E", type: "attack", koma: "角"}, {seat: "N", type: "pass"}, {seat: "W", type: "pass"}]},
         {say: "同じ「角」で受けましょう。受けられる駒だけが光っています。手駒の「角」をタップしてください。", spot: "#handarea", mode: "await", await: {type: "receive", koma: "角"}},
         {say: "お見事！『攻めと同じ駒で受ける』のが基本です。受けたあなたが次の手番になります。これで一の巻は修了です。", mode: "next", finish: true},
       ],
@@ -15059,11 +15137,11 @@ if (typeof document !== "undefined") (() => {
       title: "二の巻「伏せて攻める」", reveal: false, deal: TUT_DEAL2, parent: "S",
       tiers: {N: "naive", W: "naive", E: "naive"},
       steps: [
-        {say: "今度はあなた（南）が親 — 最初の手番です。親はまず駒を1枚「伏せて」から「攻め」ます。", spot: "#handarea", mode: "next"},
+        {say: "今度はあなたが親 — 最初の手番です。親はまず駒を1枚「伏せて」から「攻め」ます。", spot: "#handarea", mode: "next"},
         {say: "「伏せ」は不要な駒を1枚、裏向きで場に出すこと。中身は相手に見えません。まず弱い「し」を伏せましょう。光った「し」をタップ。", spot: "#handarea", mode: "await", await: {type: "bury", koma: "し"}},
         {say: "伏せました（裏向き）。次は「攻め」。好きな駒を表向きに出して相手に挑みます。ここでは「金」で攻めましょう。", spot: "#stage", mode: "next"},
         {say: "光った「金」をタップして攻めてください。", spot: "#handarea", mode: "await", await: {type: "attack", koma: "金"}},
-        {say: "東が同じ「金」を持っていて受けました。受けた人が次の手番 — 主導権が東に移ります。", mode: "auto", auto: [{seat: "E", type: "receive", koma: "金"}]},
+        {say: "下家が同じ「金」を持っていて受けました。受けた人が次の手番 — 主導権が下家に移ります。", mode: "auto", auto: [{seat: "E", type: "receive", koma: "金"}]},
         {say: "これが「伏せて攻める」流れです。手番を持つ人が場をリードします。二の巻は修了です。", mode: "next", finish: true},
       ],
     },
@@ -15071,8 +15149,8 @@ if (typeof document !== "undefined") (() => {
       title: "三の巻「王と切れない駒」", reveal: false, deal: TUT_DEAL3, parent: "E",
       tiers: {N: "naive", W: "naive", E: "naive"},
       steps: [
-        {say: "受けの応用です。東が「飛」で攻めてきますが、あなたの手駒に「飛」はありません。（ちなみに、味方同士が王を1枚ずつ持つ配牌を「はりま王」と呼びます。）", spot: "#stage", mode: "next"},
-        {say: "見ていてください。東が伏せて「飛」で攻め、北と西は「なし」とします。", mode: "auto", auto: [{seat: "E", type: "bury", koma: "し"}, {seat: "E", type: "attack", koma: "飛"}, {seat: "N", type: "pass"}, {seat: "W", type: "pass"}]},
+        {say: "受けの応用です。下家が「飛」で攻めてきますが、あなたの手駒に「飛」はありません。（ちなみに、味方同士が王を1枚ずつ持つ配牌を「はりま王」と呼びます。）", spot: "#stage", mode: "next"},
+        {say: "見ていてください。下家が伏せて「飛」で攻め、相方と上家は「なし」とします。", mode: "auto", auto: [{seat: "E", type: "bury", koma: "し"}, {seat: "E", type: "attack", koma: "飛"}, {seat: "N", type: "pass"}, {seat: "W", type: "pass"}]},
         {say: "同じ駒が無くても「王」なら受けられます。王は万能の受け札。光った「王」をタップ。", spot: "#handarea", mode: "await", await: {type: "receive", koma: "王"}},
         {say: "お見事。ただし王にも例外。「香」と「し」だけは王でも受けられません（同じ駒でしか受けられない特別な駒で、この巻の題どおり“切れない駒”と呼びます）。", spot: "#stage", mode: "next"},
         {say: "受けは万能の王ですが、「攻め」には制限があります。王で攻められるのは「王を2枚持っているとき」か「場にすでに王が出ているとき」だけです。", spot: "#stage", mode: "next"},
@@ -15105,8 +15183,8 @@ if (typeof document !== "undefined") (() => {
       title: "応用一「五し」", reveal: true, deal: TUT_DEAL6, parent: "E",
       tiers: {N: "naive", W: "naive", E: "naive"},
       steps: [
-        {say: "ここからは応用編。まず特別ルール「五し（ごし）」です。配牌（＝配られた手駒）で同じ『し』が5枚来ることがあります。相方・北の手を見てください — し5枚ですね。（実戦では相方の手は見えませんが、説明のため表示しています）", spot: "#card-n", mode: "next"},
-        {say: "このとき「続行」か「配り直し」かを決めるのは、5しを持つ本人ではなく相方の“あなた”です。北の手は見ず、自分（南）の手駒だけを見て判断する — これが公式のやり方です。", spot: "#handarea", mode: "next"},
+        {say: "ここからは応用編。まず特別ルール「五し（ごし）」です。配牌（＝配られた手駒）で同じ『し』が5枚来ることがあります。相方の手を見てください — し5枚ですね。（実戦では相方の手は見えませんが、説明のため表示しています）", spot: "#card-n", mode: "next"},
+        {say: "このとき「続行」か「配り直し」かを決めるのは、5しを持つ本人ではなく相方の“あなた”です。相方の手は見ず、自分の手駒だけを見て判断する — これが公式のやり方です。", spot: "#handarea", mode: "next"},
         {say: "判断の目安は自分の手の強さ。強ければ続行（5しの相方と連携して攻めれば有利）、弱ければ配り直しが安全策です。両組に5しが出るなどの型もありますが、まずはこの原則を覚えましょう。", spot: "#handarea", mode: "next"},
         {say: "では実際に試してみましょう。『配り直す』は何度でも押せます — いろいろな自分の手を見比べてください。これだと思う手になったら『このまま続行して打つ』を選ぶと、5しの相方と一局打てます。", spot: "#handarea", mode: "goshiPlay"},
             ],
@@ -15126,11 +15204,11 @@ if (typeof document !== "undefined") (() => {
       tiers: {N: "naive", W: "naive", E: "naive"},
       steps: [
         {say: "中級編へようこそ。最初の定石（じょうせき＝決まった良い打ち方）は「かかり応え（かかりごたえ）」。味方が1巡目（手が一周する最初のひと回り）に攻めた駒で、相方のあなたも同じ駒で攻め返す — 協力の型です。", mode: "next"},
-        {say: "成立するのは金・銀・馬・香の“4枚ある駒”だけ（角・飛は2枚、王・しは別扱い）。今回は金で見ます。盤を見てください — 味方（南北）で金を3枚握り、相手の金は西の1枚だけです。", spot: "#board", mode: "next"},
+        {say: "成立するのは金・銀・馬・香の“4枚ある駒”だけ（角・飛は2枚、王・しは別扱い）。今回は金で見ます。盤を見てください — 味方（自分と相方）で金を3枚握り、相手の金は上家の1枚だけです。", spot: "#board", mode: "next"},
         {say: "ねらいはシンプル。金は全部で4枚。味方が次々と金を場に出して“枯らす”と、相手は金で受けられなくなり、最強の「王」を出すしかないか、「なし」に追い込まれます。", spot: "#stage", mode: "next"},
-        {say: "実演します。親の相方・北が、いらない駒を伏せて「金」で攻めます（＝かかり）。相手の西が金で受け、別の駒で攻め返し、場があなた（南）に回ってきます。よく見てください。", mode: "auto", auto: [{seat: "N", type: "bury", koma: "し"}, {seat: "N", type: "attack", koma: "金"}, {seat: "W", type: "receive", koma: "金"}, {seat: "W", type: "attack", koma: "銀"}, {seat: "S", type: "receive", koma: "銀"}]},
-        {say: "あなたの番です。北が見せた「金」に、あなたも金で攻め返しましょう — これが“応え”。光った「金」をタップしてください。", spot: "#handarea", mode: "await", await: {type: "attack", koma: "金"}},
-        {say: "見てください。相手（東）はもう金を持っていません。金で受けられず、最強の王を使って受けるしかありませんでした。味方で金を出し切り、相手を追い込んだ形です。", mode: "auto", auto: [{seat: "E", type: "receive", koma: "王"}]},
+        {say: "実演します。親の相方が、いらない駒を伏せて「金」で攻めます（＝かかり）。相手の上家が金で受け、別の駒で攻め返し、場があなたに回ってきます。よく見てください。", mode: "auto", auto: [{seat: "N", type: "bury", koma: "し"}, {seat: "N", type: "attack", koma: "金"}, {seat: "W", type: "receive", koma: "金"}, {seat: "W", type: "attack", koma: "銀"}, {seat: "S", type: "receive", koma: "銀"}]},
+        {say: "あなたの番です。相方が見せた「金」に、あなたも金で攻め返しましょう — これが“応え”。光った「金」をタップしてください。", spot: "#handarea", mode: "await", await: {type: "attack", koma: "金"}},
+        {say: "見てください。相手（下家）はもう金を持っていません。金で受けられず、最強の王を使って受けるしかありませんでした。味方で金を出し切り、相手を追い込んだ形です。", mode: "auto", auto: [{seat: "E", type: "receive", koma: "王"}]},
         {say: "これが「かかり応え」。4枚ある駒（金・銀・馬・香）で相方が攻めたら、自分も同じ駒で攻め返す。場に出して枯らし、相手を王／なしに追い込む — 協力プレイの基本定石です。", mode: "next", finish: true},
       ],
     },
@@ -15141,10 +15219,10 @@ if (typeof document !== "undefined") (() => {
         {say: "中級2つ目は「バラバラの合図」。前回の“かかり応え”の裏返しです。手駒に金銀馬香のペアが無い「バラバラの手」のとき、相方に『私はペアが無い』と伝える打ち方を学びます。", mode: "next"},
         {say: "あなたの手を見てください。金・銀・馬・香がどれも1枚ずつ＝ペア無しの「バラバラ手」。代わりに大駒の角・飛と、し を持っています。", spot: "#handarea", mode: "next"},
         {say: "まず“やってはいけない例”を見ます。1枚しかない金で攻めると、どうなるでしょう。よく見てください。", mode: "auto", pace: 360, auto: [{seat: "S", type: "bury", koma: "し"}, {seat: "S", type: "attack", koma: "金"}, {seat: "E", type: "pass"}, {seat: "N", type: "pass"}, {seat: "W", type: "pass"}]},
-        {say: "相手・東は金金王王を温存（強い駒をあえて出さず取っておくこと）して受けず、味方も乗れず空回り（伏せ直し）。やがて場が西経由で相方・北に渡ると…北は『南は金が2枚あるはず』と誤解し、かかり応えで金攻め。でも北の金も1枚きり。これも空回りです。", mode: "auto", pace: 360, auto: [{seat: "S", type: "bury", koma: "香"}, {seat: "S", type: "attack", koma: "角"}, {seat: "E", type: "pass"}, {seat: "N", type: "pass"}, {seat: "W", type: "receive", koma: "角"}, {seat: "W", type: "attack", koma: "銀"}, {seat: "S", type: "pass"}, {seat: "E", type: "pass"}, {seat: "N", type: "receive", koma: "銀"}, {seat: "N", type: "attack", koma: "金"}, {seat: "W", type: "pass"}, {seat: "S", type: "pass"}, {seat: "E", type: "pass"}]},
-        {say: "金は4枚すべて場に出尽くしました。金金王王を温存していた東に手番が渡り、誰にも受けられない金で独走を始めます…", mode: "auto", pace: 360, auto: [{seat: "N", type: "bury", koma: "し"}, {seat: "N", type: "attack", koma: "し"}, {seat: "W", type: "pass"}, {seat: "S", type: "pass"}, {seat: "E", type: "receive", koma: "し"}, {seat: "E", type: "attack", koma: "金"}, {seat: "N", type: "pass"}, {seat: "W", type: "pass"}, {seat: "S", type: "pass"}, {seat: "E", type: "bury", koma: "馬"}, {seat: "E", type: "attack", koma: "金"}, {seat: "N", type: "pass"}, {seat: "W", type: "pass"}, {seat: "S", type: "pass"}]},
-        {say: "止まりません。東は王の連打で一気に上がり…", mode: "auto", pace: 360, auto: [{seat: "E", type: "bury", koma: "香"}, {seat: "E", type: "attack", koma: "王"}, {seat: "N", type: "pass"}, {seat: "W", type: "pass"}, {seat: "S", type: "pass"}, {seat: "E", type: "bury", koma: "し"}, {seat: "E", type: "attack", koma: "王"}]},
-        {say: "東が王で50点上がり。あなたが1枚だけの金を不用意に打ったことが相方の誤読を生み、温存していた相手の独走を招きました。これが“バラバラ手で1枚の金銀馬香を打つ”危険です。", spot: "#card-e", mode: "next"},
+        {say: "相手・下家は金金王王を温存（強い駒をあえて出さず取っておくこと）して受けず、味方も乗れず空回り（伏せ直し）。やがて場が上家経由で相方に渡ると…相方は『あなたは金が2枚あるはず』と誤解し、かかり応えで金攻め。でも相方の金も1枚きり。これも空回りです。", mode: "auto", pace: 360, auto: [{seat: "S", type: "bury", koma: "香"}, {seat: "S", type: "attack", koma: "角"}, {seat: "E", type: "pass"}, {seat: "N", type: "pass"}, {seat: "W", type: "receive", koma: "角"}, {seat: "W", type: "attack", koma: "銀"}, {seat: "S", type: "pass"}, {seat: "E", type: "pass"}, {seat: "N", type: "receive", koma: "銀"}, {seat: "N", type: "attack", koma: "金"}, {seat: "W", type: "pass"}, {seat: "S", type: "pass"}, {seat: "E", type: "pass"}]},
+        {say: "金は4枚すべて場に出尽くしました。金金王王を温存していた下家に手番が渡り、誰にも受けられない金で独走を始めます…", mode: "auto", pace: 360, auto: [{seat: "N", type: "bury", koma: "し"}, {seat: "N", type: "attack", koma: "し"}, {seat: "W", type: "pass"}, {seat: "S", type: "pass"}, {seat: "E", type: "receive", koma: "し"}, {seat: "E", type: "attack", koma: "金"}, {seat: "N", type: "pass"}, {seat: "W", type: "pass"}, {seat: "S", type: "pass"}, {seat: "E", type: "bury", koma: "馬"}, {seat: "E", type: "attack", koma: "金"}, {seat: "N", type: "pass"}, {seat: "W", type: "pass"}, {seat: "S", type: "pass"}]},
+        {say: "止まりません。下家は王の連打で一気に上がり…", mode: "auto", pace: 360, auto: [{seat: "E", type: "bury", koma: "香"}, {seat: "E", type: "attack", koma: "王"}, {seat: "N", type: "pass"}, {seat: "W", type: "pass"}, {seat: "S", type: "pass"}, {seat: "E", type: "bury", koma: "し"}, {seat: "E", type: "attack", koma: "王"}]},
+        {say: "下家が王で50点上がり。あなたが1枚だけの金を不用意に打ったことが相方の誤読を生み、温存していた相手の独走を招きました。これが“バラバラ手で1枚の金銀馬香を打つ”危険です。", spot: "#card-e", mode: "next"},
         {say: "では正しい打ち方を。場面を最初に戻します。バラバラのときは大駒（角・飛）を打つのが合図。まず し を伏せます。", mode: "auto", reset: true, pace: 500, auto: [{seat: "S", type: "bury", koma: "し"}]},
         {say: "角で攻めて、相方に『ペア無し』を伝えましょう。光った「角」をタップ。", spot: "#handarea", mode: "await", await: {type: "attack", koma: "角"}},
         {say: "これで合図完了。角は金銀馬香ではないので、相方は“かかり応え”をしません。誤読を防げました。", mode: "next"},
@@ -15158,25 +15236,25 @@ if (typeof document !== "undefined") (() => {
       tiers: {N: "naive", W: "naive", E: "naive"},
       steps: [
         {say: "中級3つ目は「相方の攻めは受けない」。相方が攻めた駒は、たとえ自分が受けられても、原則は受けません。受けると味方の手番（主導権）を奪い、自分の駒も1枚減らして、敵を助けてしまうからです。", mode: "next"},
-        {say: "まず“受けて失敗する例”を見ます。あなたの手には銀があります。相方・北が銀で攻めてきたとき、つい同じ銀で受けたくなりますが…受けるとどうなるか、よく見てください。", spot: "#handarea", mode: "next"},
-        {say: "北が銀で攻め→あなたが銀で受けてしまいました。これで手番はあなたに移り、弱い手で攻めるしかありません。", mode: "auto", pace: 380, auto: [{seat: "N", type: "bury", koma: "し"}, {seat: "N", type: "attack", koma: "銀"}, {seat: "W", type: "pass"}, {seat: "S", type: "receive", koma: "銀"}]},
-        {say: "あなたが弱い駒で攻めると、温存していた東に手番が渡ります。場の銀はもう2枚出てしまい、残りの銀は東が握っています…", mode: "auto", pace: 380, auto: [{seat: "S", type: "attack", koma: "し"}, {seat: "E", type: "receive", koma: "し"}]},
-        {say: "東は銀銀王王を温存していました。場の銀は誰も受けられず、東が独走を始めます。", mode: "auto", pace: 360, auto: [{seat: "E", type: "attack", koma: "銀"}, {seat: "N", type: "pass"}, {seat: "W", type: "pass"}, {seat: "S", type: "pass"}, {seat: "E", type: "bury", koma: "馬"}, {seat: "E", type: "attack", koma: "銀"}, {seat: "N", type: "pass"}, {seat: "W", type: "pass"}, {seat: "S", type: "pass"}]},
-        {say: "止まりません。東は王の連打で50点上がり。あなたが相方の銀を受けたばかりに、手番と駒を失い、温存した敵の独走を招きました。", mode: "auto", pace: 360, auto: [{seat: "E", type: "bury", koma: "香"}, {seat: "E", type: "attack", koma: "王"}, {seat: "N", type: "pass"}, {seat: "W", type: "pass"}, {seat: "S", type: "pass"}, {seat: "E", type: "bury", koma: "し"}, {seat: "E", type: "attack", koma: "王"}]},
-        {say: "もしパスしていれば、東は銀を持っているので、北の銀を東が受けて銀を1枚消費したはず。あの銀銀王王の独走（50点上がり）は起きませんでした。受けたせいで東の銀を温存させてしまったのです。これが“相方の攻めは受けない”という原則です。", spot: "#card-e", mode: "next"},
+        {say: "まず“受けて失敗する例”を見ます。あなたの手には銀があります。相方が銀で攻めてきたとき、つい同じ銀で受けたくなりますが…受けるとどうなるか、よく見てください。", spot: "#handarea", mode: "next"},
+        {say: "相方が銀で攻め→あなたが銀で受けてしまいました。これで手番はあなたに移り、弱い手で攻めるしかありません。", mode: "auto", pace: 380, auto: [{seat: "N", type: "bury", koma: "し"}, {seat: "N", type: "attack", koma: "銀"}, {seat: "W", type: "pass"}, {seat: "S", type: "receive", koma: "銀"}]},
+        {say: "あなたが弱い駒で攻めると、温存していた下家に手番が渡ります。場の銀はもう2枚出てしまい、残りの銀は下家が握っています…", mode: "auto", pace: 380, auto: [{seat: "S", type: "attack", koma: "し"}, {seat: "E", type: "receive", koma: "し"}]},
+        {say: "下家は銀銀王王を温存していました。場の銀は誰も受けられず、下家が独走を始めます。", mode: "auto", pace: 360, auto: [{seat: "E", type: "attack", koma: "銀"}, {seat: "N", type: "pass"}, {seat: "W", type: "pass"}, {seat: "S", type: "pass"}, {seat: "E", type: "bury", koma: "馬"}, {seat: "E", type: "attack", koma: "銀"}, {seat: "N", type: "pass"}, {seat: "W", type: "pass"}, {seat: "S", type: "pass"}]},
+        {say: "止まりません。下家は王の連打で50点上がり。あなたが相方の銀を受けたばかりに、手番と駒を失い、温存した敵の独走を招きました。", mode: "auto", pace: 360, auto: [{seat: "E", type: "bury", koma: "香"}, {seat: "E", type: "attack", koma: "王"}, {seat: "N", type: "pass"}, {seat: "W", type: "pass"}, {seat: "S", type: "pass"}, {seat: "E", type: "bury", koma: "し"}, {seat: "E", type: "attack", koma: "王"}]},
+        {say: "もしパスしていれば、下家は銀を持っているので、相方の銀を下家が受けて銀を1枚消費したはず。あの銀銀王王の独走（50点上がり）は起きませんでした。受けたせいで下家の銀を温存させてしまったのです。これが“相方の攻めは受けない”という原則です。", spot: "#card-e", mode: "next"},
         {say: "ただし例外があります。1つ目は「受けて自分が確実に上がれる」とき。場面を変えて見てみましょう。今度はあなたの手に香が4枚あります。", loadDeal: TUT_DEAL_UKENAI2, spot: "#handarea", mode: "next"},
-        {say: "香は4枚すべてあなたの手にあり、しかも香は王でも切れません。つまり誰も受けられない＝出し切れば確実に上がれます。北が銀で攻めてきました。", mode: "auto", pace: 500, auto: [{seat: "N", type: "bury", koma: "し"}, {seat: "N", type: "attack", koma: "銀"}, {seat: "W", type: "pass"}]},
+        {say: "香は4枚すべてあなたの手にあり、しかも香は王でも切れません。つまり誰も受けられない＝出し切れば確実に上がれます。相方が銀で攻めてきました。", mode: "auto", pace: 500, auto: [{seat: "N", type: "bury", koma: "し"}, {seat: "N", type: "attack", koma: "銀"}, {seat: "W", type: "pass"}]},
         {say: "このときは例外的に受けてOK。手番を取りに行きましょう。光った「銀」をタップして受けてください。", spot: "#handarea", mode: "await", await: {type: "receive", koma: "銀"}},
         {say: "手番を取りました。あとは誰も受けられない香を出し切るだけ。まず「香」で攻めましょう。光った「香」をタップ。", spot: "#handarea", mode: "await", await: {type: "attack", koma: "香"}},
         {say: "あとは自動で見ます。香を次々に出し切って…あなたの上がりです！", mode: "auto", pace: 420, auto: [{seat: "E", type: "pass"}, {seat: "N", type: "pass"}, {seat: "W", type: "pass"}, {seat: "S", type: "bury", koma: "金"}, {seat: "S", type: "attack", koma: "香"}, {seat: "E", type: "pass"}, {seat: "N", type: "pass"}, {seat: "W", type: "pass"}, {seat: "S", type: "bury", koma: "馬"}, {seat: "S", type: "attack", koma: "香"}, {seat: "E", type: "pass"}, {seat: "N", type: "pass"}, {seat: "W", type: "pass"}, {seat: "S", type: "bury", koma: "し"}, {seat: "S", type: "attack", koma: "香"}]},
         {say: "これが例外1。普段は相方の攻めを受けませんが、受けて自分が確実に上がり切れるなら、手番を取りに行ってよいのです。", mode: "next"},
-        {say: "もう一つの例外を見ます。今度は終盤、何度か手が回った場面（3巡目あたり）の競り合い。あなたは南です。ここから少し長めに自動で進めます——細かい一手一手は追わなくて大丈夫。場に出ていく駒（特に香）だけ気にして見ていてください。要点はあとでまとめます。", loadDeal: TUT_DEAL_UKENAI3, loadParent: "W", mode: "auto", pace: 340, auto: [{seat: "W", type: "bury", koma: "王"}, {seat: "W", type: "attack", koma: "角"}, {seat: "S", type: "pass"}, {seat: "E", type: "receive", koma: "角"}, {seat: "E", type: "attack", koma: "金"}, {seat: "N", type: "receive", koma: "金"}, {seat: "N", type: "attack", koma: "し"}, {seat: "W", type: "receive", koma: "し"}, {seat: "W", type: "attack", koma: "金"}, {seat: "S", type: "receive", koma: "金"}, {seat: "S", type: "attack", koma: "香"}, {seat: "E", type: "pass"}, {seat: "N", type: "pass"}, {seat: "W", type: "pass"}]},
-        {say: "いま、あなた（南）は香を1枚、場に出しました（誰も受けられず場に残っています）。手元にはまだ香が1枚。さらに数手進めます。", mode: "auto", pace: 340, auto: [{seat: "S", type: "bury", koma: "銀"}, {seat: "S", type: "attack", koma: "馬"}, {seat: "E", type: "receive", koma: "馬"}, {seat: "E", type: "attack", koma: "銀"}, {seat: "N", type: "pass"}, {seat: "W", type: "pass"}, {seat: "S", type: "pass"}, {seat: "E", type: "bury", koma: "し"}, {seat: "E", type: "attack", koma: "銀"}, {seat: "N", type: "receive", koma: "王"}]},
-        {say: "相方・北に手番が回り、ここで初めて「香」で攻めました。西はパス。さあ、あなた（南）の番です。受けるか、パスか——その前に香を数えましょう。", spot: "#handarea", mode: "auto", pace: 640, auto: [{seat: "N", type: "attack", koma: "香"}, {seat: "W", type: "pass"}]},
-        {say: "香は全部で4枚。①あなたの手に1枚、②いま北が攻めた1枚、③序盤にあなたが場へ出した1枚——ここまでで3枚が見えています。残り1枚は誰の手に？　西はいまパスした＝西は香を持っていません（持っていれば、この競り合いで受けて上がろうとするはず）。しかも北は3巡目で初めて香を攻めた＝北の香も多くない。消去法で、上がり目前（あと1枚）の東が最後の香を握っている、と読めます。", spot: "#handarea", mode: "next"},
-        {say: "もしここでパスすると、東がこの香を受け、最後のしで上がってしまいます（相方・北からは東の香は見えませんが、数えたあなたには見える）。香は王でも切れず、止められるのは香を持つあなただけ。例外的に受けて止めましょう。光った「香」をタップ。", spot: "#handarea", mode: "await", await: {type: "receive", koma: "香"}},
-        {say: "東の上がりを阻止しました。続けて、東が持っていない駒で攻め返して主導権を握ります。あなたの「飛」は東（も西）も受けられません。光った「飛」をタップ。", spot: "#handarea", mode: "await", await: {type: "attack", koma: "飛"}},
-        {say: "東は飛を受けられず、あなたが主導権を奪い返しました。これが例外2——相方には見えなくても、自分に敵の上がりが読めるなら、相方の攻めを受けて止め、敵の持たない駒で攻め返すのです。", mode: "auto", pace: 440, auto: [{seat: "E", type: "pass"}, {seat: "N", type: "pass"}, {seat: "W", type: "pass"}]},
+        {say: "もう一つの例外を見ます。今度は終盤、何度か手が回った場面（3巡目あたり）の競り合い。ここから少し長めに自動で進めます——細かい一手一手は追わなくて大丈夫。場に出ていく駒（特に香）だけ気にして見ていてください。要点はあとでまとめます。", loadDeal: TUT_DEAL_UKENAI3, loadParent: "W", mode: "auto", pace: 340, auto: [{seat: "W", type: "bury", koma: "王"}, {seat: "W", type: "attack", koma: "角"}, {seat: "S", type: "pass"}, {seat: "E", type: "receive", koma: "角"}, {seat: "E", type: "attack", koma: "金"}, {seat: "N", type: "receive", koma: "金"}, {seat: "N", type: "attack", koma: "し"}, {seat: "W", type: "receive", koma: "し"}, {seat: "W", type: "attack", koma: "金"}, {seat: "S", type: "receive", koma: "金"}, {seat: "S", type: "attack", koma: "香"}, {seat: "E", type: "pass"}, {seat: "N", type: "pass"}, {seat: "W", type: "pass"}]},
+        {say: "いま、あなたは香を1枚、場に出しました（誰も受けられず場に残っています）。手元にはまだ香が1枚。さらに数手進めます。", mode: "auto", pace: 340, auto: [{seat: "S", type: "bury", koma: "銀"}, {seat: "S", type: "attack", koma: "馬"}, {seat: "E", type: "receive", koma: "馬"}, {seat: "E", type: "attack", koma: "銀"}, {seat: "N", type: "pass"}, {seat: "W", type: "pass"}, {seat: "S", type: "pass"}, {seat: "E", type: "bury", koma: "し"}, {seat: "E", type: "attack", koma: "銀"}, {seat: "N", type: "receive", koma: "王"}]},
+        {say: "相方に手番が回り、ここで初めて「香」で攻めました。上家はパス。さあ、あなたの番です。受けるか、パスか——その前に香を数えましょう。", spot: "#handarea", mode: "auto", pace: 640, auto: [{seat: "N", type: "attack", koma: "香"}, {seat: "W", type: "pass"}]},
+        {say: "香は全部で4枚。①あなたの手に1枚、②いま相方が攻めた1枚、③序盤にあなたが場へ出した1枚——ここまでで3枚が見えています。残り1枚は誰の手に？　上家はいまパスした＝上家は香を持っていません（持っていれば、この競り合いで受けて上がろうとするはず）。しかも相方は3巡目で初めて香を攻めた＝相方の香も多くない。消去法で、上がり目前（あと1枚）の下家が最後の香を握っている、と読めます。", spot: "#handarea", mode: "next"},
+        {say: "もしここでパスすると、下家がこの香を受け、最後のしで上がってしまいます（相方からは下家の香は見えませんが、数えたあなたには見える）。香は王でも切れず、止められるのは香を持つあなただけ。例外的に受けて止めましょう。光った「香」をタップ。", spot: "#handarea", mode: "await", await: {type: "receive", koma: "香"}},
+        {say: "下家の上がりを阻止しました。続けて、下家が持っていない駒で攻め返して主導権を握ります。あなたの「飛」は下家（も上家）も受けられません。光った「飛」をタップ。", spot: "#handarea", mode: "await", await: {type: "attack", koma: "飛"}},
+        {say: "下家は飛を受けられず、あなたが主導権を奪い返しました。これが例外2——相方には見えなくても、自分に敵の上がりが読めるなら、相方の攻めを受けて止め、敵の持たない駒で攻め返すのです。", mode: "auto", pace: 440, auto: [{seat: "E", type: "pass"}, {seat: "N", type: "pass"}, {seat: "W", type: "pass"}]},
         {say: "まとめ：相方の攻めは原則受けない（手番と駒を失い、温存した敵を助ける）。例外は2つだけ——①受けて自分が確実に上がれるとき、②敵の上がりが読めて、それを先に受けて止め、敵の持たない駒で攻め返すとき。この2つを見極めましょう。", mode: "next", finish: true},
       ],
     },
@@ -15188,10 +15266,10 @@ if (typeof document !== "undefined") (() => {
       tiers: {N: "naive", W: "naive", E: "naive"},
       steps: [
         {say: "中級「香の温存」。香は全部で4枚しかなく、しかも王でも受けられない特別な駒（前巻「王と切れない駒」の例外を思い出してください）。だからこそ、香を1枚しか持っていない時に不用意に出すのはもったいない——まず持っておく（温存）のが基本です。", mode: "next"},
-        {say: "ただし2枚以上ある時は別。あなた（南）の手駒を見てください。香を1枚持っていますね。盤の様子も見てみましょう。", spot: "#handarea", mode: "next"},
-        {say: "相方・北が、いらない駒を伏せて「香」で攻めます。香を2枚以上持っている時に序盤で香を出すのは『私は香を2枚以上持っている』という符丁（合図）です。西が唯一の香で受け、別の駒で攻め返し、場があなたに回ってきます。よく見てください。", spot: "#board", mode: "auto", auto: [{seat: "N", type: "bury", koma: "し"}, {seat: "N", type: "attack", koma: "香"}, {seat: "W", type: "receive", koma: "香"}, {seat: "W", type: "attack", koma: "銀"}, {seat: "S", type: "receive", koma: "銀"}]},
-        {say: "あなたの番です。北が見せた「香」の符丁に、あなたも香で応えましょう。光った「香」をタップしてください。", spot: "#handarea", mode: "await", await: {type: "attack", koma: "香"}},
-        {say: "だれも受けられません。西は先ほど唯一の香を使い切り、東はもともと香を持っていません。北はまだ香を1枚持っていますが、相方の攻めは原則受けない（中級「相方の攻めは受けない」で学んだ通り）ので応えません。4枚のうち3枚を味方で押さえ、相手を締め上げました。", mode: "auto", auto: [{seat: "E", type: "pass"}, {seat: "N", type: "pass"}, {seat: "W", type: "pass"}]},
+        {say: "ただし2枚以上ある時は別。あなたの手駒を見てください。香を1枚持っていますね。盤の様子も見てみましょう。", spot: "#handarea", mode: "next"},
+        {say: "相方が、いらない駒を伏せて「香」で攻めます。香を2枚以上持っている時に序盤で香を出すのは『私は香を2枚以上持っている』という符丁（合図）です。上家が唯一の香で受け、別の駒で攻め返し、場があなたに回ってきます。よく見てください。", spot: "#board", mode: "auto", auto: [{seat: "N", type: "bury", koma: "し"}, {seat: "N", type: "attack", koma: "香"}, {seat: "W", type: "receive", koma: "香"}, {seat: "W", type: "attack", koma: "銀"}, {seat: "S", type: "receive", koma: "銀"}]},
+        {say: "あなたの番です。相方が見せた「香」の符丁に、あなたも香で応えましょう。光った「香」をタップしてください。", spot: "#handarea", mode: "await", await: {type: "attack", koma: "香"}},
+        {say: "だれも受けられません。上家は先ほど唯一の香を使い切り、下家はもともと香を持っていません。相方はまだ香を1枚持っていますが、味方の攻めは受けない原則（中級「相方の攻めは受けない」で学んだ通り）で応えません。4枚のうち3枚を味方で押さえ、相手を締め上げました。", mode: "auto", auto: [{seat: "E", type: "pass"}, {seat: "N", type: "pass"}, {seat: "W", type: "pass"}]},
         {say: "これが香の温存と符丁です。1枚の香はむやみに出さず持っておく。2枚以上ある時だけ序盤に香で攻めて相方に伝え、相方が香を持っていれば応える——かかり応えの香版です。中級「香の温存」は修了です。", mode: "next", finish: true},
       ],
     },
@@ -15393,7 +15471,7 @@ if (typeof document !== "undefined") (() => {
     const t = app.tutorial; if (!t) return;
     const mine = res.winner && G.team(res.winner) === G.team(app.humanSeat);
     const rmsg = res.draw ? "引き分けでした。" : (mine ? `あなたのチームが「${res.koma}」${res.pts}点で上がりました！` : `相手チームが「${res.koma}」${res.pts}点で上がりました。`);
-    log((res.draw ? "流局" : `${SEAT_JA[res.winner]} 上がり「${res.koma}」${res.pts}点`) + "（実戦）", true);
+    log((res.draw ? "流局" : `${seatDisp(res.winner)} 上がり「${res.koma}」${res.pts}点`) + "（実戦）", true);
     const p = tutLoad(); p.cleared = Array.from(new Set([...(p.cleared || []), t.key])); tutSave(p);
     // T-4(v90a): 混ぜ稽古の一環なら専用の開示+連結UIへ(goshi/jissen等、自由対局へ移行するシナリオの完了経路)
     if (app._mixQueue && app._mixQueue.drills[app._mixQueue.idx] && app._mixQueue.drills[app._mixQueue.idx].tut === t.key) {
@@ -16415,7 +16493,7 @@ if (typeof document !== "undefined") (() => {
     if (band) { runPuzzleGen(band); return; }
     const m = modal(`
       <h2 class="serif">詰めごいた</h2>
-      <p>Solverが「確実な上がり」を証明する局面を自動生成して出題します。あなた（南）の手番から、読み切って上がってください。</p>
+      <p>Solverが「確実な上がり」を証明する局面を自動生成して出題します。あなたの手番から、読み切って上がってください。</p>
       <p class="note">正解判定はSolverの読み筋との一致。別の手を選んだ場合は結末（あなたが上がれたか）で判定します。練習扱いで、成績の一致率・逃しには影響しません。対局の途中で始めるとその局は破棄されます（得点は保たれます）。</p>
       <button class="btn pz" data-band="basic"><span><b>入門</b>　残り3〜4枚</span><span class="pzd">仕上げの短い読み — 詰めの感覚づくりに</span></button>
       <button class="btn pz" data-band="mid"><span><b>中級</b>　残り5枚</span><span class="pzd">攻め番からの読み切り — 取り尽くしの計算</span></button>
@@ -16645,7 +16723,7 @@ if (typeof document !== "undefined") (() => {
       <h2 class="serif">ごいたの遊び方</h2>
       <p class="note">ごいたは能登・宇出津に伝わる、<b>竹駒</b>（竹製の小さな駒）で打つ2対2の伝承遊戯です。トランプ等の札ではなく、将棋に似た駒を使います。</p>
       <ul>
-        <li>2対2の組戦。向かいの席が相方です。</li>
+        <li>2対2の組戦。向かいの席が相方、自分の次に手番が回る隣が下家、前に手番を持つ隣が上家です。</li>
         <li>親は駒を1枚<strong>伏せ</strong>てから1枚で<strong>攻め</strong>ます。</li>
         <li>攻められたら<strong>同じ駒</strong>か<strong>王</strong>（香・し・王は切れない）を手駒からクリックして受けるか、「なし」。受けた人がそのまま次の攻めをします。</li>
         <li>誰も受けなければ、攻めた人が伏せて攻め直します。</li>
@@ -16676,7 +16754,7 @@ if (typeof document !== "undefined") (() => {
       <p class="note"><b>逃し復習</b>（成績・結果画面から）は逃した局面を貯めて解き直す練習帳、
       <b>詰めごいた</b>（上部「詰め」）は確実に上がれる局面の自動出題です。どちらも練習扱いで得点・成績には影響しません。
       対局中の<b>推奨手</b>（調整でON）はAIの推奨手と理由を常時表示します。表示した実戦局は成績集計から除外され、練習中は表示されません。</p>
-      <p class="note"><b>推定グリッド</b>（調整でON）は「西が香を持つ確率80%」式のベイズ推定です。
+      <p class="note"><b>推定グリッド</b>（調整でON）は「上家が香を持つ確率80%」式のベイズ推定です。
       振り返り中は選んだ手の時点の推定に切り替わるので、「あの時点で王の在処はどこまで読めたか」を検証できます。
       数値は自分の視点情報だけから計算され、3方式（数え上げ／伏せ事前MC／+「なし」尤度）はいずれも数万件の較正検証済みです。</p>`);
     m.querySelector("#h-close").onclick = closeModal;
