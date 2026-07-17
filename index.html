@@ -4,6 +4,31 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>ごいた — 能登の伝承遊戯</title>
+  <!-- build: v93「掛け声・キリコ文字の演出強化」(Sonar指示・goita-dev-loopフェーズ2実装・
+       Fable5計画/Sonnet5実装。UI層(演出テキストのみ)の変更で、エンジン(G/G_B)・saveCareerToStorage/
+       loadCareerFromStorageには一切触れていない):
+       1) 掛け声(KOE、L13616付近)をSonar指定の6種
+       (＼イヤサカヨッソイ／・＼イヤサカヤッサイ／・＼イヤサカサッサ／・＼イヤサカサッサイ／・
+       ＼イヤサカヨッサイ／・＼イヤサカソッソイ／)へ置換し、毎回ランダムに選ぶ方式へ変更した。
+       選択機構はkirikoPickDaisho(L13359)と同型のFisher–YatesシャッフルヘルパーkoePick(n)を新設して
+       実装(重複なくn件選ぶ。プール6種・koeN最大4声のため1回の発火内で重複しない)。使用箇所は
+       固定の`KOE[ki % 2]`から`koePick(koeN)`の戻り配列`koeWords[ki]`へ変更した。旧コメント
+       「あばれ祭の掛け声(実在の掛け声。出典: 日本遺産キリコ祭り公式サイト)」は旧文言の出典記載であり、
+       新6種はSonar指定(v93)の創作文言であって同出典の引用ではないため、出典記載を除去し
+       その旨を明記する形にコメントを是正した(憲章§6・文化的正確性)。
+       2) キリコの大書KIRIKO_DAISHO(L13358)の末尾に「誠神宿」を追加し9種とした(Sonar指定)。
+       選択機構(kirikoPickDaisho・重複なし)は無変更。
+       3) sw.js CACHE_NAME: goita-v112→goita-v113。
+       検証: test_koe.jsを新仕様に更新(発火した全.kf-koeが新6種のいずれかであること・tier3=4声で
+       1回の発火内に重複がないこと・Math.randomスタブで選択が決定的に変わること・旧文言
+       「イヤサカヨッセ」がDOMに現れないことを機械証明)。test_v93_daisho.jsを新設し、
+       KIRIKO_DAISHOに「誠神宿」が含まれること・Math.randomスタブで実際にキリコSVGへ「誠神宿」が
+       描画されること・9種プールでも重複なし選択が壊れないことを確認。既存30テスト全PASS(計31本)。
+       byte-exact: v92c版とのフルテキストdiffでエンジン領域(G/G_B/saveCareerToStorage/
+       loadCareerFromStorage含む)に本コミットの差分が及んでいないことを確認。sha256的にも
+       G 173fd11d.../G_B 71169634...でv92c版と完全一致(不変)。saveCareerToStorage
+       e106b886.../loadCareerFromStorage f69e5289...は原本(GOITA_AI_package)と完全一致(不変)。
+       4 scriptブロックnode --check合格。指定の禁止語彙(11語彙+関連1語)の新規混入なし(grep 0件)。 -->
   <!-- build: v92c「エンジン対称化」(PLAN_v92_consistency.md・goita-dev-loopフェーズ2実装・
        Fable5計画/Sonnet5実装・サブコミットM-11〜M-13。本プロジェクトで初めて意図的にエンジン(G/G_B)
        へ触れるコミット。単独コミット・単独レビュー・全A/Bプロトコル適用):
@@ -13355,7 +13380,7 @@ if (typeof document !== "undefined") (() => {
     }
     app._kirikoSwayRAF = requestAnimationFrame(frame);
   }
-  var KIRIKO_DAISHO = ["氣如虹", "慶雲興", "不老門", "豊年萬", "無尽蔵", "彩雲飛", "意如鐵", "誠意明"];
+  var KIRIKO_DAISHO = ["氣如虹", "慶雲興", "不老門", "豊年萬", "無尽蔵", "彩雲飛", "意如鐵", "誠意明", "誠神宿"];   // N4(v93・Sonar指定): 末尾に「誠神宿」を追加(9種)。選択機構(kirikoPickDaisho・重複なし)は不変
   function kirikoPickDaisho(n){
     var pool = KIRIKO_DAISHO.slice();
     for (var i = pool.length - 1; i > 0; i--) {
@@ -13610,11 +13635,23 @@ if (typeof document !== "undefined") (() => {
     var positions = POS_BY_N[tier.n] || POS_BY_N[2];
     var words = kirikoPickDaisho(positions.length);   // C2(v74): 大書は毎回ランダム・重複なし
     var kirikoHtml = positions.map(function(pos, i){ return '<div class="kf-kiriko ' + pos + '"><div class="kf-sway">' + kirikoSVG(words[i]) + '</div></div>'; }).join("");   // D2(v84): 振り子回転用の内側ラッパ
-    // N2改(v90.4): あばれ祭の掛け声(実在の掛け声。出典: 日本遺産キリコ祭り公式サイト)。
-    // 旧N2(wincut文末に25%で付記)を廃止し、キリコ周辺に群衆の掛け声として浮かび上がらせる。
+    // N2改(v90.4): 掛け声演出。旧N2(wincut文末に25%で付記)を廃止し、キリコ周辺に群衆の掛け声として浮かび上がらせる。
     // ゲート(noto/tier/fx/reduced-motion)はkirikoBurn本体のガードを構造的に継承する(個別判定を持たない)。
-    var KOE = ["＼イヤサカヨッセ／", "＼サカヨッセ／"];
+    // N4(v93・Sonar指定): 掛け声本文を6種に刷新(Sonar指定・v93。旧文言「あばれ祭の掛け声(実在の掛け声。
+    //   出典: 日本遺産キリコ祭り公式サイト)」は本コミットで置き換えられたため、その出典記載は新文言には適用されない)。
+    //   koePick(n)はkirikoPickDaisho(L13359)と同型のFisher–Yatesシャッフル選択ヘルパー(重複なくn件選ぶ)。
+    //   プール6種・koeN最大4声のため1回の発火内で重複しない。
+    var KOE = ["＼イヤサカヨッソイ／", "＼イヤサカヤッサイ／", "＼イヤサカサッサ／", "＼イヤサカサッサイ／", "＼イヤサカヨッサイ／", "＼イヤサカソッソイ／"];
+    function koePick(n){
+      var pool = KOE.slice();
+      for (var i = pool.length - 1; i > 0; i--) {
+        var j = Math.floor(Math.random() * (i + 1));
+        var t = pool[i]; pool[i] = pool[j]; pool[j] = t;
+      }
+      return pool.slice(0, n);
+    }
     var koeN = tier.n === 2 ? 2 : tier.n === 4 ? 3 : 4;   // tier別 2/3/4声(飽和上限4=中央開放と煩雑回避)
+    var koeWords = koePick(koeN);   // N4(v93): 重複なしランダム選択(kirikoPickDaishoと同型)
     var koeHtml = "";
     for (var ki = 0; ki < koeN; ki++) {
       var kx = (ki % 2 === 0) ? (6 + Math.random() * 22) : (72 + Math.random() * 22);   // 左右列に交互配置・中央(点数/倍札)回避
@@ -13622,7 +13659,7 @@ if (typeof document !== "undefined") (() => {
       var kdl = (ki * 0.30 + Math.random() * 0.15).toFixed(2);                           // 約0.3s刻みのずらし=群衆感
       var ksc = (0.85 + Math.random() * 0.4).toFixed(2);
       koeHtml += '<div class="kf-koe" style="left:' + kx.toFixed(1) + '%;top:' + ky.toFixed(1) +
-                 '%;--ksc:' + ksc + ';animation-delay:' + kdl + 's">' + KOE[ki % 2] + '</div>';
+                 '%;--ksc:' + ksc + ';animation-delay:' + kdl + 's">' + koeWords[ki] + '</div>';
     }
     stage.innerHTML =
       '<div class="kf-blaze" style="--bx:' + tms[0].x + '%"></div>' +   // D2(v75): 地明かりの中心を主松明の位置に
