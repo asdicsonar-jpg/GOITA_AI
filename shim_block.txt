@@ -21,5 +21,27 @@
       showMatchEnd, scAllOff, buildTempoStats, tempoHtml,
       openJoseki, JOSEKI, WHY2JK,
       slimRecForStorage, TUT, CONCEPT2TUT, DRILLS,
+      // v91a(A-1〜A-5)テスト用に追加公開(tests/側コピーのみ・本番には非公開):
+      syncSetupFormFromCfg, stopToSetup, newMatch,
+      srsReviewStart, srsReviewNext, srsDue, today,
+      openPastSelf, pastMaybeAdd, PAST_STORAGE_KEY,
+      keikoDismissToday, keikoRenderCard, KEIKO_STORAGE_KEY,
+      // v92a(M-1〜M-9,M-14)テスト用に追加公開(tests/側コピーのみ・本番には非公開):
+      auditOppProfile, applyOppProfile, setOppProfileBoth, oppCountsMigrateBl, auditTblConformity,
+      buildConceptProfile, CONCEPTS, conceptOf, conceptMastery, conceptDiag,
+      srsAddPuzzle, srsReviewPuzzle, srsReviewShowDone, srsSaveStore, srsEvictionOrder,
+      advProbe, generatePuzzle, runPuzzleGen, openPuzzle, PUZZLE_BANDS,
+      startPractice, endPractice, onPracticeOver, ensureGameScreen,
+      clarityAnalyze, mcReevaluate, mcReviewSeed, MC_REVIEW_DETS, candidateRanking,
+      OUSIG_TRUST_READ, convTrustVal, lossOf, coachSummary, ensureAnalyzed,
+      // v91b/v91c(B-1〜B-4,C-1)テスト用に追加公開(tests/側コピーのみ・本番には非公開):
+      keikoProposeDue, keikoProposeGradCompute, keikoProposeGrad, keikoEvalGradAsync,
+      pastLoad, pastSave, pastDue, PAST_DUE_DAYS, pastShowCompare,
+      applyLadderPreset, LADDER_PRESETS, srsReviewJoseki, openUshitsuInfo,
+      initMatchResumeUI, toast,
+      // srsPersistGradedCardはv91bで新設した関数のため、旧バージョン(v91a/v92a等)のsrcとこのshimを
+      // 組み合わせてbeforeフィクスチャを作るテスト(例: test_v92b_coach_mc.js)がReferenceErrorに
+      // ならないよう、typeofガードで存在しない場合はundefinedにフォールバックする。
+      srsPersistGradedCard: (typeof srsPersistGradedCard !== "undefined" ? srsPersistGradedCard : undefined),
     };
   }

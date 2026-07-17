@@ -4,6 +4,300 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>ごいた — 能登の伝承遊戯</title>
+  <!-- build: v92c「エンジン対称化」(PLAN_v92_consistency.md・goita-dev-loopフェーズ2実装・
+       Fable5計画/Sonnet5実装・サブコミットM-11〜M-13。本プロジェクトで初めて意図的にエンジン(G/G_B)
+       へ触れるコミット。単独コミット・単独レビュー・全A/Bプロトコル適用):
+       M-11(G/G_B同一diff): 王合図の「読み手」3系統(detectOuSignals/partnerSignaledOu/
+       inferPartnerHoldingsのouCtx)に、送り手(attackChoice内「王持ち合図のし」の
+       !shiStarted(hist,seat) && !partnerSignaledShi(hist,seat)条件)と対称のし攻め文脈ガードを追加。
+       候補時点のhist接頭辞(hist.slice(0,i))に対してshiStarted/partnerSignaledShiを呼び、し攻めに
+       正当参加している手を王合図と誤読しないようにした(既存ヘルパーとの同値性はtest_symmetry.jsで
+       機械確認)。
+       M-12(G/G_B同一diff): 香のかかり文脈窓の対称化。(a)inferPartnerHoldingsのkakSet収集を
+       ac<=4→香のみac<=8。(b)firstAtkEvidenceのkc収集も同様にac<=8。(c)inferPartnerHoldingsの
+       香ペア読み(従来ac窓なし)にac<=8窓を追加。kakariGotae(香応え窓ac<=8)・detectSignal・
+       pairAttackEvidence(香≤8、既に一致)と全経路が揃った。
+       M-13(G_Bのみ。Gは不変): G_Bのattack Choiceの騙し香分岐を無条件に無効化(false&&ガード、
+       分岐は削除せずコメントで残す)。
+       【計画からの逸脱=Planner裁定】計画書は「COOP_SIGNAL有効時にスキップ」としていたが、実装前の
+       Planner裁定によりG_Bでは無条件に無効化する方式へ変更した。根拠: honestSignalFilter(G_B内)は
+       COOP_SIGNAL非依存で無条件適用されており、G_Bの設計上のアイデンティティは「常に正直」
+       (研究モードはB=honestをsetCoopSignal(false)で使う)。COOPゲートにすると研究モードの
+       symmetryが破れ「B=honestなのに騙し香を打つ」汚染が直らないため。
+       CACHE_NAME: v111→v112。
+       byte-exact(sha256、正準規約=素朴な波括弧深度抽出・IIFE呼び出しの")();"は含めない。
+       IMPLEMENTATION_REPORT_v90.3/v90.4以来の歴代規約): G 4270ee94...→9ee4302d... /
+       G_B 482d687b...→3108b5b8...(意図した差分のみ。diffで確認)。saveCareerToStorage
+       e106b886.../loadCareerFromStorage f69e5289...は不変(v91bc・原本と完全一致)。
+       [A/Bハーネス内部規約(tests/ab/engine_extract.js。文字列/コメント内波括弧を除外し
+       ")();"を含める独自トークナイザ。variants/*.jsの同定用): G 8649cc25...→173fd11d... /
+       G_B ff635450...→71169634...]詳細な全文sha256はIMPLEMENTATION_REPORT_v92c.mdの表を参照。
+       A/B検証: ソースレベルのエンジン変種(G_base/G_full/G_m11/G_m12・B_base/B_full)をtests/ab/で
+       構築し、mixed-engine head-to-head(paired standard error)で直接対戦。ランタイムフラグでの
+       gated A/Bは使用していない(「フラグ伝播の罠」対策)。結果はIMPLEMENTATION_REPORT_v92c.mdに記載。
+       検証: test_v92c_engine.js新設(M-11/M-12/M-13の機械証明・fail-before確認)・test_symmetry.js
+       拡張(王合図送り手⇔3読み手・kakariGotae⇔kakSetの対称性)・既存29テストの回帰・4 scriptブロック
+       node --check・saveCareerToStorage/loadCareerFromStorageのbyte-exact維持。 -->
+  <!-- build: v91c「通し稽古」(PLAN_v91_taikai_pipeline.md・goita-dev-loopフェーズ2実装・
+       Fable5計画/Sonnet5実装・サブコミットC-1のみ):
+       出場前チェックリストに「大会仕様で一局とおす」ボタンを新設し、卒業帳(G-3)→チェックリスト(D-2)→
+       実対局→tourWin記録(A-5)→チェックリスト更新、という送り出しの輪を1タップで閉じる。
+       C-1: openTourThroughConfirm()を新設。押すと確認モーダル1枚
+       (「150点先取・最強AI・全補助なしの大会仕様に設定を変えて対局を始めます。設定はこのあとも
+       大会仕様のままです。」+開始/やめるの2択)を出し、「開始」で既存applyLadderPreset("tournament")
+       をフォームへ適用(再利用・無改変)→closeModal()→enterGame(false)(内部でreadSetupを呼ぶ)。
+       設定は恒久的に大会仕様へ変わる(既存プリセットボタンと同じ意味論。裏での退避・復元はしない。
+       その旨を確認モーダルの文言で明示)。実装前にapplyLadderPresetの現物(LADDER_PRESETS.tournament:
+       EW="strong"・N="coop"・coach="off"・target=150・livebar/explain/tempo/riverseq=false)を確認し、
+       フォーム経由でreadSetupがこれを確実にapp.cfg/app.tiersへ反映することをtest_v91c_tour.jsの
+       (C-1-0)で機械証明した。
+       readinessChecklistHtml()の3項目の下に、未達項目に応じた次の一歩の事実1行
+       (「大会仕様の通し稽古で試せます。」。3項目とも達成済みなら表示しない・評価語/圧力表現/
+       禁止語彙なし)を追加。この行と「大会仕様で一局とおす」ボタンの挿入位置はv91b(B-2/B-3)で
+       磨き込んだreadinessChecklistHtml()と同一箇所のため、実装はv91bの変更と同一パスで行った
+       (「計画からの逸脱」参照)。
+       CACHE_NAME: v110→v111。
+       検証: 再現テスト先行(build/v92b/src/index.html=v91b/v91c着手前の承認版には
+       rc-tour-start/rts-go/rts-cancelのid・「大会仕様の通し稽古で試せます。」の文言のいずれも
+       存在しないことをgrepで確認≒fail-before相当。UI新設のため要素非存在の確認で代替)の
+       jsdom新規1本(test_v91c_tour.js: applyLadderPreset+readSetupの機械証明・ボタン/確認モーダルの
+       存在・「やめる」で無変化・「開始」でtiers/cfg/画面遷移が一括反映・恒久性(stopToSetup後も
+       維持)・次の一歩の行の出現/非出現/禁止語彙0件)・既存29本(v91bまでの28本+本ファイル)の
+       回帰全PASS・G/G_B/saveCareerToStorage/loadCareerFromStorageのbyte-exact(sha256)一致・
+       4 scriptブロックnode --check・axe-core 4テーマ(通し稽古ボタン・確認モーダルを含む新規UI6状態、
+       tests/axe_scan.js)で新規violationカテゴリ0件・禁止語彙11語+「サボ」0件(差分ベース全文grep)。 -->
+  <!-- build: v91b「接続」(PLAN_v91_taikai_pipeline.md・goita-dev-loopフェーズ2実装・
+       Fable5計画/Sonnet5実装・サブコミットB-1〜B-4):
+       v91aで修理した成長導線の分断解消・表示の磨き込み。
+       B-1(卒業体験の完全化): gradTrialStart成功時に事実toast「「◯◯」を外して、3局はかります。」を追加。
+       renderKeikoPanel/keikoRenderCardに「試し中（n/3局）」の状態表示を新設(既存#keiko-desc/
+       #keiko-diagを流用、色は--aoiのみ)。ボタンは「やめる」(gradTrialRevert相当)のみとし、
+       「今日はいい」は出さない(進行中の試行を当日抑制の対象にしない実装判断。理由:
+       試行中は他の稽古札提案と違い「見送ってよい提案」ではなく進行中の状態そのものであるため)。
+       gradOnGameFinishedの失敗分岐(従来無通知)にも成功時と対称のtoast
+       「3局での一致率はn%でした。次に設定へ戻ったとき選べます。」を追加。卒業帳のfailed_pending表示を
+       従来の「未使用」から「判定待ち」へ是正。稽古札の優先順位をfailed_pendingカードがSRS期日カード
+       より上位になるよう変更(判定待ちの宙吊りcfgを先に解消すべきため)。
+       B-2(テンポ計・チェックリスト項目3): 片側判定化(「snap側がslow側より10pt超低い場合のみ未達」
+       へ変更。従来はabs(snap-slow)の対称判定で速く打つ方が高精度な場合も不合格にしていた。
+       達成方向にのみ緩和・既達成者への影響なし)。項目3のsubに帯別不足の事実表示
+       (例:「20秒超の手があとn手で集計できます」)を追加。全帯ゼロ時、tempoHtml()と同じ案内文を
+       チェックリストにも表示。due札文言はreps>0(2回目以降の復習)のカードで「覚えた」ではなく
+       「前回解いた」基準に分岐(keikoProposeDueにallReviewedを追加)。
+       B-3(導線の相互接続): 卒業帳10/10到達文言に「出場前チェックリストで確かめられます」+
+       openReadinessChecklistを開くボタンを追加(G-3→D-2の連結)。openUshitsuInfoに支部一覧
+       https://goita.jp/ngps/ のリンクを追加し、出場前チェックリストへの参照を1行追加。逆に
+       チェックリスト末尾から宇出津モーダルを開ける導線(#rc-ushitsu-link)を追加(同じ「送り出し」
+       機能が2枚に分裂していた状態の解消)。支部都道府県列挙文(「保存会は東京・大阪・神奈川・長野・
+       宮城・金沢・埼玉・福岡など全国に支部を持ち…」)を「保存会は全国に支部を持ち…（支部一覧は
+       公式サイトへ）」へ丸めた(Sonar承認済み。憲章§6.1の既存規律をopenUshitsuInfoにも適用。
+       docs/DESIGN_CHARTER.md §6.1に是正実例として追記)。チェックリストの「卒業帳: n/10」行を
+       openCareerを開けるリンクへ変更(setup画面から卒業帳への入口が従来ゼロだった)。外部リンクは
+       新規にgoita.jp/ngps/(既存goita.jp/との2種)のみを追加し、新しい外部ドメインは増やしていない。
+       B-4(こまごまの整合修正): initMatchResumeUI()をstopToSetup()でも再評価(従来は起動時のみで、
+       セッション中の中断保存がresume-panelに反映されなかった)。today()をローカル日付化(従来の
+       toISOString().slice(0,10)はUTCで、JSTでは朝9時に日付が切り替わっていた)。addDays/daysBetweenは
+       YYYY-MM-DDラベルをUTCアンカーで純粋な暦計算するのみで実時刻(now)を参照しないため無改修のまま
+       一貫することを確認した(test_v91b_misc.jsで回帰確認)。保存データは同形式のため移行不要。
+       srsSaveStoreのフォールバック是正: `srsSaveStore(app._srsStore || srsLoad())`という従来の
+       呼び出しパターンは、app._srsStore未設定時にsrsLoad()が採点直後のcardオブジェクトを含まない
+       別インスタンスを返すと採点が保存されない防御欠陥だった(顕在化する経路は現状無いが直した)。
+       srsPersistGradedCard()ヘルパーを新設し、srsGrade適用済みのcardオブジェクトそのものが保存先
+       storeのcards配列に含まれることを保証する形に統一(3箇所)。
+       定石復習の未採点離脱: modal()にモーダルを閉じる直前の共通フック_modalOnCloseを新設し、
+       srsReviewJoseki()がEsc/背景クリック/「閉じる」ボタンいずれの経路で未採点のまま閉じられても
+       (grade()を経由しない限り)カードをキュー末尾へ回し「採点せずに閉じました。あとn問あります。」を
+       status表示するようにした。tut付き定石の「▶ 試す」ボタンは復習モーダルでは非表示にする
+       (押すと復習セッションが放棄されるため)。
+       「過去の自分」ピンの既読化: pastShowCompare()実行時にpin.comparedAt=today()を記録し、
+       pastDue()から除外する(削除はしない。従来は一度も消費されず件数表示が上限24まで単調増加していた)。
+       modal()にaria-labelledby自動接続を追加(本文先頭のh2があれば接続。全モーダル共通1箇所の修正で
+       v90bから持ち越しのaria-dialog-name違反=best-practiceタグを解消)。
+       【v91aレビューNice-to-have対応】ensureGameScreen()の呼び出しをsrsReviewStart冒頭から
+       srsReviewPuzzle側(probe成功後・startPractice直前)へ移した。定石のみのキューでは対局画面へ
+       切り替えない(フレッシュ起動直後に空の盤面が一瞬見える不具合の回避)。test_v91_srsscreen.jsの
+       ケース1を「main-screenへ切り替わらない」ことを断言する形に更新(詰めカード提示時に切り替わる
+       ことは引き続きケース2で断言)。
+       文言選定注記(禁止語彙検討): 定石復習未採点離脱のstatus文言は「あとn問残っています」ではなく
+       「あとn問あります」を採用した。既存コードの「残り」は駒枚数等の事実表現として正当に使われて
+       いる(例: 手駒残り枚数)が、稽古札・SRS復習文脈での「残り」は圧力表現に近づく余地があるため
+       (T-2コメント「『残り』枠の圧力表現は使わない」という既存の禁止事項に倣い)、本コミットの新規
+       追加文言では「残り」を一切使わず「あとn問あります」で統一した(禁止語彙リストの直接対象語では
+       ないが、憲章§5「情報の節度」の趣旨に沿った予防的選定)。
+       CACHE_NAME: v109→v110。
+       FIX(v91bc REVIEW Must-fix1): srsReviewJoseki()の_modalOnCloseが未採点離脱時にカードをキュー
+       末尾へpushしてsrsReviewNext()を即時呼び出していたため、キューが1枚(=そのcard自身)しか無い
+       場合は閉じた瞬間に同じモーダルが再表示され採点しない限り脱出できない不具合(複数枚でも閉じる
+       たびに次が開き続けた)をレビューで指摘され修正。srsReviewNext()を呼ばず復習セッションを中断
+       として終了し、app._srsQueueを空にする(cardはgrade()未実行のためdueのまま残り後日再提案され
+       る)。status文言を「採点せずに閉じました。あとn問は期日のままです。」に変更(CACHE_NAMEは
+       未配布のためv111のまま据え置き)。
+       検証: 再現テスト先行(build/v92b/src/index.html=v91b着手前の承認版には
+       grad_trial/判定待ち/前回解いた/rc-tour-start/rc-grad-link/grad-checklist-open/rc-ushitsu-link/
+       ui-checklist-link等のid・文言が一切存在しないことをgrepで確認(0件)≒fail-before相当。
+       UI追加系のため要素非存在の確認で代替。既存の全12テスト実行時、旧ensureGameScreen位置を前提と
+       するtest_v91_srsscreen.jsのケース1のみ実際にfailすることも確認した)のjsdom新規4本
+       (test_v91b_grad.js: toast2種・試し中カード・優先順位反転。test_v91b_tempo.js: 片側判定化・
+       境界値10pt・帯別不足文言・全帯ゼロ案内・due札reps分岐。test_v91b_links.js: 卒業帳⇄チェック
+       リスト⇄宇出津の相互到達を実クリックで確認。test_v91b_misc.js: resume-panel再評価・today()の
+       非UTC化をtoISOStringスパイで機械確認・srsSaveStoreフォールバックの実欠陥再現→是正確認・
+       定石未採点離脱のキュー回し/▶試す非表示/正常終了時の非誤発火・ピン既読化・aria-labelledby自動
+       接続)・既存test_v91_srsscreen.jsの更新(ensureGameScreen移動に伴うケース1の期待変更、詰め提示
+       時の切替は引き続き断言)・既存24本の回帰全PASS(計29本)・G/G_B/saveCareerToStorage/
+       loadCareerFromStorageのbyte-exact(sha256)一致・4 scriptブロックnode --check・
+       axe-core 4テーマ(試し中カードを含む新規UI状態、tests/axe_scan.js)で新規violationカテゴリ0件・
+       全ルールスキャンでaria-dialog-name違反が0件に解消したことをv92b基準との前後比較で確認・
+       禁止語彙11語+「サボ」0件(差分ベース全文grep)・「残り」の新規出現0件(差分ベース。上記文言
+       選定注記のとおり新規文言では意図的に不使用)。 -->
+  <!-- build: v92b「コーチ評価器のlive整合」(PLAN_v92_consistency.md・goita-dev-loopフェーズ2実装・
+       Fable5計画/Sonnet5実装・サブコミットM-10のみ。M-1〜M-9,M-14はv92a済・M-11〜M-13はv92c未着手):
+       computeCoach()(振り返りの「AIなら」評価)のpolicyAction呼び出しオプションを、実対局の最強AI
+       (tierOpts strong/coop・L10222-10230)と完全同一に変更(案1・計画書推奨案を採用)。
+       現象: 修正前は{mc:false, mcDets:16, ddDets:12, recvRisk:true, mcSeed:1000+i}固定で、コメントは
+       「実対局の最強AIと同じ信念加重MCで評価する」と主張しながら実装が伴っていなかった。エンジンの
+       受けMCゲート(o.mc必須。o.mc=falseだとmcDecideReceiveに入らずルール受けreceiveChoiceへ落ちる)
+       により、受け局面では画面の推奨手(adviceOpts・mc:true)や実対局AI(tierOpts strong/coop・
+       mc:true)と同じ手を人間が打っても、振り返りでは系統的にagree=falseになっていた。攻め局面でも
+       手駒4枚以下のMC評価(attackMC)がdets/seedの違いで選択を違える場合があった。
+       修正: フォールバック分岐のオプションを{mc:app.cfg.mc, solver:app.cfg.solver, mcDets:96,
+       mcSeed:rec.gameNo+1, attackMC:true, matchEq:true, dd:true, ddLimit:16, ddDets:16, wSample:true,
+       danger:true}(tierOpts strong/coopと完全同一)に変更。recvRiskはtierOptsに存在しないため外した
+       (adviceOpts側にのみ残る残差。下記「既知の懸念点」参照)。mcSeedはliveのapp.gameNo+1をrec.gameNo+1
+       で再現し、過去局のensureAnalyzed再解析でも決定的にした。
+       評価器バージョンタグcfv: computeCoach()が実際に1件以上の手を新規算出して完了した場合のみ
+       rec.cfv=2を設定(全手のcfが既存で新規計算が無い呼び出しはcfvを書き換えない — 旧評価器のcf値を
+       v2ラベルで誤表示しないため)。slimRecForStorageにcfvの透過を追加、career.push/coachHistory.push
+       のエントリにもcfvを含めた。集計側(卒業判定・テンポ計・チェックリスト・番付)の閾値・ロジックは
+       計画どおり変更せず、cfv混在(旧レコードはcfv無し/undefined)を許容する。
+       性能実測(本サーバ環境・jsdom): 人間手9〜11手の実対局相当局(全席tierOpts strong相当AIで自己
+       対戦・G.mulberry32/G.dealOnceで決定的に構築)3fixtureをそれぞれ7回計測(中央値採用)。
+       変更前(v92a)は0.4〜21.3ms、変更後(v92b)は0.2〜114.1ms(局面により、freshSolverProbeが解決
+       する手が多い局ほど新規MC評価が減り所要時間は小さい)。観測された最大値(約114ms、人間手10手の
+       局)にモバイル相当の安全係数(概ね5〜10倍を想定。低〜中位モバイル機はサーバ/デスクトップ比で
+       CPU律速JS処理が数倍遅いとされる一般的な目安)を掛けても0.6〜1.1秒程度で、計画の目安(追加2秒
+       以内)を十分な余裕をもって下回るため、案1(tierOpts strong完全同一)を確定し案3への後退は
+       行わなかった(実機計測ではない考察である旨はIMPLEMENTATION_REPORT_v92b.mdに明記)。
+       CACHE_NAME: v108→v109。
+       検証: 再現テスト先行(v92a版コピーでfail確認→v92b版でPASS確認)のjsdom新規2本
+       (test_v92b_coach_mc.js: G.mulberry32/G.dealOnceによるseed総当り探索で発見した受け局面2ケース・
+       攻め局面1ケース。いずれもfail-before/pass-after確認。test_v92b_cfv.js: cfvの設定条件・
+       slimRecForStorage往復・career/coachHistoryへの伝播・旧レコード(cfvなし)の非破壊読込)・
+       既存22本(f1/f2/f3/review_fixes/gotae/koe/real24/v91_trial/srsscreen/dismiss/research/tourwin/
+       v92_oppaudit/concept/srsadv/oppboth/shiuke/ousig_text/sigtruth/clarity/unverified/symmetry)の
+       回帰全PASS(既存テストの期待値変更は不要だった。理由: 既存テストでcomputeCoach()のフォール
+       バック分岐を実際に通るものが無かった — test_v92_unverified.jsはG.freshSolverProbeをスパイして
+       常に非null化・test_v92_clarity.jsはcomputeCoach自体を呼ばない等)・G/G_B/saveCareerToStorage/
+       loadCareerFromStorageのbyte-exact(sha256、原本一致)・4 scriptブロックnode --check・
+       計画書指定の禁止語彙リスト+俗語1語が新規追加分で0件。 -->
+  <!-- build: v92a「UI層の判定是正」(PLAN_v92_consistency.md・goita-dev-loopフェーズ2実装・
+       Fable5計画/Sonnet5実装・サブコミットM-1〜M-9,M-14。M-10はv92b・M-11〜M-13はv92cへ分割し
+       本サブコミットの範囲外):
+       共通テーマ: UI監査層(auditOppProfile/computeSignals/auditOuShiSignal/computeCoach/SRS/
+       MC振り返り)が、エンジン本体の読み・符丁規則・保有推定の意味論から局所的にずれていた9件+1件を、
+       エンジン側の既存規則に揃える形で是正。エンジン(G/G_B)・saveCareerToStorage/
+       loadCareerFromStorageは全項目とも無改変(byte-exact維持)。
+       M-1: auditOppProfile()の「騙し単騎率」(app.oppCounts.bl)に、auditTblConformity()と同型の
+       kak/selfAtk文脈追跡を追加し、(a)相方が先に同駒を攻めていた手(かかり応え文脈)・
+       (b)自席の同駒2打目、を除外。除外しないと、エンジン自身が推奨する正しい応え(kakariGotae)まで
+       「騙し単騎」に誤計上され、蓄積bluff率が相方AIのペア読みを狂わせていた。あわせて、既に
+       誤計上済みの蓄積値oppCounts.blを1回だけリセットする移行処理を追加(oppCountsMigrateBl・
+       blVバージョンフィールドで冪等化)。loadCareerFromStorage自体は不変条件のため、移行呼び出しは
+       その関数の外側(呼び出し直後)に置く。
+       FIX(REVIEW Must-fix1): (a)のkak収集を当初ac<=4窓で構築していたが、blのearly窓は香のみac<=8
+       であり、相方の香リードが攻め通し5〜7に来た場合(受け番が先行した局では普通に起こる)、その後の
+       人間のac<=8単騎香応えがkakに拾われず「騙し単騎」に誤計上され続ける不具合をレビューで指摘され
+       修正。kak収集を窓なし化(detectSignalのv90.3相方ガードと完全対称に、履歴全体で相方の同駒攻めの
+       有無を見る)。金銀馬はearly窓が元々ac<=4のため実効差はなく、香のac5〜8のみが実質的な変更点。
+       M-2/M-3: buildConceptProfile()のmv.sig/mv.cf集計を「sigがあればsig系のみ・else cfがあれば
+       cf系のみ」という誤った排他構造から、両者独立集計へ修正。cf.srcの判定も
+       `String(mv.cf.src).indexOf("solver")===0`という部分一致から`mv.cf.src==="solver"`の厳密一致へ
+       統一(⚠の正定義と揃える)。
+       M-4: SRSカードにband/stageをカード直下(payload外)へ保存し、有段(adv)stage1詰めの復習を
+       成立させる。有段stage1の出題条件は「G.freshSolverProbeが構造的にnullを返す局面」そのもの
+       (勘定だけで確実なら不合格)であり、復習側が同じfreshSolverProbeを呼んでnull=無言スキップと
+       していたため、stage1カードは決定的に毎回スキップされdueが更新されず永遠残留していた。
+       band="adv"&&stage=1のカードはadvProbeと同じ経路(凍結局面から敵実保有unseenEnemyを
+       再構成しG.puzzleTruthProbe)で正解手を取得し、判定を「上がり切り」(onPracticeOverの結末判定)
+       へ寄せる。band情報のない旧カード(v91a以前生成)はprobe=nullならその場で削除し件数を
+       1回だけ告知する(旧実装は無言スキップを繰り返すのみだった)。
+       M-5: setOppProfileBoth()を新設し、applyOppProfile()がG.setOppProfileと同時にG_B.setOppProfile
+       (app_honest)にも同じプロファイルを反映する(従来はGのみで、G_Bの相手プロファイルが常に初期値
+       のまま固定されていた)。
+       M-6: auditOuShiSignal()のし攻め宣言(firstAtk)のshiN計算に、F-3(v90.2)の伏せしburiedShiに加え、
+       自席が初攻め前に受けで消費したしreceivedShiを追加。し4枚→し受け→初攻めし、という正規戦略形が
+       「薄い宣言」に誤判定されていた(受けたしも消えたのではなく使用済みの保有。エンジンの読み側
+       inferPartnerHoldingsの「元保有4」読みと意味論を揃える)。
+       M-7: auditOuShiSignal()のou分岐honest時textから、「相方はしを温存して高得点上がりに備えられ
+       ます」という相方の応答を断言する予告文を、app.cfg.ouSignal(OFF時エンジンは王合図を一切読まず
+       断言不能)およびconvTrustVal()>=OUSIG_TRUST_READ(=0.35。エンジン側の非公開定数TRUST_READと
+       同値をUI側に複製)の両方が満たされる場合のみ表示するよう条件化。それ以外は事実(王の裏付け
+       あり)のみの文に落とす。
+       M-8: signalTruth()の伏せ駒カウントを符丁種で分岐。kgb_pair(金銀馬)・kyo2(香)は「2枚目で
+       取り返す」約束であり、伏せた駒(相方には見えない)はその裏付けにならないためbury除外。
+       し宣言(F-3/M-6)は伏せ同駒2倍が戦略の本体のため従来どおりbury込みで数える。従来は
+       st.board[seat]のatk/defを無差別加算しており、金を伏せて単騎金をリードしただけで
+       「ペアを正しく伝えています」と誤判定していた。
+       M-9: 振り返り系MC評価(clarityAnalyze/mcReevaluate)のG.mcEvalReceive呼び出しopts(mcDets・
+       mcSeed)を共通化(mcReviewSeed()・MC_REVIEW_DETS定数を新設)。mcDetsは元々24で一致していたが、
+       mcSeedの式がclarityAnalyze=gameNo*131+i・mcReevaluate=gameNo*977+iと別々だったため、同一局面の
+       「際どさ」判定が経路によって揺れる不統一があった(candidateRanking/aiHesitationは対象外の最小
+       差分)。
+       M-14: computeCoach()の「同点別手順」救済分岐で、G.ddParAnalyzeが総駒数超過等で証明不能
+       (ok:false)を返した場合、その手をmiss/agreeいずれにも数えない(cf.src="solverUnverified"。
+       既存の⚠正定義src==="solver"の厳密一致から自然に除外される保留状態とし、断定を避ける)。
+       CACHE_NAME: v107→v108。
+       検証: 再現テスト先行(各M項目についてv91a版コピーで修正前に失敗確認→v92a版でPASS確認)の
+       jsdom新規9本(test_v92_oppaudit/concept/srsadv/oppboth/shiuke/ousig_text/sigtruth/clarity/
+       unverified)+常設対称性回帰テスト1本(test_symmetry.js。かかり応え文脈・王合図・し宣言shiNの
+       3系統でエンジンの読み手とUI監査の判定一致を機械確認。M-1除外前のbl.n=1という不一致で
+       修正前に実際に失敗することを確認済み)・既存12本(f1/f2/f3/review_fixes/gotae/koe/real24/
+       v91_trial/srsscreen/dismiss/research/tourwin)の回帰全PASS・
+       G/G_B/saveCareerToStorage/loadCareerFromStorageのbyte-exact(sha256)一致・4 scriptブロック
+       node --check・計画書指定の禁止語彙リスト+俗語1語が新規追加分で0件・「残り」の差分ベース
+       新規出現なし。 -->
+  <!-- build: v91a「修理」(PLAN_v91_taikai_pipeline.md・goita-dev-loopフェーズ2実装・Fable5計画/Sonnet5実装):
+       成長導線(足場スタンプ→稽古札→卒業「試し」→SRS→過去の自分→テンポ計→出場前チェックリスト)の
+       うち、実運用経路で機能しなかった不具合5件を修理(v91「送り出し」計画のサブコミットa)。
+       A-1: setupフォーム⇔cfgが一方向同期(起動時の1回のみ)だったため、稽古札「試す」でcfgをOFFに
+       しても「対局をはじめる」のreadSetupがフォームの旧値でONへ巻き戻し、1局目終了時に
+       gradOnGameFinishedが「手動再ON」と誤検知して卒業の試行を必ず即中断していた。修正:
+       gradTrialStart/gradTrialRevert/gradTrialContinueの末尾、およびstopToSetup()/exitTutorial()の
+       非サイレント分岐でsyncSetupFormFromCfg()を呼び、cfg変更の直後にフォームを追随させる
+       (readSetup自体は無変更)。
+       A-2: SRS詰め復習の唯一の入口(稽古札「復習する」→srsReviewStart)からsrsReviewPuzzle→
+       startPracticeへは画面切替コードが無く、#main-screenに.showが付かず盤外で人間の手番入力を
+       待ち続けていた(定石カードはモーダルのため無関係に動く)。修正: ensureGameScreen()ヘルパーを
+       新設(enterGameの画面切替を切り出し・enterGame自身もこれを使う形に)し、srsReviewStart開始時と
+       openPastSelf経路(防御)で呼ぶ。srsReviewNextのキュー完了時には復習件数の事実表示+
+       「設定へ戻る」ボタンの完了モーダルを追加。
+       A-3: #keiko-dismissへ起動時に恒久付与したaddEventListener(keikoDismissToday)と、
+       keikoRenderCardがgrad_failed時に設定するdismissBtn.onclick(gradTrialContinue)が併存して
+       両方発火し、「このまま続ける」を押すと試行継続と同時にdismissedOn=今日が記録されて
+       SRS期日カードを含む稽古札全体がその日消えていた。修正: 起動時のaddEventListenerを廃止し、
+       keikoRenderCardが全カード種(due/weak/grad_propose/grad_failed)で明示的にonclickを設定する
+       方式へ一本化(既に全カード種で個別onclickが設定済みだったため、廃止のみで足りた)。
+       A-4: 研究モード(humanSeat="S")の局がonGameOverのhumanSeatブロック(研究分岐より前に位置)を
+       素通りし、career・弱点プロフィール・「過去の自分」ピンを汚染し、scaffoldStampAllowed()が
+       研究局を除外してsc=nullにするためgradOnGameFinishedが進行中の卒業試行を即中断させていた。
+       修正: humanSeatブロックのガードを`if (app.humanSeat && !(app.research && app.research.active))`
+       に変更(研究分岐の位置は無変更)。研究モードのレポート出力(researchExport)がR.log
+       (participant_id/session/blocks/deals/predictions/surveys/final)のみに依存しcareer系を
+       参照しないことをgrepで確認済み(依存なし)。
+       A-5: 出場前チェックリスト項目2が`tw.wins>0`で判定されラベル「勝ち越せる」と矛盾(10敗1勝でも
+       ✓・subは空)、かつshowMatchEndの記録フックに再入ガードが無く同一マッチが複数回記録され得た。
+       修正: 判定を`tw.wins>tw.losses`(勝ち越し)へ変更しsubに「n勝m敗」を表示。
+       `app._tourWinRecorded`による一回性ガードを追加し、newMatch()/resumeSavedMatchでリセット。
+       横断: エンジン(G/G_B)・saveCareerToStorage/loadCareerFromStorageは無改変・byte-exact維持。
+       CACHE_NAME: v106→v107。
+       FIX(REVIEW Must-fix1): srsReviewShowDoneの復習件数が、実際に提示せず読み飛ばしたカード
+       (probe=null・未知kind)まで数えていた不具合を修正。カウントをsrsReviewPuzzle/srsReviewJoseki
+       の「実際に提示した時点」へ移し、0件時は「復習できる問題はありませんでした。」と正確な
+       事実文に分岐(CACHE_NAMEは未配布のためv107のまま据え置き)。
+       検証: 再現テスト先行(修正前に失敗確認→修正後PASS)のjsdom新規5本(test_v91_trial/
+       srsscreen/dismiss/research/tourwin)・既存7本(f1/f2/f3/review_fixes/gotae/koe/real24)の
+       回帰全PASS・G/G_B/saveCareerToStorage/loadCareerFromStorageのbyte-exact(sha256)一致・
+       4 scriptブロックnode --check・計画書指定の禁止語彙リスト+俗語1語が出力DOMで0件・
+       圧力表現の枠を示す助詞が差分ベースで新規なし。 -->
   <!-- build: v90.5「演出みほん説明文の是正」(Sonar指示の簡易修正・goita-dev-loop外の直接対応):
        Sonar指摘: 「型」モーダルの演出みほん説明文が「再生が終わると自動でこの画面に戻ります」の
        ままだったが、実際はL1(v80)で自動タイマー復帰を廃止し「完了」ボタンで閉じる方式に変更済み
@@ -3811,7 +4105,9 @@ const G = (() => {
       if (h.koma === "し") {
         if (pShiShown < 2 &&
             ((ac > 8 && ac <= 12 && pFirst !== "し") ||
-             (ac > 4 && ac <= 8 && pFirst === "香" && pFirstAc <= 4))) out.push(i);
+             (ac > 4 && ac <= 8 && pFirst === "香" && pFirstAc <= 4)) &&
+            !(shiStarted(hist.slice(0, i), seat) || partnerSignaledShi(hist.slice(0, i), seat)))   // M-11: し攻め文脈中は王合図と読まない(送り手と対称)
+          out.push(i);
         pShiShown++;
       }
     }
@@ -3837,7 +4133,8 @@ const G = (() => {
   function partnerSignaledOu(hist, partner) {
     if (!ouOn(partner) || ouTrust(partner) < TRUST_READ) return false;
     let ac = 0, pFirst = null, pFirstAc = 0, sig = false, pShiShown = 0;
-    for (const h of hist) {
+    for (let _oi = 0; _oi < hist.length; _oi++) {
+      const h = hist[_oi];
       if (h.seat === partner && h.act === "receive" && h.koma === "し") pShiShown++;
       if (h.act !== "attack") continue;
       ac++;
@@ -3845,7 +4142,8 @@ const G = (() => {
       if (pFirst === null) { pFirst = h.koma; pFirstAc = ac; }
       if (h.koma === "し") {
         // し余りの懐疑: この時点までに既にし2枚以上を見せていれば合図と読まない
-        if (pShiShown < 2) {
+        // M-11: し攻め文脈中(shiStarted/partnerSignaledShi)は王合図と読まない(送り手と対称)
+        if (pShiShown < 2 && !(shiStarted(hist.slice(0, _oi), partner) || partnerSignaledShi(hist.slice(0, _oi), partner))) {
           if (ac > 8 && ac <= 12 && pFirst !== "し") sig = true;
           else if (ac > 4 && ac <= 8 && pFirst === "香" && pFirstAc <= 4) sig = true;
         }
@@ -3875,23 +4173,26 @@ const G = (() => {
     const inf = {};
     let ac = 0, pFirst = null, pFirstAc = 0, pShiShown = 0;
     const kakSet = new Set(), me = partnerOf(partner); // かかり応え文脈検出(2026-07-03)
-    for (const h of hist) {
+    for (let _hi = 0; _hi < hist.length; _hi++) {
+      const h = hist[_hi];
       if (h.seat === partner && h.act === "receive" && h.koma === "し") pShiShown++;
       if (h.act !== "attack") continue;
       ac++;
-      if (h.seat === me && ac <= 4 && (h.koma === "金" || h.koma === "銀" || h.koma === "馬" || h.koma === "香")) kakSet.add(h.koma);
+      if (h.seat === me && (h.koma === "香" ? ac <= 8 : ac <= 4) && (h.koma === "金" || h.koma === "銀" || h.koma === "馬" || h.koma === "香")) kakSet.add(h.koma);   // M-12(a): 香のかかり文脈窓をac<=8に対称化(kakariGotaeと一致)
       if (h.seat !== partner) continue;
       if (pFirst === null) { pFirst = h.koma; pFirstAc = ac; }
       const k = h.koma;
       // 騙し単騎率が高い相方のペア示唆攻め、および「かかり応え」文脈(実測: 応えペア率0.15-0.17 vs 自発0.94-1.00)からは2枚目を推定しない
       const pairN = (kakSet.has(k) || (OPP_PROFILE[partner] && OPP_PROFILE[partner].bluff > 0.5) || convTrustOf(partner) < 0.5) ? 1 : 2;
       if (k === "王") inf["王"] = Math.max(inf["王"] || 0, 2);
-      else if (k === "香") inf["香"] = Math.max(inf["香"] || 0, pairN);
+      else if (k === "香") { if (ac <= 8) inf["香"] = Math.max(inf["香"] || 0, pairN); }   // M-12(c): 香ペア読みにac<=8窓を追加(kakariGotae/detectSignalと対称)
       else if (k === "し") {
         // 打ち止めのし文脈では「し4枚」と誤読しない。ただしし余り(既にし2枚以上可視)は合図と読まない
+        // M-11: し攻め文脈中(shiStarted/partnerSignaledShi)は王合図と読まない(送り手と対称)
         const ouCtx = ouOn(partner) && ouTrust(partner) >= TRUST_READ && pShiShown < 2 &&
           ((ac > 8 && ac <= 12 && pFirst !== "し") ||
-           (ac > 4 && ac <= 8 && pFirst === "香" && pFirstAc <= 4));
+           (ac > 4 && ac <= 8 && pFirst === "香" && pFirstAc <= 4)) &&
+          !(shiStarted(hist.slice(0, _hi), partner) || partnerSignaledShi(hist.slice(0, _hi), partner));
         if (ouCtx) inf["王"] = Math.max(inf["王"] || 0, 1);
         else inf["し"] = Math.max(inf["し"] || 0, 4);
         pShiShown++;
@@ -5496,7 +5797,7 @@ const G = (() => {
       if (h.act !== "attack") continue;
       ac++;
       const kcHere = !!(kak[h.seat] && kak[h.seat].has(h.koma));
-      if (ac <= 4 && (h.koma === "金" || h.koma === "銀" || h.koma === "馬" || h.koma === "香")) {
+      if ((h.koma === "香" ? ac <= 8 : ac <= 4) && (h.koma === "金" || h.koma === "銀" || h.koma === "馬" || h.koma === "香")) {   // M-12(b): 香のかかり文脈窓をac<=8に対称化(kakariGotaeと一致)
         const p = partnerOf(h.seat);
         (kak[p] = kak[p] || new Set()).add(h.koma);
       }
@@ -6404,7 +6705,10 @@ const G_B = (() => {
         !shiUkiagariCertain(view))
       return {koma: "し", why: "し攻め継続(コミット) — 一旦開始した本物のし攻めは途中拒否せず続行"};
     // 騙し香: 1巡目は香で攻め (王ペアを隠した奇襲) 【個人定石: L2のみ】
-    if (rl >= 2 && isFirstAttackForMe(hist, seat) && damashiKyouAttackPhase(view) &&
+    // M-13(Planner裁定): engine B(coop/honest)の設計上のアイデンティティは「常に正直」。
+    // honestSignalFilterはCOOP_SIGNAL非依存で無条件適用されるため、この分岐もCOOPゲートではなく
+    // 恒偽ガードで無条件に無効化する(COOP_SIGNAL依存にすると研究モードB=honestの汚染が直らない)。
+    if (false && rl >= 2 && isFirstAttackForMe(hist, seat) && damashiKyouAttackPhase(view) &&
         kyouMixDraw(myFirstBuryIdx(hist, seat), seat))
       return {koma: "香", why: "騙し香 — 王ペアを隠して香で誘う"};
     // かかり応え: 相方の金銀馬香攻めと同駒で攻める (チーム占有3/4の符丁)
@@ -7321,7 +7625,9 @@ const G_B = (() => {
       if (h.koma === "し") {
         if (pShiShown < 2 &&
             ((ac > 8 && ac <= 12 && pFirst !== "し") ||
-             (ac > 4 && ac <= 8 && pFirst === "香" && pFirstAc <= 4))) out.push(i);
+             (ac > 4 && ac <= 8 && pFirst === "香" && pFirstAc <= 4)) &&
+            !(shiStarted(hist.slice(0, i), seat) || partnerSignaledShi(hist.slice(0, i), seat)))   // M-11: し攻め文脈中は王合図と読まない(送り手と対称)
+          out.push(i);
         pShiShown++;
       }
     }
@@ -7347,7 +7653,8 @@ const G_B = (() => {
   function partnerSignaledOu(hist, partner) {
     if (!ouOn(partner) || ouTrust(partner) < TRUST_READ) return false;
     let ac = 0, pFirst = null, pFirstAc = 0, sig = false, pShiShown = 0;
-    for (const h of hist) {
+    for (let _oi = 0; _oi < hist.length; _oi++) {
+      const h = hist[_oi];
       if (h.seat === partner && h.act === "receive" && h.koma === "し") pShiShown++;
       if (h.act !== "attack") continue;
       ac++;
@@ -7355,7 +7662,8 @@ const G_B = (() => {
       if (pFirst === null) { pFirst = h.koma; pFirstAc = ac; }
       if (h.koma === "し") {
         // し余りの懐疑: この時点までに既にし2枚以上を見せていれば合図と読まない
-        if (pShiShown < 2) {
+        // M-11: し攻め文脈中(shiStarted/partnerSignaledShi)は王合図と読まない(送り手と対称)
+        if (pShiShown < 2 && !(shiStarted(hist.slice(0, _oi), partner) || partnerSignaledShi(hist.slice(0, _oi), partner))) {
           if (ac > 8 && ac <= 12 && pFirst !== "し") sig = true;
           else if (ac > 4 && ac <= 8 && pFirst === "香" && pFirstAc <= 4) sig = true;
         }
@@ -7385,23 +7693,26 @@ const G_B = (() => {
     const inf = {};
     let ac = 0, pFirst = null, pFirstAc = 0, pShiShown = 0;
     const kakSet = new Set(), me = partnerOf(partner); // かかり応え文脈検出(2026-07-03)
-    for (const h of hist) {
+    for (let _hi = 0; _hi < hist.length; _hi++) {
+      const h = hist[_hi];
       if (h.seat === partner && h.act === "receive" && h.koma === "し") pShiShown++;
       if (h.act !== "attack") continue;
       ac++;
-      if (h.seat === me && ac <= 4 && (h.koma === "金" || h.koma === "銀" || h.koma === "馬" || h.koma === "香")) kakSet.add(h.koma);
+      if (h.seat === me && (h.koma === "香" ? ac <= 8 : ac <= 4) && (h.koma === "金" || h.koma === "銀" || h.koma === "馬" || h.koma === "香")) kakSet.add(h.koma);   // M-12(a): 香のかかり文脈窓をac<=8に対称化(kakariGotaeと一致)
       if (h.seat !== partner) continue;
       if (pFirst === null) { pFirst = h.koma; pFirstAc = ac; }
       const k = h.koma;
       // 騙し単騎率が高い相方のペア示唆攻め、および「かかり応え」文脈(実測: 応えペア率0.15-0.17 vs 自発0.94-1.00)からは2枚目を推定しない
       const pairN = (kakSet.has(k) || (OPP_PROFILE[partner] && OPP_PROFILE[partner].bluff > 0.5) || convTrustOf(partner) < 0.5) ? 1 : 2;
       if (k === "王") inf["王"] = Math.max(inf["王"] || 0, 2);
-      else if (k === "香") inf["香"] = Math.max(inf["香"] || 0, pairN);
+      else if (k === "香") { if (ac <= 8) inf["香"] = Math.max(inf["香"] || 0, pairN); }   // M-12(c): 香ペア読みにac<=8窓を追加(kakariGotae/detectSignalと対称)
       else if (k === "し") {
         // 打ち止めのし文脈では「し4枚」と誤読しない。ただしし余り(既にし2枚以上可視)は合図と読まない
+        // M-11: し攻め文脈中(shiStarted/partnerSignaledShi)は王合図と読まない(送り手と対称)
         const ouCtx = ouOn(partner) && ouTrust(partner) >= TRUST_READ && pShiShown < 2 &&
           ((ac > 8 && ac <= 12 && pFirst !== "し") ||
-           (ac > 4 && ac <= 8 && pFirst === "香" && pFirstAc <= 4));
+           (ac > 4 && ac <= 8 && pFirst === "香" && pFirstAc <= 4)) &&
+          !(shiStarted(hist.slice(0, _hi), partner) || partnerSignaledShi(hist.slice(0, _hi), partner));
         if (ouCtx) inf["王"] = Math.max(inf["王"] || 0, 1);
         else inf["し"] = Math.max(inf["し"] || 0, 4);
         pShiShown++;
@@ -9006,7 +9317,7 @@ const G_B = (() => {
       if (h.act !== "attack") continue;
       ac++;
       const kcHere = !!(kak[h.seat] && kak[h.seat].has(h.koma));
-      if (ac <= 4 && (h.koma === "金" || h.koma === "銀" || h.koma === "馬" || h.koma === "香")) {
+      if ((h.koma === "香" ? ac <= 8 : ac <= 4) && (h.koma === "金" || h.koma === "銀" || h.koma === "馬" || h.koma === "香")) {   // M-12(b): 香のかかり文脈窓をac<=8に対称化(kakariGotaeと一致)
         const p = partnerOf(h.seat);
         (kak[p] = kak[p] || new Set()).add(h.koma);
       }
@@ -9467,12 +9778,13 @@ if (typeof document !== "undefined") (() => {
     kifuLines: [], lastWin: null, coachHistory: [],
     career: [], matchRecs: [], importedRecs: [], reviewRec: null,
     convTrust: {n: 0, ok: 0},
-    oppCounts: {pe: {n: 0, k: 0}, pp: {n: 0, k: 0}, bl: {n: 0, k: 0}}, tblTrust: {n: 0, hit: 0},
+    oppCounts: {pe: {n: 0, k: 0}, pp: {n: 0, k: 0}, bl: {n: 0, k: 0}, blV: 1}, tblTrust: {n: 0, hit: 0},   // M-1(v92a): blVは移行済みマーカー(新規は最初から移行済み扱い)
     drill: null, puzzleStats: {tried: 0, solved: 0}, preDrill: null,
     review: null,         // {idx} 振り返り中の表示位置
     tour: null,           // 悪手ツアーの状態(v87) {rec,list,k,playing,timer,waiting,partial,empty}
     turnT0: 0,            // 人間の思考時間計測
     _scAtStart: null,     // T-0(v90a): 局開始時点のcfgスナップショット(安全側反映込み)。scaffoldStamp()が参照
+    _tourWinRecorded: false,   // A-5(v91a): showMatchEndのtourWinRecord一回性ガード。newMatch/resumeSavedMatchでリセット
   };
   /* ================================================================
    * ⑧(v69) 設定の永続化 (UI/UX改善計画 Phase1 O1)
@@ -9613,6 +9925,8 @@ if (typeof document !== "undefined") (() => {
     g.trial = {key: sf.key, phase: "trial", at: today(), games: [], threshold: gradThresholdFor(sf)};
     gradSave(g);
     keikoEvalGradAsync();   // 試行開始でproposal candidateが変わるためキャッシュを再評価
+    syncSetupFormFromCfg();   // A-1(v91a): setupフォームをcfgへ追随させる(readSetupの巻き戻り防止)
+    try { toast("「" + sf.label + "」を外して、3局はかります。"); } catch (e) {}   // B-1(v91b): 卒業体験の完全化(事実のみ・圧力表現なし)
   }
   // 却下(「まだ」): ペナルティなし。5局のクールダウン＋当日の再表示抑制(T-1のdismissedOnを共用・R-b3)
   function gradDismiss(sf) {
@@ -9651,6 +9965,8 @@ if (typeof document !== "undefined") (() => {
       g.trial.phase = "failed_pending";
       g.trial.rate = rate;
       gradSave(g);
+      // B-1(v91b): 成功時(上のtoast)と対称に、失敗分岐にも事実表示のtoastを追加する(現状は無通知だった)。
+      try { toast("3局での一致率は" + Math.round(rate * 100) + "%でした。次に設定へ戻ったとき選べます。"); } catch (e) {}
     }
   }
   // 「戻す」: 卒業扱いにはせずcfgをONへ戻す。5局のクールダウンの後に再提案されうる。
@@ -9662,6 +9978,7 @@ if (typeof document !== "undefined") (() => {
     g.cooldown[sf.key] = app.career.length;
     gradSave(g);
     keikoEvalGradAsync();
+    syncSetupFormFromCfg();   // A-1(v91a): setupフォームをcfgへ追随させる(readSetupの巻き戻り防止)
   }
   // 「このまま続ける」: 卒業扱いにはしないがcfgはfalseのまま。3局後に再判定(提案条件a〜eの再確認はしない)。
   function gradTrialContinue(sf) {
@@ -9670,6 +9987,7 @@ if (typeof document !== "undefined") (() => {
     g.trial = {key: sf.key, phase: "trial", at: today(), games: [], threshold: th};
     gradSave(g);
     keikoEvalGradAsync();
+    syncSetupFormFromCfg();   // A-1(v91a): setupフォームをcfgへ追随させる(readSetupの巻き戻り防止)
   }
   function saveMatchProgress(phase) {
     if (!matchSaveAllowed()) return;
@@ -9726,6 +10044,7 @@ if (typeof document !== "undefined") (() => {
       app.gameNo = d.gameNo; app.matchNo = d.matchNo;
       app.stopped = false; app.matchOver = false; app.review = null;
       app.kifuLines = []; app.lastRec = null; app.coachHistory = [];
+      app._tourWinRecorded = false;   // A-5(v91a): 復帰したマッチもtourWinRecordの一回性ガードをリセット
       G_B.setCoopSignal(G.SEATS.some(s => app.tiers[s] === "coop"));
       $("setup-screen").style.display = "none";
       $("main-screen").classList.add("show");
@@ -9813,6 +10132,7 @@ if (typeof document !== "undefined") (() => {
     return {matchNo: r.matchNo, gameNo: r.gameNo, parent: r.parent,
       scoresBefore: r.scoresBefore, initialHands: r.initialHands, misses: r.misses,
       result: r.result || null, sc: r.sc || null,   // T-0(v90a): 足場スタンプ(無ければnull)
+      cfv: r.cfv || null,   // v92b(M-10): 評価器バージョンタグ(旧レコードはnull=cfvなしのまま)
       moves: r.moves.map(m => ({seat: m.seat, action: m.action, human: m.human,
         thinkMs: m.thinkMs, why: m.why, cf: m.cf || null, drillResult: m.drillResult || null}))};
   }
@@ -9852,6 +10172,11 @@ if (typeof document !== "undefined") (() => {
     } catch (e) { /* 破損データは無視し、空の状態(既定値)から開始する */ }
   }
   loadCareerFromStorage();   // O2(v70): 成績・棋譜・信頼度学習の自動復元
+  // M-1(v92a): oppCounts.blの1回だけの移行はloadCareerFromStorage自体を不変に保つため、
+  // その呼び出し直後(このスコープ)で行う。blVがあれば冪等でno-op(多重リセット防止)。
+  // loadCareerFromStorage内部のapplyOppProfile()は移行前のbl値で一度エンジンへ反映済みのため、
+  // 移行後にapplyOppProfile()を再度呼び直し、リセット後の値を即座に反映させる。
+  if (oppCountsMigrateBl(app.oppCounts) && app.humanSeat) applyOppProfile();
 
   /* ================================================================
    * S-1/S-2(v90c): SRSストア(goita_srs_v1) — 詰め・定石の想起スケジューリング (PLAN_v90_teacher.md)
@@ -9926,6 +10251,19 @@ if (typeof document !== "undefined") (() => {
     card.reps = (card.reps || 0) + 1; card.last = today();
     card.due = addDays(today(), SRS_STEPS[card.ease]);
   }
+  // B-4(v91b): srsSaveStoreのフォールバック是正。従来の呼び出しパターン
+  // `srsSaveStore(app._srsStore || srsLoad())` は、app._srsStoreが未設定(想定外)の経路で
+  // srsLoad()が採点直後のcardオブジェクトを含まない別インスタンスのstoreを返すと、
+  // srsGrade()で書き換えたはずの採点が保存されない(顕在化する経路は現状ない防御的修正)。
+  // srsGrade適用済みのcardオブジェクトそのものが保存先storeのcards配列に含まれることを保証する。
+  function srsPersistGradedCard(card) {
+    const store = app._srsStore || srsLoad();
+    if (!store.cards.includes(card)) {
+      const idx = store.cards.findIndex(c => c.id === card.id);
+      if (idx >= 0) store.cards[idx] = card; else store.cards.push(card);
+    }
+    srsSaveStore(store);
+  }
   function srsDue(store) {
     const s = store || srsLoad();
     const t = today();
@@ -9939,9 +10277,14 @@ if (typeof document !== "undefined") (() => {
             initialHands: {N: ih.N.slice(), W: ih.W.slice(), S: ih.S.slice(), E: ih.E.slice()},
             upto, moves: rec.moves.slice(0, upto).map(m => ({seat: m.seat, action: m.action ? {...m.action} : m.action}))};
   }
-  function srsAddPuzzle(payload) {
+  function srsAddPuzzle(payload, band, stage) {
+    // M-4(v92a): band/stageをカードのトップレベルに保存する(srsSlim本体=payloadの中身は据え置き)。
+    // 有段(adv)のstage1詰めはfreshSolverProbeが意図的にnullを返す局面(枚数勘定だけでは確実と言えず
+    // 敵実保有の推測が必要)であり、band/stageが無いと復習時にそれを区別できず常に読みが取れない
+    // まま無言スキップされ続けていた(srsReviewPuzzle側の対応とセット)。
     const s = srsLoad();
-    s.cards.push({id: srsNewId(), kind: "puzzle", payload, ease: 0, due: addDays(today(), SRS_STEPS[0]), reps: 0, lapses: 0, last: today()});
+    s.cards.push({id: srsNewId(), kind: "puzzle", payload, band: band || null, stage: stage || null,
+                  ease: 0, due: addDays(today(), SRS_STEPS[0]), reps: 0, lapses: 0, last: today()});
     srsSaveStore(s);
   }
   // 定石は「試す」を押すたびに重複登録しない(同じkeyの既存カードがあれば何もしない)
@@ -10041,7 +10384,9 @@ if (typeof document !== "undefined") (() => {
   function pastDue() {
     const store = pastLoad();
     const t = today();
-    return store.pins.filter(p => daysBetween(p.at, t) >= PAST_DUE_DAYS);
+    // B-4(v91b): 既読化(comparedAt)したピンはpastDueから除外する(削除はしない)。従来は一度も
+    // 消費されず、件数表示が上限24まで単調増加し同じピンが永遠に「比べられます」と出続けていた。
+    return store.pins.filter(p => !p.comparedAt && daysBetween(p.at, t) >= PAST_DUE_DAYS);
   }
   // openCareer()向けの入口HTML。14日未満のピンしか無ければ空文字列(セクション自体を出さない)。
   function pastEntryHtml() {
@@ -10078,6 +10423,7 @@ if (typeof document !== "undefined") (() => {
     const probe = st ? G.freshSolverProbe(st, st.actor, false) : null;
     if (!probe) { closeModal(); return; }
     closeModal();
+    ensureGameScreen();   // A-2(v91a): 防御(現状は対局画面からのみ到達するが、画面切替を保証しておく)
     startPractice(pin.payload, pin.missIdx,
       {srcMv: null, move: probe.move, why: probe.why, judged: false, isPuzzle: false, pastPin: pin},
       fmtMonthDay(pin.at) + "のあなた — 今のあなたなら？");
@@ -10089,6 +10435,12 @@ if (typeof document !== "undefined") (() => {
     const html = '<p>' + fmtMonthDay(pin.at) + 'のあなたはここで' + pastActTxt(wasA) + 'と打ちました。</p>' +
       '<p>今日のあなたは' + pastActTxt(d.nowMove) + 'でした。</p>' +
       '<p>AI最善は' + pastActTxt(d.move) + 'です。</p>';
+    // B-4(v91b): 既読化。比較した瞬間にcomparedAtを記録し、削除はせずpastDueから除外する。
+    try {
+      const store = pastLoad();
+      const p2 = store.pins.find(p => p.id === pin.id);
+      if (p2) { p2.comparedAt = today(); pastSave(store); }
+    } catch (e) { /* 既読化の失敗は比較表示を妨げない */ }
     actionbar(html, [{label: "閉じる", primary: true, fn: endPractice}]);
     status("過去の自分との比較");
   }
@@ -11932,6 +12284,10 @@ if (typeof document !== "undefined") (() => {
     modeBanner(app.bannerBase + (s ? `<span class="verdict">${s}</span>` : ""));
   }
   let _modalPrevFocus = null;
+  // B-4(v91b): モーダルを閉じる直前(Esc/背景クリック/「閉じる」ボタン等どの経路でも共通)に呼ぶ
+  // コールバック。開いた側がmodal()呼び出し後に設定する(定石復習の未採点離脱の検知に使用)。
+  // グレーディング等「正常終了」の経路は自分でnullへ戻してから閉じることで、二重発火を避ける。
+  let _modalOnClose = null;
   function _focusables(root) {
     return [...root.querySelectorAll('a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])')]
       .filter(el => el.offsetParent !== null || el === document.activeElement);
@@ -12064,21 +12420,32 @@ if (typeof document !== "undefined") (() => {
   }
   function modal(html) {
     _modalPrevFocus = document.activeElement;
+    _modalOnClose = null;   // B-4(v91b): 新しいモーダルを開くたびにリセット(前のモーダルのコールバックを引き継がない)
     $("modal-body").innerHTML = html;
     $("ov-modal").classList.add("show");
     const mb = $("modal-body");
     mb.setAttribute("role", "dialog");
     mb.setAttribute("aria-modal", "true");
     mb.setAttribute("tabindex", "-1");
+    // B-4(v91b・v90bから持ち越しのaria-dialog-name是正): 本文先頭のh2があればaria-labelledbyで
+    // 接続する(全モーダル共通の1箇所修正)。h2が無いモーダルは従来どおり無指定(役割=dialogのみ)。
+    mb.removeAttribute("aria-labelledby");
+    const h2 = mb.querySelector("h2");
+    if (h2) {
+      if (!h2.id) h2.id = "modal-auto-title";
+      mb.setAttribute("aria-labelledby", h2.id);
+    }
     // 開いた直後に最初の操作要素へフォーカス(なければモーダル自体)
     requestAnimationFrame(() => { const f = _focusables(mb); (f[0] || mb).focus(); });
     return mb;
   }
   function closeModal() {
+    const onClose = _modalOnClose; _modalOnClose = null;   // B-4(v91b): 実際に閉じる前にコールバックを退避(再入防止)
     $("ov-modal").classList.remove("show");
     $("modal-body").innerHTML = "";
     if (_modalPrevFocus && _modalPrevFocus.focus) { try { _modalPrevFocus.focus(); } catch (e) {} }
     _modalPrevFocus = null;
+    if (onClose) { try { onClose(); } catch (e) {} }
   }
   /* ================================================================
    * 研究モード (human_eval_design.md §4) — A/B盲検・固定seed・予測課題・ログ・強制選択
@@ -12112,10 +12479,16 @@ if (typeof document !== "undefined") (() => {
   function signalTruth(st, seat, sig) {
     const hand = st.hands[seat] || [];
     // 手札＋自分が既に場に出した同駒(攻め/受け)を合算＝実際に持っていた枚数（2打目でも裏付けを見失わない）
+    // M-8(v92a): kgb_pair/kyo2(金銀馬香のペア符丁)は「2枚目で取り返す」約束であり、伏せた駒(相方には
+    // 見えない・生対局のAIは読めない)はその裏付けにならない。伏せた同駒を「場に出した同駒」として
+    // 無差別加算すると、金を伏せて単騎金をリードしただけで「ペアを正しく伝えています」になってしまう
+    // (伏せは見えないので live の相方AIは取り返せるペアと誤読する)。し宣言(F-3・M-6: 伏せ同駒2倍が
+    // 戦略の本体で、伏せ/受けたしは「使用済みの保有」)は従来どおりburyを含めて数える。
+    const countBury = sig.signal_type !== "kgb_pair" && sig.signal_type !== "kyo2";
     let played = 0;
     try { (st.board[seat] || []).forEach(function (cell) {
       if (cell.atk === sig.koma) played++;
-      if (cell.def && cell.def.koma === sig.koma) played++;
+      if (cell.def && cell.def.koma === sig.koma && (countBury || cell.def.type !== "bury")) played++;
     }); } catch (e) {}
     const cnt = kk => hand.filter(x => x === kk).length + (kk === sig.koma ? played : 0);
     if (sig.signal_type === "kgb_pair") return cnt(sig.koma) >= 2;
@@ -12382,8 +12755,8 @@ if (typeof document !== "undefined") (() => {
           if (d.srcMv) d.srcMv.drillResult = "克服";
           if (d.isPuzzle) {
             if (!d.srsCard) app.puzzleStats.solved++;   // S-2(v90c): SRS復習中は既存の詰め統計に算入しない
-            if (d.srsCard) { srsGrade(d.srsCard, true); srsSaveStore(app._srsStore || srsLoad()); }
-            else if (d.srsPayload) srsAddPuzzle(d.srsPayload);   // S-2: 正解した瞬間に局面を凍結して登録
+            if (d.srsCard) { srsGrade(d.srsCard, true); srsPersistGradedCard(d.srsCard); }   // B-4(v91b): フォールバック是正
+            else if (d.srsPayload) srsAddPuzzle(d.srsPayload, d.band, d.stage);   // S-2: 正解した瞬間に局面を凍結して登録(M-4(v92a): band/stageも保存)
           }
           d.pendingOutcome = false;
           d.solved = true;
@@ -13336,9 +13709,15 @@ if (typeof document !== "undefined") (() => {
   }
   function applyOppProfile() {
     if (!app.humanSeat) return;
-    G.setOppProfile(app.humanSeat,
+    setOppProfileBoth(app.humanSeat,
       app.oppCounts ? G.oppRatesFromCounts(app.oppCounts) : null);
     setTblTrustBoth(app.humanSeat);
+  }
+  // M-5(v92a): setTblTrustBothと同型。coop(G_B)の相方AIも人間プロフィールを見て打てるようミラーする
+  // (従来G_Bへの反映が無く、対人協調ティアの相方AIが素の既定値のまま打っていた)。
+  function setOppProfileBoth(seat, prof) {
+    G.setOppProfile(seat, prof);
+    if (typeof G_B !== "undefined" && G_B.setOppProfile) G_B.setOppProfile(seat, prof);
   }
   function tblTrustVal() {
     // ⑥表整合性の逐次事後 P(エンジン的|hit,miss): p_e=0.603 / p_d=0.446 ((b)文脈分離表で再較正 2026-07-03), 事前1:1
@@ -13397,8 +13776,19 @@ if (typeof document !== "undefined") (() => {
     // 相手モデル: 局終了時に全手情報で遡及監査し、プレイヤー固有の行動傾向を集積
     if (!app.humanSeat || !rec || rec.practice || !rec.initialHands) return;
     const hs = app.humanSeat;
-    if (!app.oppCounts) app.oppCounts = {pe: {n:0,k:0}, pp: {n:0,k:0}, bl: {n:0,k:0}};
+    if (!app.oppCounts) app.oppCounts = {pe: {n:0,k:0}, pp: {n:0,k:0}, bl: {n:0,k:0}, blV: 1};
     let ac = 0;
+    // M-1(v92a): auditTblConformity(直上の関数)と同型のkak文脈追跡。かかり応え(相方が先に同駒を
+    // 攻めていた=このseatにとって「応え」であり新規の騙し単騎候補ではない)と、自席の同駒2打目
+    // (detectSignal L12149の同席再攻めガードと同じ意味論=ペア保持者の2枚目で新規宣言ではない)を
+    // bl(騙し単騎率)の分母分子から除外する。除外しないと、エンジン自身が推奨する正しい応え
+    // (kakariGotae)まで「騙し単騎」に計上され、蓄積されたbluff率が相方AIのペア読みを狂わせていた。
+    // FIX(REVIEW Must-fix1): kak収集は窓なし(detectSignalのv90.3相方ガードと同様、履歴全体で相方の
+    // 同駒攻めの有無を見る)。当初ac<=4窓で構築していたが、blのearly窓は香のみac<=8であり、相方の
+    // 香リードが攻め通し5〜7に来た場合(受け番が先行した局では普通に起こる)、その後の人間のac<=8
+    // 単騎香応えがkakに拾われず「騙し単騎」に誤計上され続けていた。金銀馬はearly窓が元々ac<=4の
+    // ため窓なし化による実効差はなく、香のac5〜8のみが実質的な変更点。
+    const kak = {}, selfAtk = {};
     rec.moves.forEach((mv, i) => {
       const t = mv.action.type;
       if (mv.seat === hs && (t === "pass" || t === "receive")) {
@@ -13415,8 +13805,18 @@ if (typeof document !== "undefined") (() => {
       if (t === "attack") {
         ac++;
         const km = mv.action.koma;
+        // (a) かかり応え文脈: このmvより前に相方が同駒を攻めていたか(窓なし=履歴全体。detectSignalの
+        //     相方ガードと対称)。(b) 自席の同駒2打目: このmvより前に自席が同駒を攻めていたか(detectSignal
+        //     と同じく窓なし=一度でも先行攻めがあれば2打目以降)。判定はこのmvを含めない状態で行う。
+        const kcHere = !!(kak[mv.seat] && kak[mv.seat][km]);
+        const selfRepeat = !!(selfAtk[mv.seat] && selfAtk[mv.seat][km]);
+        if (["金", "銀", "馬", "香"].includes(km)) {
+          const p = G.partnerOf(mv.seat);
+          (kak[p] = kak[p] || {})[km] = true;
+        }
+        (selfAtk[mv.seat] = selfAtk[mv.seat] || {})[km] = true;
         const early = km === "香" ? ac <= 8 : ac <= 4;   // ペア推定が働く領域に一致
-        if (mv.seat === hs && early && ["香", "金", "銀", "馬"].includes(km)) {
+        if (mv.seat === hs && early && ["香", "金", "銀", "馬"].includes(km) && !kcHere && !selfRepeat) {
           const st = rebuildState(rec, i);
           if (st) {
             app.oppCounts.bl.n++;
@@ -13426,6 +13826,14 @@ if (typeof document !== "undefined") (() => {
       }
     });
     applyOppProfile();
+  }
+  // M-1(v92a): oppCounts.blは過去のかかり応え/同駒2打目の誤計上を含みうるため1回だけリセットする
+  // 移行処理。oppCounts.blV(バージョンフィールド)が既にあれば移行済みなので再実行しない
+  // (多重リセット防止。pe/ppはこの不具合と無関係なので保持する)。戻り値は「この呼び出しで実際に
+  // 移行を行ったか」の真偽値(呼び出し側が移行直後だけengineへの再反映を行うために使う)。
+  function oppCountsMigrateBl(oc) {
+    if (oc && !oc.blV) { oc.bl = {n: 0, k: 0}; oc.blV = 1; return true; }
+    return false;
   }
   /* ================================================================
    * M4(v71): 番付風マイルストーン(アプリ内)。実在の保存会の番付制度とは無関係の、
@@ -13556,7 +13964,10 @@ if (typeof document !== "undefined") (() => {
     if (app.rec && app.rec.practice) { onPracticeOver(res); return; }
     app.rec.result = {winner: res.winner, pts: res.pts, dbl: !!res.dbl, draw: !!res.draw};
     app.lastRec = app.rec;
-    if (app.humanSeat) {
+    // A-4(v91a): 研究モードはhumanSeat="S"だが専用の研究分岐(下のresearch.active判定)へ流れるため
+    // ここでは除外する(除外しないとcareer/matchRecs/pastが研究局で汚染され、scaffoldStampAllowed()が
+    // 研究局を除外してsc=nullにするためgradOnGameFinishedが進行中の卒業試行を誤って中断させていた)。
+    if (app.humanSeat && !(app.research && app.research.active)) {
       computeCoach(app.rec); computeSignals(app.rec);
       auditConvTrust(app.rec);
       auditOppProfile(app.rec);
@@ -13570,8 +13981,10 @@ if (typeof document !== "undefined") (() => {
       pastMaybeAdd(app.rec);   // R-1(v90d): 悪手があれば月4局・上限24局でピン留め(稽古札には出さない)
       app.matchRecs.push(app.rec);
       if (cs.h) {
-        app.coachHistory.push({g: app.gameNo, hinted: !!app.rec.hinted, sc: app.rec.sc, ...cs});
-        app.career.push({matchNo: app.matchNo, g: app.gameNo, hinted: !!app.rec.hinted, sc: app.rec.sc, ...cs});
+        // v92b(M-10): cfv(評価器バージョンタグ)をcareer/coachHistoryのエントリにも含める(集計側の
+        // 閾値・ロジックは変更せず、cfv混在は許容する。旧レコード相当のエントリはcfv:undefinedのまま)。
+        app.coachHistory.push({g: app.gameNo, hinted: !!app.rec.hinted, sc: app.rec.sc, cfv: app.rec.cfv, ...cs});
+        app.career.push({matchNo: app.matchNo, g: app.gameNo, hinted: !!app.rec.hinted, sc: app.rec.sc, cfv: app.rec.cfv, ...cs});
         gradOnGameFinished(cs);   // G-2(v90b): 進行中の試行があれば1局分を記録・3局たまれば判定
         const line = `コーチ集計: AI一致 ${cs.agree}/${cs.h} ・読み切り逃し ${cs.miss}` +
           (cs.hasty ? `（うち早打ち${cs.hasty}）` : "") +
@@ -13730,8 +14143,8 @@ if (typeof document !== "undefined") (() => {
       if (d.srcMv) d.srcMv.drillResult = ok ? "別解上がり" : "未克服";
       if (d.isPuzzle) {
         if (ok && !d.srsCard) app.puzzleStats.solved++;   // S-2: SRS復習中は既存の詰め統計に算入しない
-        if (d.srsCard) { srsGrade(d.srsCard, ok); srsSaveStore(app._srsStore || srsLoad()); }
-        else if (d.srsPayload && ok) srsAddPuzzle(d.srsPayload);   // S-2: 結末での正解も凍結登録の対象
+        if (d.srsCard) { srsGrade(d.srsCard, ok); srsPersistGradedCard(d.srsCard); }   // B-4(v91b): フォールバック是正
+        else if (d.srsPayload && ok) srsAddPuzzle(d.srsPayload, d.band, d.stage);   // S-2: 結末での正解も凍結登録の対象(M-4(v92a): band/stageも保存)
       }
       log(`判定: ${verdict}`, true);
       bannerVerdict(verdict);
@@ -13760,7 +14173,13 @@ if (typeof document !== "undefined") (() => {
     // 計画は新規の永続化を明示していないが、この項目を実データで示すには最低限の勝敗記録が要る
     // (既存app.puzzleStats={tried,solved}と同型の軽量カウンタ、連続日数等は一切持たない)。
     // 条件: 人間参加・最強AI(EW=strong)・150点以上先取の設定。
-    if (app.humanSeat && app.tiers.W === "strong" && app.tiers.E === "strong" && app.cfg.target >= 150) tourWinRecord(!!youWin);   // app.tiersは席(N/W/S/E)キー。EWチームは両席がstrongであることで判定(修正: app.tiers.EWは存在しない)
+    // A-5(v91a): 一回性ガード。終局後の「結果を見る」はendPractice/Escで閉じた後も再度押せるため、
+    // ガードが無いと同一マッチが複数回記録されてしまう(newMatch()/readSetup起点の新マッチ開始・
+    // resumeSavedMatchでリセットする)。
+    if (!app._tourWinRecorded && app.humanSeat && app.tiers.W === "strong" && app.tiers.E === "strong" && app.cfg.target >= 150) {
+      tourWinRecord(!!youWin);   // app.tiersは席(N/W/S/E)キー。EWチームは両席がstrongであることで判定(修正: app.tiers.EWは存在しない)
+      app._tourWinRecorded = true;
+    }
     const winTeam = nsWin ? "NS" : "EW";   // F-2(v90.2): teamDisp()はhumanSeat基準で自動的に「あなた組/相手組」化する
     const m = modal(`
       <h2 class="serif">${(youWin === null ? "" : (youWin ? "勝利 — " : "敗北 — ")) + teamDisp(winTeam) + "の勝ち"}</h2>
@@ -13807,6 +14226,11 @@ if (typeof document !== "undefined") (() => {
     if (fin && fin.hands) for (const sName in fin.hands) out[sName] = (fin.hands[sName] || []).filter(function(k) { return k === "し"; }).length;
     rec._endShi = out; return out;
   }
+  // M-7(v92a): エンジンのTRUST_READ(L3345/L6855、プライベート定数=0.35。ouOn(partner)&&
+  // ouTrust(partner)>=TRUST_READ でなければ王合図を読まない)と同値。エンジン非公開のためUI側に
+  // 値だけ複製する(エンジンコード自体は不変)。既存UI(convTrustVal()>=0.35「読みのみ有効」の閾値、
+  // L13530付近)とも一致する値。
+  const OUSIG_TRUST_READ = 0.35;
   // 【王/し合図の専用honesty監査 + 結果ベース厳密化】し早捨て(王合図)・五し攻め宣言の正直さを点検。
   // 王合図の検出はエンジン detectOuSignals を流用しAIの読み(し余り懐疑込み)と厳密一致。
   // 偽信号は結果で厳密化: 相方の温存/連携が実際に空振りしたか(wasted)を局結果と相方の手から判定。
@@ -13827,7 +14251,13 @@ if (typeof document !== "undefined") (() => {
       const honest = hand.includes("王");
       const wasted = !honest && lost && partnerTemporized;   // 偽の王合図で相方が温存し空振り
       let text;
-      if (honest) text = "王持ちの合図（し早捨て）を正しく送っています。相方はしを温存して高得点上がりに備えられます。";
+      // M-7(v92a): 「相方はしを温存して…備えられます」は相方の応答を断言する予告文であり、
+      // 王合図規約がOFF(cfg.ouSignal=false)ならエンジンは王合図を一切読まない(ouOn=false)ため
+      // 断言できない。convTrust低下時も同様(エンジンの読みゲートTRUST_READ=0.35相当。L3345/L6855の
+      // プライベート定数と同値をUI側に複製し、convTrustVal()と比較する)。この場合は応答予告を落とし
+      // 事実(王の裏付けがある)のみを述べる。
+      if (honest) text = "王持ちの合図（し早捨て）を正しく送っています。" +
+        ((app.cfg.ouSignal && convTrustVal() >= OUSIG_TRUST_READ) ? "相方はしを温存して高得点上がりに備えられます。" : "");
       else if (wasted) text = "⚠ 偽の王合図です（王を保有せず）。相方はしを温存したまま（終局し" + partnerEndShi + "枚残し）この局を落としました。温存が空振りになりました。";
       else text = "王合図の裏付け（王）を欠きますが、相方の温存は空振りにはならずに済みました（この局は落とさず、または相方はしを使い切り）。";
       return {type: "ou_sig", koma: "し", honest, wasted, jk: "ou_signal", text};
@@ -13840,10 +14270,16 @@ if (typeof document !== "undefined") (() => {
       // 消えたのではなく「使用済みの保有」。監査は振り返り(全情報)なので自分の伏せ駒を数えてよい。
       // st は rebuildState(rec, i) の「手番前」状態なので hand には攻め対象のしがまだ残っている
       // (攻めに使うし自体の+1補正は不要)。
+      // M-6(v92a): 同じ理屈は初攻め前に「受けで消費したし」にも当てはまる(伏せたしと同様、消えたのでは
+      // なく使用済みの保有)。エンジンの読み側(inferPartnerHoldingsの「元保有4」読み＋消費控除)と
+      // 揃え、し4枚→し受け→初攻めし、の形を薄い宣言として誤検出しないようにする。
       const buriedShi = (rec.moves || []).slice(0, i).filter(function(m) {
         return m.seat === seat && m.action && m.action.type === "bury" && m.action.koma === "し";
       }).length;
-      const shiN = hand.filter(function(k) { return k === "し"; }).length + buriedShi;
+      const receivedShi = (rec.moves || []).slice(0, i).filter(function(m) {
+        return m.seat === seat && m.action && m.action.type === "receive" && m.action.koma === "し";
+      }).length;
+      const shiN = hand.filter(function(k) { return k === "し"; }).length + buriedShi + receivedShi;
       const honest = shiN >= 4;
       const wasted = !honest && lost;   // 薄いし攻めで局を落とした(連携の空振り)
       let text;
@@ -13891,6 +14327,11 @@ if (typeof document !== "undefined") (() => {
     });
   }
   function computeCoach(rec) {
+    // v92b(M-10): このcomputeCoach呼び出しでrec.moves中の1件以上を実際に新規算出した場合のみ、
+    // 呼び出し完了時にrec.cfv=2(評価器バージョンタグ)を立てる。既に全手にcf(旧版・別セッションで
+    // 算出済み)がある呼び出し(例: openReviewOn/ensureAnalyzedでの既解析レコード再訪問)はここで
+    // 何も新規計算しないため、cfvは書き換えない(旧評価器のcf値をv2ラベルで誤表示しないため)。
+    let computedFresh = false;
     rec.moves.forEach((mv, i) => {
       if (!mv.human || mv.cf) return;
       const st = rebuildState(rec, i);
@@ -13906,11 +14347,17 @@ if (typeof document !== "undefined") (() => {
                       (probe.move.koma || null) === (mv.action.koma || null);
         // 別手順でも同じ確定勝ち(パー損失なし)なら逃しにしない。
         // 例: 4枚目の駒→王 と 王→4枚目 はどちらも同点上がり。打順の違いを誤って減点しない。
-        let alt = false;
+        let alt = false, parUnverified = false;
         if (!exact) {
           try {
             const par = G.ddParAnalyze(st);
-            if (par && par.ok && par.rows && par.rows.length) {
+            if (par && par.ok === false) {
+              // M-14(v92a): 総駒>20等でddParAnalyzeが証明不能(ok:false)。「同点別手順」を否定も
+              // 肯定もできないため、missにもagreeにも数えず保留にする(cf.srcを非"solver"にして
+              // ⚠の正定義(厳密一致)から自然に外れる形にする。既存のcf表示はsrc==="solver"の
+              // 厳密一致で分岐しているため、この値でも表示は壊れず単に⚠プレフィックスが付かなくなる)。
+              parUnverified = true;
+            } else if (par && par.ok && par.rows && par.rows.length) {
               const best = par.rows[0].v;
               const key = mv.action.type === "pass" ? null : (mv.action.koma || null);
               const played = par.rows.find(r => r.koma === key);
@@ -13919,18 +14366,31 @@ if (typeof document !== "undefined") (() => {
           } catch (e) {}
         }
         mv.cf = {type: probe.move.type, koma: probe.move.koma, why: probe.why,
-                 src: probe.dom ? "solverDom" : "solver", agree: exact || alt, alt: alt && !exact};
+                 src: parUnverified ? "solverUnverified" : (probe.dom ? "solverDom" : "solver"),
+                 agree: exact || alt, alt: alt && !exact};
+        computedFresh = true;
         return;
       }
       // コーチの「AIなら」は実対局の最強AIと同じ信念加重MCで評価する。
       // 旧 {mc:false} は占有率フォールバックに落ち、未見駒の保有者(相方/敵)を区別できず
       // 「相方が持つ馬は安全」を見抜けないため、正しい人間の手を誤って逸脱扱いしていた。
+      // v92b(M-10): tierOpts(strong/coop)(L10222-10230)と完全同一のオプションに変更し、上のコメントの
+      // 主張(実対局の最強AIと同じ条件で評価する)と実装を一致させた。これにより「受け局面で、画面の
+      // 推奨手(MC)に従って打った手が、振り返り(旧: 常にルール受けreceiveChoice)でagree=falseになる」
+      // 系統的な不一致(エンジンの受けMCゲートがo.mc必須のため)が解消する。adviceOpts(推奨手用・
+      // mcDets12/recvRisk有)とは依然残差があるが、tierOptsとの一致を優先する計画上の判断(残差は
+      // IMPLEMENTATION_REPORT_v92b.mdに記載)。recvRiskはtierOptsに存在しないためここでも外す。
+      // mcSeedはliveがapp.gameNo+1を使うため、過去局のensureAnalyzed再解析でも決定的になるよう
+      // rec.gameNo+1で再現する。solver/mcはapp.cfg追随(liveと同じ)。
       const a = G.policyAction(st, mv.seat,
-        {mc: false, solver: true, mcDets: 16, attackMC: true, matchEq: true,
-         dd: true, ddLimit: 16, ddDets: 12, wSample: true, danger: true, recvRisk: true, mcSeed: 1000 + i});
+        {mc: app.cfg.mc, solver: app.cfg.solver, mcDets: 96, mcSeed: rec.gameNo + 1,
+         attackMC: true, matchEq: true, dd: true, ddLimit: 16, ddDets: 16, wSample: true, danger: true});
       const agree = a.type === mv.action.type && (a.koma || null) === (mv.action.koma || null);
       mv.cf = {type: a.type, koma: a.koma || null, why: a.why || "", src: a.src === "solver" ? "rule" : (a.src || ""), agree};
+      computedFresh = true;
     });
+    if (computedFresh) rec.cfv = 2;   // v92b(M-10): 評価器バージョンタグ。slimRecForStorageで永続化、
+                                        // career/coachHistoryのエントリにも伝播(集計側の閾値は変更せず混在許容)。
   }
   function coachSummary(rec) {
     let h = 0, agree = 0, miss = 0, hasty = 0, tSum = 0, tN = 0;
@@ -14555,13 +15015,18 @@ if (typeof document !== "undefined") (() => {
     mv.lineNote = "想定手順の一例（保証は任意の応手に対し成立）: " + steps.join(" ");
     renderReviewList();
   }
+  // M-9(v92a): 振り返り2系統(clarityAnalyze/mcReevaluate)のMC評価パラメータを共通化する(最小差分。
+  // liveのcandidateRanking(dets20・別seed式)とaiHesitation(演出専用)は対象外)。同一局面の際どさが
+  // 経路によって揺れていた原因の一つ(dets自体は元々24で一致していたためseed式のみ統一)。
+  const MC_REVIEW_DETS = 24;
+  function mcReviewSeed(rec, i) { return rec.gameNo * 977 + i; }
   function mcReevaluate(i) {
     const rec = app.reviewRec, mv = rec.moves[i];
     mv.mcNote = "計算中…";
     renderReviewList();
     setTimeout(() => {
       const st = rebuildState(rec, i);
-      const r = G.mcEvalReceive(st, mv.seat, {mcDets: 24, mcSeed: rec.gameNo * 977 + i});
+      const r = G.mcEvalReceive(st, mv.seat, {mcDets: MC_REVIEW_DETS, mcSeed: mcReviewSeed(rec, i)});
       mv.mcNote = r.ok
         ? `${r.note}（MCの選択: ${r.pick ? "受「" + r.pick + "」" : "なし"}）— 推定値・誤差あり`
         : `MC評価不可: ${r.msg}`;
@@ -14594,7 +15059,7 @@ if (typeof document !== "undefined") (() => {
       $("rv-stats").textContent = `際どさ分析中… ${k}/${targets.length}`;
       setTimeout(() => {
         const st = rebuildState(rec, e.i);
-        const r = G.mcEvalReceive(st, e.mv.seat, {mcDets: 24, mcSeed: rec.gameNo * 131 + e.i});
+        const r = G.mcEvalReceive(st, e.mv.seat, {mcDets: MC_REVIEW_DETS, mcSeed: mcReviewSeed(rec, e.i)});
         if (r.ok && r.means && r.means.length >= 2) {
           const sorted = r.means.slice().sort((a, b) => b.m - a.m);
           const margin = sorted[0].m - sorted[1].m;
@@ -14902,6 +15367,7 @@ if (typeof document !== "undefined") (() => {
     app.scores = {NS: 0, EW: 0};
     app.matchOver = false; app.stopped = false;
     app.gameNo = 0; app.kifuLines = []; app.lastRec = null; app.coachHistory = []; app.matchNo++;
+    app._tourWinRecorded = false;   // A-5(v91a): 新しいマッチの開始でtourWinRecordの一回性ガードをリセット
     $("btn-kifu").disabled = true;
     app.rng = G.mulberry32(Date.now() % 2147483647);
     app.parent = G.SEATS[Math.floor(Math.random() * 4)];
@@ -14927,7 +15393,9 @@ if (typeof document !== "undefined") (() => {
     try { kirikoRelease(true); } catch (e) {}   // Fix(v87.1): 設定画面へ戻る時はキリコ持続演出を即時解放
     $("main-screen").classList.remove("show");
     $("setup-screen").style.display = "flex";
+    syncSetupFormFromCfg();   // A-1(v91a): 対局中の調整モーダルでの変更をフォームに反映する
     renderKeikoPanel(); keikoEvalWeakAsync(); keikoEvalGradAsync();   // T-1/T-2/G-2(v90a/b): 設定画面へ戻るたびに稽古札を再評価
+    initMatchResumeUI();   // B-4(v91b): 起動時のみだったため、セッション中の中断保存がresume-panelに反映されなかった不具合の是正
   }
   // ===== 4.4 コーチ濃度ティア: 個別トグルを単一ティアへ集約 (基底フラグは各表示ゲートが従来通り参照) =====
   const COACH_TIERS = {
@@ -15030,17 +15498,26 @@ if (typeof document !== "undefined") (() => {
     G_B.setCoopSignal(G.SEATS.some(function(s){ return app.tiers[s] === "coop"; }));   // 対人協調AIの正直符丁(でか順)をB側で有効化
     saveCfgToStorage();   // O1: 対局開始時点のcfgを保存
   }
-  function enterGame(watch) {
-    readSetup(watch);
+  // A-2(v91a): setup非表示・main表示・handarea表示(humanSeatに追随)をまとめたヘルパー。
+  // enterGameの画面切替をここへ切り出し、SRS復習(srsReviewStart)・過去の自分(openPastSelf、防御)
+  // からも同じ処理で盤を確実に見せる(従来はenterGame/resumeSavedMatch/startTutorial等の各経路が
+  // 個別に画面切替を書いており、srsReviewStart→startPracticeの経路にだけこれが欠けていた)。
+  function ensureGameScreen() {
     $("setup-screen").style.display = "none";
     $("main-screen").classList.add("show");
+    $("handarea").classList.toggle("show", !!app.humanSeat);
+  }
+  function enterGame(watch) {
+    readSetup(watch);
+    ensureGameScreen();
     newMatch();
   }
   $("btn-start").addEventListener("click", () => enterGame(false));
   $("btn-watch").addEventListener("click", () => enterGame(true));
   wireCoachTier("cfg"); syncSetupFormFromCfg();
   initMatchResumeUI();   // A-1(v89b): 保存された対局があれば復帰カードを表示
-  { const kd = $("keiko-dismiss"); if (kd) kd.addEventListener("click", keikoDismissToday); }
+  // A-3(v91a): #keiko-dismissの恒久addEventListenerを廃止(keikoRenderCardが全カード種で
+  // onclickを明示設定するため併存不要。grad_failedで「このまま続ける」と当日抑制が同時発火していた不具合の修正)。
   renderKeikoPanel(); keikoEvalWeakAsync(); keikoEvalGradAsync();   // T-1/T-2/G-2(v90a/b): 稽古札の初期表示+弱点/卒業提案の非同期評価
   // C-1(v89c): 配牌の所作をタップでスキップ。PLANは#board限定を指定するが#hand(自席手駒)は#boardの子孫でないため、
   // 効果はbody.deal-doneへ広げて両方をまとめて即時最終状態にする(dealAnimStart()側で局ごとに解除)。
@@ -15581,7 +16058,7 @@ if (typeof document !== "undefined") (() => {
     if (app.timer) clearTimeout(app.timer);
     document.body.className = document.body.className.replace(/\btut(-[a-z]+)?\b/g, "").trim();
     $("tut-overlay").classList.remove("on");
-    if (!silent) { $("main-screen").classList.remove("show"); $("setup-screen").style.display = ""; updateTutorialPanel(); renderKeikoPanel(); keikoEvalWeakAsync(); keikoEvalGradAsync(); }
+    if (!silent) { $("main-screen").classList.remove("show"); $("setup-screen").style.display = ""; syncSetupFormFromCfg(); updateTutorialPanel(); renderKeikoPanel(); keikoEvalWeakAsync(); keikoEvalGradAsync(); }
   }
   function tutSpotlight(sel) {
     const spot = $("tut-spot"); if (!spot) return;
@@ -15664,6 +16141,7 @@ if (typeof document !== "undefined") (() => {
           if (app.humanSeat) setOuTrustBoth(app.humanSeat);
         }
         if (d.oppCounts && d.oppCounts.pe) {
+          oppCountsMigrateBl(d.oppCounts);   // M-1(v92a): bl 1回だけ移行(未移行データの再読込み時にも適用)
           app.oppCounts = d.oppCounts;
           applyOppProfile();
         }
@@ -15874,11 +16352,18 @@ if (typeof document !== "undefined") (() => {
         if (!mv.human || mv.forced) return;
         const s = stats[conceptOf(mv)];
         s.seen++;
+        // M-3(v92a): sig統計(sigOK/sigFalse/sigWasted)とok/missはmv.sig/mv.cfから独立に集計する
+        // (従来はif/else排他だったため、mv.sigが付いた手はmv.cfにSolver証明の⚠があっても
+        // ok++にしかならず、振り返り画面の⚠表示と概念集計が食い違っていた)。
         if (mv.sig) {
-          if (mv.sig.honest) { s.ok++; s.sigOK++; } else { s.sigFalse++; if (mv.sig.wasted) s.sigWasted++; }
-        } else if (mv.cf) {
+          if (mv.sig.honest) s.sigOK++; else { s.sigFalse++; if (mv.sig.wasted) s.sigWasted++; }
+        }
+        if (mv.cf) {
+          // M-2(v92a): ⚠の正定義(rec.misses/coachSummary/eqPinMoves)と同じ厳密一致へ統一。
+          // 従来のindexOf("solver")===0は"solverDom"(確定でない賭け)・"solverRead"/"solverTeam"
+          // (連携前提・確定でない)まで拾ってしまい、振り返り(⚠なし)と弱点診断(減点)が食い違っていた。
           if (mv.cf.agree) s.ok++;
-          else if (String(mv.cf.src).indexOf("solver") === 0) {
+          else if (mv.cf.src === "solver") {
             s.miss++;
             const L = lossOf(rec, mv);
             if (L) s.lossSum += L.loss;
@@ -15910,13 +16395,22 @@ if (typeof document !== "undefined") (() => {
   /* ================================================================
    * T-1/T-2(v90a): 稽古札(#keiko-panel) — 学習提案の共通出口 (PLAN_v90_teacher.md)
    * 同時に表示する提案は常に1件(憲章§5「情報の節度」)。優先順位:
-   *   1. 復習期日超過 (v90c S-3 で合流。v90a時点では常にnull=不成立)
-   *   2. 卒業提案     (v90b G-2 で合流。v90a時点では常にnull=不成立)
-   *   3. 弱点ドリル    (T-2。#resume-panel表示中は抑制=R-a4)
+   *   1. 卒業判定待ち (failed_pending。B-1(v91b): 宙吊りのcfgを先に解消すべきため、優先順位が
+   *      最上位。理由: cfgはfalseのままユーザーの選択(戻す/続ける)を待っている状態のため)
+   *   2. 復習期日超過 (v90c S-3 で合流。v90a時点では常にnull=不成立)
+   *   3. 卒業提案・試し中 (v90b G-2 で合流。v90a時点では常にnull=不成立。試し中の状態表示はB-1(v91b))
+   *   4. 弱点ドリル    (T-2。#resume-panel表示中は抑制=R-a4)
    * 却下「今日はいい」は種類を問わず当日いっぱい再表示しない(goita_keiko_v1)。
    * 連続日数・達成率・報酬の類は一切表示しない(禁止事項)。
    * ================================================================ */
-  function today() { return new Date().toISOString().slice(0, 10); }   // S-1(v90c)でも再利用する共通ヘルパ
+  // B-4(v91b): ローカル日付化。旧実装(toISOString().slice(0,10))はUTCのため、JSTでは朝9時に日付が
+  // 切り替わっていた(dismissedOn・SRS due・過去の自分の14日判定に影響)。addDays/daysBetweenは
+  // YYYY-MM-DDラベルをUTCアンカーで純粋に暦計算するのみで実時刻を参照しないため、本関数の変更のみで
+  // 一貫する(確認済み)。保存データは同じYYYY-MM-DD形式のため移行不要(切替日1回だけ最大9時間ずれるが実害なし)。
+  function today() {
+    const d = new Date();
+    return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+  }
   const KEIKO_STORAGE_KEY = "goita_keiko_v1";
   function keikoLoad() {
     try {
@@ -15938,17 +16432,45 @@ if (typeof document !== "undefined") (() => {
       if (!due.length) return null;
       const t = today();
       const days = due.reduce((mx, c) => Math.max(mx, daysBetween(c.last || c.due, t)), 0);
-      return {kind: "due", count: due.length, days};
+      // B-2(v91b): 全カードが2回目以降の復習(reps>0)なら「前回解いた」基準の文言に分岐する材料。
+      const allReviewed = due.every(c => (c.reps || 0) > 0);
+      return {kind: "due", count: due.length, days, allReviewed};
     } catch (e) { return null; }
   }
   // 復習セッション: 期日超過カードを最大5枚キューに積み、1枚ずつ処理する(「残り47枚」を出さないための
   // 運用上の上限。表示件数自体は事実としてdue.lengthをそのまま見せてよい)。
   function srsReviewStart() {
     closeModal();
+    // B-4(v91b・v91aレビューNice-to-have対応): ensureGameScreen()はここではなくsrsReviewPuzzle側
+    // (probe成功後・startPractice直前)へ移した。定石(モーダルのみ)カードだけのキューでは対局画面へ
+    // 切り替えない(フレッシュ起動直後に空の盤面が一瞬見える不具合を避ける)。
     const store = srsLoad();
     app._srsStore = store;
     app._srsQueue = srsDue(store).slice(0, 5);
+    app._srsReviewedCount = 0;
+    app._srsPrunedCount = 0;   // M-4(v92a)
     srsReviewNext();
+  }
+  // A-2(v91a): キュー完了時の案内モーダル。復習した件数の事実表示のみ(評価語・圧力表現は使わない)。
+  // FIX(v91a REVIEW Must-fix1): n=0(=1件も提示できなかった)場合は「復習しました」と嘘の事実を
+  // 述べないよう文言を分岐する。
+  // 「設定へ戻る」はstopToSetup相当の軽量遷移(対局保存に触れない。matchSaveAllowedがpractice中を
+  // 除外するため、そもそも復習セッションはmatchSave対象外)。
+  function srsReviewShowDone() {
+    const n = app._srsReviewedCount || 0;
+    const pruned = app._srsPrunedCount || 0;
+    app._srsReviewedCount = 0;
+    app._srsPrunedCount = 0;
+    const body = n > 0 ? ('<p class="note">' + n + '問を復習しました。</p>')
+                        : '<p class="note">復習できる問題はありませんでした。</p>';
+    // M-4(v92a): band情報のない旧カードで解けない(probe=null)ものをsrsReviewPuzzleがその場で削除した
+    // 件数の事実表示のみ(評価語・圧力表現なし)。1セッションにつき1回だけ、まとめて表示する。
+    const prunedNote = pruned > 0
+      ? ('<p class="note">解けない形になっていた復習カードを' + pruned + '件取り除きました。</p>') : "";
+    const m = modal('<h2 class="serif">復習を終えました</h2>' + body + prunedNote +
+      '<div class="row"><button type="button" class="btn primary" id="srs-done-setup">設定へ戻る</button></div>');
+    const b = m.querySelector("#srs-done-setup");
+    if (b) b.onclick = () => { closeModal(); stopToSetup(); };
   }
   function srsReviewNext() {
     const q = app._srsQueue;
@@ -15957,6 +16479,7 @@ if (typeof document !== "undefined") (() => {
       if (app.drill) endPractice();
       status("復習を終えました。");
       renderKeikoPanel();
+      srsReviewShowDone();
       return;
     }
     const card = q.shift();
@@ -15966,14 +16489,48 @@ if (typeof document !== "undefined") (() => {
   }
   // S-2: rebuildState()で凍結局面を再現し、新規Solver探索(freshSolverProbe)で読みを取り直す。
   // generatePuzzle()は呼ばない(受け入れ基準: 復習時にgeneratePuzzleが呼ばれないこと)。
-  // bandはsrsSlimに保存されないため、有段特有の「上がり切り」判定は再現せず初手一致で判定する(既知の逸脱)。
+  // M-4(v92a): band==="adv"&&stage===1のカードは、freshSolverProbeが意図的にnullを返す局面
+  // (枚数勘定だけでは確実と言えず敵実保有の推測が必要=advProbeのstage1合格条件そのもの)なので、
+  // advProbeと同じ経路(敵2席の実保有unseenEnemyを凍結局面から再構成しG.puzzleTruthProbe)で
+  // 正解手を取得する。stage2/basic/mid/band情報のない旧カードは従来どおりfreshSolverProbeで判定する。
   function srsReviewPuzzle(card) {
     let st;
     try { st = rebuildState(card.payload, card.payload.upto); } catch (e) { srsReviewNext(); return; }
-    const probe = st ? G.freshSolverProbe(st, st.actor, false) : null;
-    if (!probe) { srsReviewNext(); return; }   // 再現局面でSolverが読みを出せない(理論上まれ) — 失敗扱いにせず読み飛ばす
+    if (!st) { srsReviewNext(); return; }
+    let probe = null;
+    if (card.band === "adv" && card.stage === 1) {
+      const foes = G.SEATS.filter(s => G.team(s) !== G.team(st.actor));
+      const unseenEnemy = {};
+      for (const f of foes) for (const km of st.hands[f]) unseenEnemy[km] = (unseenEnemy[km] || 0) + 1;
+      probe = G.puzzleTruthProbe(st, st.actor, unseenEnemy);
+    } else {
+      probe = G.freshSolverProbe(st, st.actor, false);
+    }
+    if (!probe) {
+      // M-4(v92a)後方互換: band情報のない旧カード(本修正以前に生成)は、有段stage1でもfreshSolverProbeしか
+      // 試せず構造的に毎回nullになりうる。無言のまま永久にdueへ残留させず、その場で削除し件数を
+      // (セッション終了時に)1回だけ事実として告知する(srsReviewShowDone参照)。band付きの新規カードで
+      // probeがnullになるのは理論上まれなケースのみのため、削除はせず単に読み飛ばす(従来どおり)。
+      if (!card.band) {
+        const s = app._srsStore || srsLoad();
+        s.cards = s.cards.filter(c => c.id !== card.id);
+        srsSaveStore(s);
+        app._srsPrunedCount = (app._srsPrunedCount || 0) + 1;
+      }
+      srsReviewNext();
+      return;
+    }
+    // FIX(v91a REVIEW Must-fix1): カウントは「実際に提示した時点」(=probe成功でstartPracticeへ進む
+    // ことが確定した時点)でのみ増やす(dequeue直後だと読み飛ばしたカードまで数えてしまうため)。
+    app._srsReviewedCount = (app._srsReviewedCount || 0) + 1;
+    // B-4(v91b・v91aレビューNice-to-have対応): ensureGameScreen()をsrsReviewStart冒頭からここ
+    // (probe成功後・startPractice直前)へ移す。定石のみのキューでは画面を切り替えない。
+    ensureGameScreen();
+    // M-4(v92a): band保存済みの有段(adv)カードはband: card.bandを渡すことで、applyAndLog/onPracticeOverの
+    // 既存の「d.band==="adv"」分岐に自然に乗り、判定が上がり切り(onPracticeOverの結末判定)に寄る。
     startPractice(card.payload, card.payload.upto,
-      {srcMv: null, move: probe.move, why: probe.why, judged: false, isPuzzle: true, band: null, srsCard: card},
+      {srcMv: null, move: probe.move, why: probe.why, judged: false, isPuzzle: true,
+       band: card.band || null, stage: card.stage || null, srsCard: card},
       "復習 — この局面、確実に上がれます");
   }
   // 定石の復習: openJoseki()をそのまま再利用し、自己申告の2択(思い出せた/忘れていた)をrowへ追加する。
@@ -15983,13 +16540,38 @@ if (typeof document !== "undefined") (() => {
     openJoseki(key);
     const row = document.querySelector("#modal-body .row");
     if (!row) { srsReviewNext(); return; }
-    const grade = (ok) => { srsGrade(card, ok); srsSaveStore(app._srsStore || srsLoad()); closeModal(); srsReviewNext(); };
+    // FIX(v91a REVIEW Must-fix1): 定石カードも実際に提示できた時点(=row取得成功、モーダル表示済み)で数える。
+    app._srsReviewedCount = (app._srsReviewedCount || 0) + 1;
+    // B-4(v91b): tut付き定石の「▶ 試す」は復習モーダルでは非表示にする(押すと復習セッションが
+    // 放棄される=startTutorialへ遷移してしまうため)。
+    { const tryBtn = row.querySelector("#jk-try"); if (tryBtn) tryBtn.style.display = "none"; }
+    const grade = (ok) => {
+      _modalOnClose = null;   // 採点確定。以下のclose直前フックによる未採点離脱扱いにしない
+      srsGrade(card, ok);
+      srsPersistGradedCard(card);   // B-4(v91b): フォールバック是正
+      closeModal();
+      srsReviewNext();
+    };
     const btnNo = document.createElement("button");
     btnNo.className = "btn"; btnNo.textContent = "忘れていた"; btnNo.onclick = () => grade(false);
     const btnYes = document.createElement("button");
     btnYes.className = "btn"; btnYes.textContent = "思い出せた"; btnYes.onclick = () => grade(true);
     row.insertBefore(btnYes, row.firstChild);
     row.insertBefore(btnNo, row.firstChild);
+    // B-4(v91b): 定石復習の未採点離脱。Esc/背景クリック/「閉じる」ボタンいずれで抜けても
+    // (grade()を経由しない限り)復習セッションを中断として終了する。
+    // FIX(v91bc REVIEW Must-fix1): 従来はキュー末尾へcardをpushしてsrsReviewNext()を即時呼び出して
+    // いたため、キューに残るカードが1枚(=このcard自身)だけの場合は閉じた瞬間に同じモーダルが
+    // 再表示され、採点しない限り脱出できなかった(複数枚でも閉じるたびに次が開き続けた)。
+    // 「閉じる」は離脱の意思表示であり、セッションを継続してはならない。cardはgrade()を経ていない
+    // ため due が更新されておらず、そのままdueに残る(稽古札が後日あらためて提案する。データは
+    // 失われない)。キューはここで空にして状態を残さない(次回「復習する」でsrsReviewStartが
+    // srsDue()から再構築するため、pushし直す必要もない)。
+    _modalOnClose = () => {
+      const remain = 1 + (app._srsQueue ? app._srsQueue.length : 0);   // このcard自身+キュー未提示分
+      app._srsQueue = null;
+      status("採点せずに閉じました。あと" + remain + "問は期日のままです。");
+    };
   }
   // G-2(v90b): 判定後の「戻す/続ける」選択待ち(failed_pending)を最優先で表示。それが無ければ新規提案を評価する。
   // gradPropose()はconcept!=nullの足場でbuildConceptProfile()(概念別集計・重い)を呼びうるため、
@@ -16000,6 +16582,12 @@ if (typeof document !== "undefined") (() => {
     if (g.trial && g.trial.phase === "failed_pending") {
       const sf = SCAFFOLDS.find(s => s.key === g.trial.key);
       if (sf) return {kind: "grad_failed", sf: sf, rate: g.trial.rate};
+    }
+    // B-1(v91b): 試行中(3局計測中)の状態表示。従来は試行中は何も出ず、進捗が対局画面の成績→卒業帳
+    // でしか見えなかった。
+    if (g.trial && g.trial.phase === "trial") {
+      const sf = SCAFFOLDS.find(s => s.key === g.trial.key);
+      if (sf) return {kind: "grad_trial", sf: sf, n: g.trial.games.length};
     }
     const sf = gradPropose();
     if (sf) return {kind: "grad_propose", sf: sf};
@@ -16025,8 +16613,16 @@ if (typeof document !== "undefined") (() => {
     const panel = $("keiko-panel"); if (!panel) return;
     const desc = $("keiko-desc"), diag = $("keiko-diag"), action = $("keiko-action"), dismissBtn = $("keiko-dismiss");
     panel.style.display = "";
+    // B-1(v91b): grad_trial(下記)専用の見た目を、他kindの再描画時に引き継がないためのリセット。
+    if (desc) desc.style.color = "";
+    if (action) action.style.display = "";
+    if (dismissBtn) dismissBtn.style.display = "";
     if (kind === "due") {
-      if (desc) desc.textContent = (data.days > 0 ? data.days + "日前に覚えた詰め・定石が" : "覚えた詰め・定石が") + data.count + "問あります。まだ解けますか？";
+      // B-2(v91b): 2回目以降の復習(reps>0)は「覚えた」ではなく「前回解いた」基準の文言に。
+      const learnTxt = data.allReviewed
+        ? (data.days > 0 ? data.days + "日前に解いた" : "前回解いた")
+        : (data.days > 0 ? data.days + "日前に覚えた" : "覚えた");
+      if (desc) desc.textContent = learnTxt + "詰め・定石が" + data.count + "問あります。まだ解けますか？";
       if (diag) { diag.style.display = "none"; diag.textContent = ""; }
       if (action) { action.textContent = "復習する"; action.onclick = () => srsReviewStart(); }
       if (dismissBtn) { dismissBtn.textContent = "今日はいい"; dismissBtn.onclick = keikoDismissToday; }
@@ -16050,11 +16646,22 @@ if (typeof document !== "undefined") (() => {
       if (diag) { diag.style.display = "none"; diag.textContent = ""; }
       if (action) { action.textContent = "戻す"; action.onclick = () => gradTrialRevert(sf); }
       if (dismissBtn) { dismissBtn.textContent = "このまま続ける"; dismissBtn.onclick = () => gradTrialContinue(sf); }
+    } else if (kind === "grad_trial") {
+      // B-1(v91b): 「試し中（n/3局）」の状態表示。ボタンは「やめる」(gradTrialRevert相当)のみとし、
+      // 「今日はいい」は出さない(進行中の試行は当日抑制の対象にしない実装判断。詳細はレポート参照)。
+      const sf = data.sf;
+      if (desc) { desc.textContent = "「" + sf.label + "」を外して試し中（" + data.n + "/3局）です。"; desc.style.color = "var(--aoi)"; }
+      if (diag) { diag.style.display = "none"; diag.textContent = ""; }
+      if (action) { action.style.display = "none"; action.onclick = null; }
+      if (dismissBtn) { dismissBtn.textContent = "やめる"; dismissBtn.onclick = () => gradTrialRevert(sf); }
     }
   }
   function renderKeikoPanel() {
     const panel = $("keiko-panel"); if (!panel) return;
     if (keikoDismissedToday()) { panel.style.display = "none"; return; }
+    // B-1(v91b): 卒業判定待ち(failed_pending)は宙吊りのcfgを先に解消すべきため、SRS期日カードより優先する。
+    const gradPending = keikoProposeGrad();
+    if (gradPending && gradPending.kind === "grad_failed") { keikoRenderCard(gradPending.kind, gradPending); return; }
     const due = keikoProposeDue();
     if (due) { keikoRenderCard("due", due); return; }
     const grad = keikoProposeGrad();
@@ -16156,6 +16763,8 @@ if (typeof document !== "undefined") (() => {
         mark = "✓"; statusTxt = fmtMonthDay(g.graduated[sf.key].at) + "に外した"; markStyle = "color:var(--aoi)";
       } else if (g.trial && g.trial.phase === "trial" && g.trial.key === sf.key) {
         mark = "⋯"; statusTxt = "試し中（" + g.trial.games.length + "/3局）";
+      } else if (g.trial && g.trial.phase === "failed_pending" && g.trial.key === sf.key) {
+        mark = "⋯"; statusTxt = "判定待ち";   // B-1(v91b): 現状「未使用」に落ちていたのを是正
       } else {
         mark = "─"; statusTxt = "未使用";
       }
@@ -16168,11 +16777,14 @@ if (typeof document !== "undefined") (() => {
       return row;
     }).join("");
     const remain = SCAFFOLDS.filter(sf => app.cfg[sf.key]).length;
+    // B-3(v91b): 10/10到達時に出場前チェックリストへの接続文言+ボタンを追加(G-3→D-2の連結。従来は文言のみで行き止まり)。
     const remainTxt = remain === 0
-      ? "大会仕様（全て無し）に到達しています。"
+      ? "大会仕様（全て無し）に到達しています。出場前チェックリストで確かめられます。"
       : "大会仕様（全て無し）まで、あと" + remain + "つ。";
+    const checklistBtn = remain === 0
+      ? '<div class="row" style="justify-content:flex-start"><button type="button" class="btn" id="grad-checklist-open">出場前チェックリストを開く</button></div>' : "";
     return '<div class="grad-ledger"><div class="note" style="margin-top:10px;border-top:1px solid var(--line);padding-top:8px"><b>卒業帳</b></div>' +
-      rows + '<p class="note">' + remainTxt + '</p></div>';
+      rows + '<p class="note">' + remainTxt + '</p>' + checklistBtn + '</div>';
   }
   /* ================================================================
    * D-1(v90e): テンポ計。既存のmoves[].thinkMsを使うのみで新規計測はしない。
@@ -16247,28 +16859,54 @@ if (typeof document !== "undefined") (() => {
     const remain = SCAFFOLDS.filter(sf => app.cfg[sf.key]).length;   // G-3と同じ算出
     const item1 = remain === 0;
     const tw = tourWinLoad();
-    const item2 = tw.wins > 0;
+    // A-5(v91a): 「勝ち越せる」の判定をwins>0(1勝でも✓)からwins>losses(勝ち越し)へ是正し、
+    // subに「n勝m敗」の事実を表示する(従来subは空文字で戦績が見えなかった)。
+    const item2 = tw.wins > tw.losses;
+    const item2Sub = (tw.wins || tw.losses) ? (tw.wins + "勝" + tw.losses + "敗") : "";
     const t = buildTempoStats();
     const snap = t.bins.snap, slow = t.bins.slow;
-    let item3 = false, item3Sub = "データ不足";
-    if (snap.h >= 20 && slow.h >= 20) {
-      const diff = Math.round(Math.abs(snap.ag / snap.h - slow.ag / slow.h) * 100);
+    let item3 = false, item3Sub;
+    if (!t.totalN) {
+      // B-2(v91b): 全帯ゼロ時はtempoHtml()と同じ案内文をチェックリストにも表示する。
+      item3Sub = "まだデータがありません。全ての補助を外した状態（大会仕様）で対局すると集計されます。";
+    } else if (snap.h >= 20 && slow.h >= 20) {
+      // B-2(v91b): 片側判定化。速く打つ方が一致率が高い場合まで不合格にしていたのを是正し、
+      // 「snap側がslow側より10pt超低い場合のみ未達」とする(達成方向にのみ緩和。既達成者への影響なし)。
+      const diff = Math.round((slow.ag / slow.h - snap.ag / snap.h) * 100);
       item3 = diff <= 10;
-      item3Sub = "テンポ計の差 " + diff + "pt";
+      item3Sub = "テンポ計の差 " + Math.abs(diff) + "pt";
+    } else {
+      // B-2(v91b): 帯別の不足を事実表示する(どちらが足りないか)。
+      const needSnap = Math.max(0, 20 - snap.h), needSlow = Math.max(0, 20 - slow.h);
+      const parts = [];
+      if (needSnap > 0) parts.push("5秒以内の手があと" + needSnap + "手で集計できます");
+      if (needSlow > 0) parts.push("20秒超の手があと" + needSlow + "手で集計できます");
+      item3Sub = parts.join("・");
     }
     const row = (ok, label, sub) =>
       '<div class="trow"><span class="tl">' + (ok ? "✓" : "─") + " " + label + '</span><span class="tn">' + (sub || "") + '</span></div>';
+    // B-3(v91b): 「卒業帳: n/10」から卒業帳(成績モーダル)を開けるリンクにする(従来はプレーンテキストで行き止まり)。
+    const item1Sub = '<button type="button" class="title-link" id="rc-grad-link" style="font-size:inherit;padding:0">卒業帳: ' + (10 - remain) + '/10 →</button>';
+    // C-1(v91c): 未達項目に応じた次の一歩の事実1行(評価語・圧力表現・禁止語彙なし)。
+    const nextStep = (item1 && item2 && item3) ? "" :
+      '<p class="note">大会仕様の通し稽古で試せます。</p>';
     return '<h2 class="serif">宇出津へ出るまえに</h2>' +
       '<p class="note"><b>アプリで確かめられること</b></p>' +
-      row(item1, "全ての補助を外して打てる", "卒業帳: " + (10 - remain) + "/10") +
-      row(item2, "最強AI相手に150点先取で勝ち越せる", "") +
+      row(item1, "全ての補助を外して打てる", item1Sub) +
+      row(item2, "最強AI相手に150点先取で勝ち越せる", item2Sub) +
       row(item3, "速く打っても手が落ちない", item3Sub) +
+      nextStep +
+      // C-1(v91c): 大会仕様の通し稽古への入口。
+      '<div class="row" style="justify-content:flex-start"><button type="button" class="btn" id="rc-tour-start">大会仕様で一局とおす</button></div>' +
       '<p class="note" style="margin-top:10px"><b>アプリでは身につかないこと</b></p>' +
       '<ul class="note"><li>竹駒を8枚持ち、伏せる所作</li>' +
       '<li>人間の相方と組むこと</li>' +
       '<li>対局中の相談は原則禁止</li>' +
       '<li>盤外の間合い、相手の気配</li></ul>' +
-      '<p class="note">ここから先は、人と打つほかありません。能登ごいた保存会には各地に支部があります。</p>' +
+      '<p class="note">ここから先は、人と打つほかありません。能登ごいた保存会には各地に支部があります。' +
+      // B-3(v91b): チェックリスト末尾から宇出津モーダルを開ける導線(同じ「送り出し」機能が2枚に
+      // 分裂している状態の解消。#h-ushitsu-linkと同型のtitle-linkパターンを踏襲)。
+      '<button type="button" class="title-link" id="rc-ushitsu-link" style="font-size:inherit;padding:0">宇出津とごいたの詳しい話 →</button></p>' +
       '<p><a href="https://goita.jp/ngps/" target="_blank" rel="noopener">支部一覧（保存会公式）→</a></p>' +
       '<p><a href="https://goita.jp/taikai/taikaisankahoho/" target="_blank" rel="noopener">能登の大会に参加するには（保存会公式）→</a></p>';
   }
@@ -16276,6 +16914,31 @@ if (typeof document !== "undefined") (() => {
     const m = modal(readinessChecklistHtml() +
       '<div class="row"><button type="button" class="btn primary" id="rc-close">閉じる</button></div>');
     const c = m.querySelector("#rc-close"); if (c) c.onclick = closeModal;
+    // B-3(v91b): 卒業帳(成績モーダル)・宇出津モーダルへの相互接続。
+    { const gl = m.querySelector("#rc-grad-link"); if (gl) gl.onclick = () => { closeModal(); openCareer(); }; }
+    { const ul = m.querySelector("#rc-ushitsu-link"); if (ul) ul.onclick = () => { closeModal(); openUshitsuInfo(); }; }
+    // C-1(v91c): 大会仕様で一局とおす(確認ダイアログ経由)。
+    { const ts = m.querySelector("#rc-tour-start"); if (ts) ts.onclick = openTourThroughConfirm; }
+  }
+  /* ================================================================
+   * C-1(v91c): 大会仕様の通し稽古。出場前チェックリストから、150点先取・最強AI・全補助なしの
+   * 大会仕様に設定を変えて対局を始める。既存のapplyLadderPreset("tournament")を再利用し、
+   * フォームへ反映した上でenterGame(false)(内部でreadSetupを呼ぶ)へ渡す。
+   * 設定は恒久的に大会仕様へ変わる(既存プリセットボタンと同じ意味論。裏での退避・復元はしない。
+   * その旨を確認ダイアログの文言で明示する)。
+   * ================================================================ */
+  function openTourThroughConfirm() {
+    const m = modal('<h2 class="serif">大会仕様で一局とおす</h2>' +
+      '<p class="note">150点先取・最強AI・全補助なしの大会仕様に設定を変えて対局を始めます。設定はこのあとも大会仕様のままです。</p>' +
+      '<div class="row"><button type="button" class="btn" id="rts-cancel">やめる</button>' +
+      '<button type="button" class="btn primary" id="rts-go">開始</button></div>');
+    const cancel = m.querySelector("#rts-cancel"); if (cancel) cancel.onclick = closeModal;
+    const go = m.querySelector("#rts-go");
+    if (go) go.onclick = () => {
+      applyLadderPreset("tournament");
+      closeModal();
+      enterGame(false);
+    };
   }
   function openCareer() {
     const cs = app.career;
@@ -16370,6 +17033,7 @@ if (typeof document !== "undefined") (() => {
     m.querySelector("#c-drill").onclick = () => { closeModal(); openDrillList(); };
     { const cp = m.querySelector("#c-past"); if (cp) cp.onclick = () => openPastSelf(); }   // R-1(v90d)
     { const sul = m.querySelector("#srank-ushitsu-link"); if (sul) sul.onclick = openUshitsuInfo; }
+    { const gco = m.querySelector("#grad-checklist-open"); if (gco) gco.onclick = () => { closeModal(); openReadinessChecklist(); }; }   // B-3(v91b)
   }
   function openMissDrill() {
     const raw = allMisses();
@@ -16487,7 +17151,7 @@ if (typeof document !== "undefined") (() => {
                              initialHands: init, moves: acc.slice()};
                 app._puzzleDebug = window.__puzzleDebug = {band, stage: found.stage, evidence: found.evidence, noOuKyo: true, why: found.probe.why};   // window側はテスト観測用ミラー
                 cb({rec: rotateToSouth(raw, st.actor), idx: acc.length,
-                    move: found.probe.move, why: found.probe.why});
+                    move: found.probe.move, why: found.probe.why, stage: found.stage});   // M-4(v92a): stageをcb経由でdrillへ伝播
                 return;
               }
             }
@@ -16575,7 +17239,7 @@ if (typeof document !== "undefined") (() => {
       }
       app.puzzleStats.tried++;
       startPractice(p.rec, p.idx,
-        {srcMv: null, move: p.move, why: p.why, judged: false, isPuzzle: true, band,
+        {srcMv: null, move: p.move, why: p.why, judged: false, isPuzzle: true, band, stage: p.stage || null,   // M-4(v92a): stageもdrillへ
          srsPayload: srsSlim(p.rec, p.idx)},   // S-2(v90c): 凍結局面は生成時点のrec/idxから作る(解答中に伸びるapp.recは使わない)
         `詰めごいた ${PUZZLE_BANDS[band].label} — この局面、確実に上がれます`);
     });
@@ -16868,16 +17532,20 @@ if (typeof document !== "undefined") (() => {
         <li><b>いやさか広場のごいた駒モニュメント</b> — 誕生150周年を記念して港に設置。</li>
         <li><b>あばれ祭</b> — 毎年7月第1金・土曜日、宇出津で行われる日本遺産のキリコ祭り。本アプリの意匠（奉燈・炎上演出）はこの祭りに由来します。</li>
       </ul>
-      <p class="note">保存会は東京・大阪・神奈川・長野・宮城・金沢・埼玉・福岡など全国に支部を持ち、番付制度で競技力向上を図っています。</p>
+      <p class="note">保存会は全国に支部を持ち、番付制度で競技力向上を図っています（支部一覧は公式サイトへ）。</p>
+      <p class="note">練習の仕上がりは<button type="button" class="title-link" id="ui-checklist-link" style="font-size:inherit;padding:0">出場前チェックリスト →</button>で確かめられます。</p>
       <h3 class="serif" style="margin-top:12px">公式リンク</h3>
       <ul>
         <li><a href="https://goita.jp/" target="_blank" rel="noopener">能登ごいた保存会</a></li>
+        <li><a href="https://goita.jp/ngps/" target="_blank" rel="noopener">支部一覧</a></li>
         <li><a href="https://goita.jp/taikai/taikaisankahoho/" target="_blank" rel="noopener">大会への参加方法</a></li>
         <li><a href="https://abarematsuri.jp/" target="_blank" rel="noopener">あばれ祭 公式サイト</a></li>
       </ul>
       <p class="note" style="font-size:.64rem;color:var(--gin)">掲載情報は2026年7月時点の確認によるものです。開催日程・参加方法など最新の情報は各公式サイトでご確認ください。</p>
       <div class="row"><button class="btn primary" id="ui-close">閉じる</button></div>`);
     const c = m.querySelector("#ui-close"); if (c) c.onclick = closeModal;
+    // B-3(v91b): 出場前チェックリストへの参照(逆方向の接続はopenReadinessChecklist側の#rc-ushitsu-link)。
+    { const cl = m.querySelector("#ui-checklist-link"); if (cl) cl.onclick = () => { closeModal(); openReadinessChecklist(); }; }
   }
   { const bu1 = $("btn-ushitsu-info"); if (bu1) bu1.addEventListener("click", openUshitsuInfo); }
   { const bu2 = $("btn-ushitsu"); if (bu2) bu2.addEventListener("click", openUshitsuInfo); }
