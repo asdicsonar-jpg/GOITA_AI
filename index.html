@@ -4,6 +4,62 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>ごいた — 能登の伝承遊戯</title>
+  <!-- build: v99「memoコンパクト格納」(ROADMAP① の値側レバー・goita-dev-loopフェーズ2実装・単独コミット。
+       性質: 純粋な性能最適化(挙動変更なし)。受け入れの主柱は決定等価の機械証明。v98に続く増分で、
+       <300MB目標(v98で未達=約420MB)を達成する。
+       変更: ddRootValues の置換表を、大探索(nodeCap>=1,000,000=促成/振り返り)に限り Map から
+       open-addressing の typed-array(Uint8Arrayキー＋Float64Array値＋Uint8Array占有)へ置換。
+       per-entry の JSオブジェクトオーバーヘッド(~547B/entry: 文字列オブジェクト＋ハッシュスロット＋
+       boxed double)を除去し、実測700kエントリで 383MB→45MB(~8.5×)。キーは(c)で全Latin1(<=255)化
+       済みゆえ Uint8Array に無損失格納。標準(小探索 nodeCap<1e6)は高速な Map を継続(コンパクトの
+       占有fillクリアが小探索では割高で標準テンポを損なうため。しきい値で経路分離)。容量 C=nextPow2
+       (nodeCap*1.4)、エントリ数<=nodeCap(budget上限)ゆえ負荷率<=0.71で溢れなし。
+       検証(決定等価・fail-if-diff): 標準経路 — 関数等価609局面+完全対局 G200/G_B80配牌の全着手一致
+       (0件)。コンパクト経路 — ddParAnalyze(nodeCap=2,000,000)を6局面で v97 と厳密一致。加えて
+       コンパクトmemo単体検証で50万ユニークキーが参照Mapと完全一致。既存30テスト回帰で v97 と全合否一致
+       (回帰0)。標準テンポ回帰なし(267ms≈v98の271ms/局)。node --check 4ブロック合格。
+       促成モード実機ピークRSS: v97 約1.27GB → v99 231MB(5.5×・-1.04GB・<300MB達成)。判断は同一(pass/mc)。
+       sha256(extract_sha.js): G 1d9f2f17 / G_B c3c51ac8。canonical()();除外): G da90a40f / G_B 35182bd8。
+       save/load不変(e106b886/f69e5289)。CACHE_NAME: v118→v119。 -->
+  <!-- build: v98「memo空間コスト削減」(ROADMAP_next_cycles_v98plus.md ①・goita-dev-loopフェーズ2実装・
+       Fable5計画/Sonnet5実装。エンジン(G/G_B)変更を含むコミット。単独コミット。
+       性質: 純粋な性能最適化(挙動変更なし)。受け入れの主柱はwinrate A/Bではなく決定等価の機械証明
+       (同一入力→完全同一出力)であり、以下の等価が全項目成立したためA/Bは省略した(v97と同一方針)。
+       発端: v97 IMPLEMENTATION_REPORT §5.2/§9・REVIEW「基準2裁定」— ddClone全廃後の促成モード(ddNodeCap
+       =2,000,000)のGB級ピークRSSの支配要因は置換表(memo)自体(決定化1回あたり最大約70万エントリ)で
+       あることが判明。特定済みのレバー(a)(b)＋派生(c)(いずれも挙動不変)を実装した。
+       レバー(a) ddKeyの全単射コンパクト化: 各席8カウント(各0-8)をペアごとにbase-9で1バイトへ位置符号化
+       (旧: 区切り「|」+8桁=36文字 → 16文字)。ouVも固定幅1バイト化。
+       レバー(c) キー全Latin1化: 残るkoma(pendingAttack/開いたセル。元来>255でキー文字列全体を2バイト表現へ
+       押し上げていた)をKOMA_TYPES_ARR順の0-8/0-16へ1バイト符号化し、キー全体をV8の1バイト表現に落とす。
+       (a)(c)とも全フィールドが固定幅の位置符号化ゆえオリジナルと厳密に同一の衝突/ヒットパターンを保つ(単射)。
+       実測: キー平均46.3→23.0文字・11,284の相異なる実キーで全単射(新規衝突0)・非Latin1キー0件、
+       バイト量は旧93B(2バイト表現)→新23B(1バイト表現)=約4.0×削減。
+       レバー(b) 決定化ごとのmemo即時解放: ddRootValuesで new Map() せず単一プール(_ddMemoPool)を
+       clear() 再利用。各決定化は元来memo非共有のため clear→空 は new Map() と等価。ddRootValuesは
+       非再入(ddSearchのevalFnはmatchEquity/meqEvalのみでDD探索へ再帰しない)ため単一プールで安全。
+       同時生存Mapを構造的に1本へ制限し、促成モードでの複数世代Map滞留(v97§5.2のピークRSS要因)を抑える。
+       検証(決定等価・fail-if-diff): (1)関数等価 — v97採取609局面(総駒<=16)でddParAnalyzeの返り値が
+       旧(v97)新(v98)で完全一致(0件不一致)。(2)決定等価 — 標準strong optsの完全対局で G 200配牌
+       (5,678着手)+ G_B 120配牌(3,504着手)の全着手列・終局が旧新完全一致(0件不一致)。(3)単射性 —
+       11,284の相異なるキーで新規衝突0。node --check 4 scriptブロック合格。
+       A/B省略の根拠: 上記決定等価が全項目成立(=同一入力→完全同一出力の機械証明済み)ゆえwinrate差は
+       原理的に存在しない(v97と同一論拠)。byte-exact: saveCareerToStorage/loadCareerFromStorageは
+       不変(diffに一切現れず)。diffはG/G_Bとも同一の4ハンク(ddKey×2・_ddMemoPool+memo行×2)のみ。
+       sha256(プロジェクト実物 extract_sha.js で確定・)();含む): G fcb63922(v97)→c46ea457(v98) /
+       G_B f29f7c13(v97)→583860d1(v98)。正準規約()();除外): G 45a286e2→99d7bb5f / G_B 2057569e→3df03651。
+       save/loadは公式ツールで不変を確認(e106b886/f69e5289)。既存リポジトリ30テストをjsdomで v97/v98 実行し
+       全合否一致=回帰0件(未達2件は環境要因でv97も同一)。
+       ③昇格モード実機ピークRSS(policyAction・ddDets32/ddNodeCap2M・子プロセスの/proc VmRSS外部ポーリング):
+       重探索局面で v97 1.2〜1.4GB→v98(a+b+c) 約420MB(約3.25×・-950MB規模)、行動(type/koma/src)一致。
+       v96 F-1'のOOM域(1.4-2.3GB)を解消(所要も41s<54s)。<300MB到達はmemo値表現/決定化数等の別レバーが必要。
+       等価スイープ(34テスト回帰の代理・挙動不変ゆえ「v97合格→v98合格」が論理的に従う): 標準strong optsの
+       完全対局で G 460配牌+G_B 200配牌・計約19,000着手を type/koma/src/why 厳密比較し不一致0件。
+       未実施(フルリポジトリ必要): 既存34テスト実体の実行・A/Bハーネス変種shaは tests/ab 一式が要り申し送り。
+       次サイクル候補②「香攻めへの受けMC評価」は段階0診断(300配牌・反実仮想K=5対シード平均・134候補)の結果
+       「受けは統計的に有意な有害(mean-12.2点/候補・z=-4.62、香連打進行中は-30.5・z=-5.33。受け得の
+       有意サブセットなし)」と判明し、実装せずクローズ=v96の香除外をデータで追認(DIAGNOSTIC_v98_kyo.md)。
+       CACHE_NAME: v117→v118。 -->
   <!-- build: v97「DD探索の効率化」(PLAN_v97_dd_efficiency.md・goita-dev-loopフェーズ2実装・
        Fable5計画/Sonnet5実装。エンジン(G/G_B)変更を含むコミット。単独コミット。
        性質: 純粋な性能最適化(挙動変更なし)。受け入れの主柱はwinrate A/Bではなく決定等価の
@@ -4868,20 +4924,31 @@ const G = (() => {
       }
     }
   }
+  const _KOMA_IDX = Object.fromEntries(KOMA_TYPES_ARR.map((k, i) => [k, i]));   // v98(c): koma→0-7 (KOMA_TYPES_ARR順・キー全Latin1化用)
   function ddKey(st) {
-    let k = st.phase[0] + st.actor + (st.pendingAttack || "-") + (st.attacker || "-") + st.respIdx;
+    // v98「memo空間コスト削減」: ddKeyの全単射コンパクト化 (挙動不変=同一等価類の短縮表現)。
+    // (a) 各席8カウント(各0-8)をペアごとにbase-9で1バイトへ (旧: 区切り"|"+8桁=36文字 → 16文字)。
+    // (c) pendingAttack/openのkoma(元来>255でキー文字列全体を2バイト表現に押し上げていた)を
+    //     0-8 / 0-16 の1バイトへ符号化し、キーを全Latin1(V8の1バイト表現)化 (さらに約2×削減)。
+    // 全フィールドが固定幅の位置符号化ゆえ、オリジナルと厳密に同一の衝突/ヒットパターンを保つ (単射)。
+    let k = st.phase[0] + st.actor
+          + String.fromCharCode(st.pendingAttack ? _KOMA_IDX[st.pendingAttack] : 8)   // koma→0-7 / 無→8
+          + (st.attacker || "-") + st.respIdx;
     for (const s of SEATS) {
-      k += "|";
       const c = counter(st.hands[s]);
-      for (const t of ["王", "飛", "角", "金", "銀", "馬", "香", "し"]) k += (c[t] || 0);
+      k += String.fromCharCode((c["王"] || 0) * 9 + (c["飛"] || 0),
+                               (c["角"] || 0) * 9 + (c["金"] || 0),
+                               (c["銀"] || 0) * 9 + (c["馬"] || 0),
+                               (c["香"] || 0) * 9 + (c["し"] || 0));
     }
     // 王の可視性 (王攻め合法性に影響) と攻め手の開いた伏せ/受け (同駒2倍判定に影響)
     let ouV = 0;
     for (const h of st.history) if (h.koma === "王" && h.act !== null) ouV++;
-    k += "|o" + ouV;
     const rows = st.board[st.actor];
     const open = rows.length && !rows[rows.length - 1].atk ? rows[rows.length - 1].def : null;
-    k += "|" + (open ? open.type[0] + open.koma : "-");
+    // open: 伏せ0/受け8 + komaIdx(0-7)=0-15、開いていなければ16。ouVと共に末尾も固定幅1バイト。
+    const openByte = open ? (open.type[0] === "b" ? 0 : 8) + _KOMA_IDX[open.koma] : 16;
+    k += String.fromCharCode(ouV, openByte);
     return k;
   }
   function ddActions(st) {
@@ -4919,9 +4986,44 @@ const G = (() => {
     return best;
   }
   // 根の全候補値を共有メモ1回の探索で取得 (決定化ごとの呼び出し用)
+  // v98(b)＋v99値側レバー: 置換表をMapからopen-addressingのtyped-array(Uint8Arrayキー＋Float64Array値
+  // ＋Uint8Array占有)へ置換。per-entryのJSオブジェクトオーバーヘッド(~547B/entry: 文字列オブジェクト
+  // ＋ハッシュスロット＋boxed double)を除去し、実測700kエントリで383MB→45MB(~8.5×)。キーは(c)で
+  // 全Latin1(<=255)化済みゆえUint8Arrayに無損失格納。挙動不変(get/set/clearの意味はMapと等価・
+  // 単体検証で50万ユニークキー完全一致・エンジン決定等価で確認)。容量C=nextPow2(nodeCap*1.4)、
+  // エントリ数<=nodeCap(budget上限=ddSearch毎に--budget.n・setは非cut時のみ)ゆえ負荷率<=0.71で溢れなし。
+  // 決定化ごとは占有ビットfillで再利用(lever b: 同時生存1本)。ddRootValuesは非再入ゆえ単一状態で安全。
+  const _MM_KEYLEN = 24;   // ddKeyは(a)(c)後は固定23バイト。+1余裕。
+  let _mmC = 0, _mmKeys = null, _mmVals = null, _mmOcc = null;
+  function _mmEnsure(nodeCap) {
+    let need = 1; while (need < nodeCap * 1.4) need <<= 1;
+    if (need > _mmC) { _mmC = need; _mmKeys = new Uint8Array(_mmC * _MM_KEYLEN); _mmVals = new Float64Array(_mmC); _mmOcc = new Uint8Array(_mmC); }
+    else _mmOcc.fill(0);
+  }
+  const _ddMemo = {
+    get(s) {
+      const n = s.length, mask = _mmC - 1;
+      let x = 2166136261; for (let j = 0; j < n; j++) { x ^= s.charCodeAt(j); x = Math.imul(x, 16777619); }
+      let p = x >>> 0 & mask;
+      while (_mmOcc[p]) { let same = true, b = p * _MM_KEYLEN; for (let j = 0; j < n; j++) if (_mmKeys[b + j] !== s.charCodeAt(j)) { same = false; break; } if (same) return _mmVals[p]; p = (p + 1) & mask; }
+      return undefined;
+    },
+    set(s, v) {
+      const n = s.length, mask = _mmC - 1;
+      let x = 2166136261; for (let j = 0; j < n; j++) { x ^= s.charCodeAt(j); x = Math.imul(x, 16777619); }
+      let p = x >>> 0 & mask;
+      while (_mmOcc[p]) { let same = true, b = p * _MM_KEYLEN; for (let j = 0; j < n; j++) if (_mmKeys[b + j] !== s.charCodeAt(j)) { same = false; break; } if (same) { _mmVals[p] = v; return; } p = (p + 1) & mask; }
+      _mmOcc[p] = 1; const b = p * _MM_KEYLEN; for (let j = 0; j < n; j++) _mmKeys[b + j] = s.charCodeAt(j); _mmVals[p] = v;
+    }
+  };
+  const _ddMemoPool = new Map();   // 標準/小探索(nodeCap<1e6)用の高速Map(lever b: clear()再利用)
   function ddRootValues(st, seat, evalFn, actions, nodeCap) {
     const budget = {n: nodeCap || 300000};
-    const memo = new Map();
+    // 大探索(促成/振り返り: nodeCap>=1e6)はコンパクトmemoで<300MB。標準(小探索)は高速Mapを再利用
+    // (コンパクトの占有fillクリアが小探索では割高で標準テンポを損なうため。しきい値で経路分離)。
+    let memo;
+    if (budget.n >= 1000000) { _mmEnsure(budget.n); memo = _ddMemo; }
+    else { memo = _ddMemoPool; _ddMemoPool.clear(); }
     const out = new Map();
     for (const a of actions) {
       const {ev, u} = ddApply(st, a);
@@ -8616,20 +8718,31 @@ const G_B = (() => {
       }
     }
   }
+  const _KOMA_IDX = Object.fromEntries(KOMA_TYPES_ARR.map((k, i) => [k, i]));   // v98(c): koma→0-7 (KOMA_TYPES_ARR順・キー全Latin1化用)
   function ddKey(st) {
-    let k = st.phase[0] + st.actor + (st.pendingAttack || "-") + (st.attacker || "-") + st.respIdx;
+    // v98「memo空間コスト削減」: ddKeyの全単射コンパクト化 (挙動不変=同一等価類の短縮表現)。
+    // (a) 各席8カウント(各0-8)をペアごとにbase-9で1バイトへ (旧: 区切り"|"+8桁=36文字 → 16文字)。
+    // (c) pendingAttack/openのkoma(元来>255でキー文字列全体を2バイト表現に押し上げていた)を
+    //     0-8 / 0-16 の1バイトへ符号化し、キーを全Latin1(V8の1バイト表現)化 (さらに約2×削減)。
+    // 全フィールドが固定幅の位置符号化ゆえ、オリジナルと厳密に同一の衝突/ヒットパターンを保つ (単射)。
+    let k = st.phase[0] + st.actor
+          + String.fromCharCode(st.pendingAttack ? _KOMA_IDX[st.pendingAttack] : 8)   // koma→0-7 / 無→8
+          + (st.attacker || "-") + st.respIdx;
     for (const s of SEATS) {
-      k += "|";
       const c = counter(st.hands[s]);
-      for (const t of ["王", "飛", "角", "金", "銀", "馬", "香", "し"]) k += (c[t] || 0);
+      k += String.fromCharCode((c["王"] || 0) * 9 + (c["飛"] || 0),
+                               (c["角"] || 0) * 9 + (c["金"] || 0),
+                               (c["銀"] || 0) * 9 + (c["馬"] || 0),
+                               (c["香"] || 0) * 9 + (c["し"] || 0));
     }
     // 王の可視性 (王攻め合法性に影響) と攻め手の開いた伏せ/受け (同駒2倍判定に影響)
     let ouV = 0;
     for (const h of st.history) if (h.koma === "王" && h.act !== null) ouV++;
-    k += "|o" + ouV;
     const rows = st.board[st.actor];
     const open = rows.length && !rows[rows.length - 1].atk ? rows[rows.length - 1].def : null;
-    k += "|" + (open ? open.type[0] + open.koma : "-");
+    // open: 伏せ0/受け8 + komaIdx(0-7)=0-15、開いていなければ16。ouVと共に末尾も固定幅1バイト。
+    const openByte = open ? (open.type[0] === "b" ? 0 : 8) + _KOMA_IDX[open.koma] : 16;
+    k += String.fromCharCode(ouV, openByte);
     return k;
   }
   function ddActions(st) {
@@ -8667,9 +8780,44 @@ const G_B = (() => {
     return best;
   }
   // 根の全候補値を共有メモ1回の探索で取得 (決定化ごとの呼び出し用)
+  // v98(b)＋v99値側レバー: 置換表をMapからopen-addressingのtyped-array(Uint8Arrayキー＋Float64Array値
+  // ＋Uint8Array占有)へ置換。per-entryのJSオブジェクトオーバーヘッド(~547B/entry: 文字列オブジェクト
+  // ＋ハッシュスロット＋boxed double)を除去し、実測700kエントリで383MB→45MB(~8.5×)。キーは(c)で
+  // 全Latin1(<=255)化済みゆえUint8Arrayに無損失格納。挙動不変(get/set/clearの意味はMapと等価・
+  // 単体検証で50万ユニークキー完全一致・エンジン決定等価で確認)。容量C=nextPow2(nodeCap*1.4)、
+  // エントリ数<=nodeCap(budget上限=ddSearch毎に--budget.n・setは非cut時のみ)ゆえ負荷率<=0.71で溢れなし。
+  // 決定化ごとは占有ビットfillで再利用(lever b: 同時生存1本)。ddRootValuesは非再入ゆえ単一状態で安全。
+  const _MM_KEYLEN = 24;   // ddKeyは(a)(c)後は固定23バイト。+1余裕。
+  let _mmC = 0, _mmKeys = null, _mmVals = null, _mmOcc = null;
+  function _mmEnsure(nodeCap) {
+    let need = 1; while (need < nodeCap * 1.4) need <<= 1;
+    if (need > _mmC) { _mmC = need; _mmKeys = new Uint8Array(_mmC * _MM_KEYLEN); _mmVals = new Float64Array(_mmC); _mmOcc = new Uint8Array(_mmC); }
+    else _mmOcc.fill(0);
+  }
+  const _ddMemo = {
+    get(s) {
+      const n = s.length, mask = _mmC - 1;
+      let x = 2166136261; for (let j = 0; j < n; j++) { x ^= s.charCodeAt(j); x = Math.imul(x, 16777619); }
+      let p = x >>> 0 & mask;
+      while (_mmOcc[p]) { let same = true, b = p * _MM_KEYLEN; for (let j = 0; j < n; j++) if (_mmKeys[b + j] !== s.charCodeAt(j)) { same = false; break; } if (same) return _mmVals[p]; p = (p + 1) & mask; }
+      return undefined;
+    },
+    set(s, v) {
+      const n = s.length, mask = _mmC - 1;
+      let x = 2166136261; for (let j = 0; j < n; j++) { x ^= s.charCodeAt(j); x = Math.imul(x, 16777619); }
+      let p = x >>> 0 & mask;
+      while (_mmOcc[p]) { let same = true, b = p * _MM_KEYLEN; for (let j = 0; j < n; j++) if (_mmKeys[b + j] !== s.charCodeAt(j)) { same = false; break; } if (same) { _mmVals[p] = v; return; } p = (p + 1) & mask; }
+      _mmOcc[p] = 1; const b = p * _MM_KEYLEN; for (let j = 0; j < n; j++) _mmKeys[b + j] = s.charCodeAt(j); _mmVals[p] = v;
+    }
+  };
+  const _ddMemoPool = new Map();   // 標準/小探索(nodeCap<1e6)用の高速Map(lever b: clear()再利用)
   function ddRootValues(st, seat, evalFn, actions, nodeCap) {
     const budget = {n: nodeCap || 300000};
-    const memo = new Map();
+    // 大探索(促成/振り返り: nodeCap>=1e6)はコンパクトmemoで<300MB。標準(小探索)は高速Mapを再利用
+    // (コンパクトの占有fillクリアが小探索では割高で標準テンポを損なうため。しきい値で経路分離)。
+    let memo;
+    if (budget.n >= 1000000) { _mmEnsure(budget.n); memo = _ddMemo; }
+    else { memo = _ddMemoPool; _ddMemoPool.clear(); }
     const out = new Map();
     for (const a of actions) {
       const {ev, u} = ddApply(st, a);
