@@ -4,6 +4,171 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>ごいた — 能登の伝承遊戯</title>
+  <!-- build: v97「DD探索の効率化」(PLAN_v97_dd_efficiency.md・goita-dev-loopフェーズ2実装・
+       Fable5計画/Sonnet5実装。エンジン(G/G_B)変更を含むコミット。単独コミット。
+       性質: 純粋な性能最適化(挙動変更なし)。受け入れの主柱はwinrate A/Bではなく決定等価の
+       機械証明(同一入力→完全同一出力)であり、以下の等価が全項目成立したためA/Bは省略した
+       (根拠は末尾参照)。
+       発端: FIX_REPORT_v96.md §7(昇格DD探索が1決定あたりメモリ0.4〜2.6GBに達しワーカーOOM。
+       原因はddSearch/ddRootValuesがノード毎にddCloneで手駒・場・履歴・respQueueを丸ごと
+       ディープコピーする構造)。
+       対応(方式=apply-undo): ddApply(st,a)/ddUndo(st,u)を新設(G:ddClone直後/G_B:同型・
+       同一diff)。既存advance()の全変異点(hands[actor]のremoveOne位置・boardの行push/
+       既存セルのatk上書き・history1件push・respQueue参照丸ごと差替・respIdx・phase・actor・
+       pendingAttack・attacker・rejShi)を精査し、undoレコードuに旧値(または差替前の配列参照・
+       spliceで除去した駒の位置)を退避して完全復元する形で実装(表はIMPLEMENTATION_REPORT_v97.md
+       「advance変異点表」参照)。ddSearch/ddRootValuesのノード毎`ddClone(st)+advance(child,a)`を
+       `ddApply(st,a)→再帰→ddUndo(st,u)`の往復へ置換し、ノード毎ディープコピーを全廃した。
+       ddSolve/ddSolveNaive/ddRootValues入口の1回clone(呼び出し元のstを汚さないため)は維持し、
+       ddClone関数自体も入口用に残した。探索順(ddActions列挙順)・ddKey・budget.n消費順・memo
+       (置換表)方針は一切変更していない。評価関数・枝刈りにも触れていない。
+       検証: (1)関数等価 — 実プレイアウト採取2,100局面(G)+620局面(G_B)でddSolve/
+       ddRootValues/ddParAnalyzeの返り値が旧(v96)新(v97)で完全一致(cap=3000のバルクsweep+
+       本番既定cap(300000/2000000)でのスポットチェック150+60局面+総駒<=10のddSolveNaive
+       相互検証)。(2)決定等価 — 300配牌(G)+100配牌(G_B)の完全対局で全着手列・終局結果が
+       旧新完全一致。deal#128旗艦5シード(1/2/8/129/777)もreceive し・why文言まで完全一致。
+       1件の不一致もなし(test_v97_dd_equiv.js・fail-if-diff)。apply→undo→再apply往復の
+       状態JSON一致もdebugセルフチェック(dd_selfcheck.js)で11,588アクション分先行確認済み。
+       情報計測(挙動変更なし・コードには不算入): v96で撤回した昇格パラメータ(ddLimit:20/
+       ddDets:32/ddNodeCap:2,000,000/wTries:100)をdeal#128旗艦決定点(#17)へ適用した場合の
+       実測(5シード平均、旧比): 所要時間は約14〜25%短縮(数倍には至らず)、ピークRSSは
+       1.4〜2.3GB台のままで改善は限定的(一部シードでは横ばい〜悪化)。原因調査の結果、
+       この局面規模(ddNodeCap=2,000,000)では探索が実際に到達するmemo(置換表)のサイズ自体が
+       決定化1回あたり最大約70万エントリに達し、このmemo Mapそのものの保持コストが支配的で
+       あることを確認した(ddClone除去はノード毎の複製ガベージを構造的に全廃したが、置換表の
+       サイズは本Fixの対象外=memo方針不変のため変化しない)。標準opts側は明確に改善: 1局
+       プレイアウトの所要時間は旧比で約15〜19%高速化(±10%要件を満たす方向で超過)・
+       ピークメモリは同等〜微減で悪化なし。詳細な実測表はIMPLEMENTATION_REPORT_v97.md参照。
+       昇格パラメータ側のピークメモリ≥90%削減(目標<300MB)という当初期待は本Fixの範囲(ddClone
+       除去)だけでは達成できないことが判明したため、Reviewerへの申し送り事項として明記する
+       (次サイクルでのmemo方針再検討の判断材料。本Fix自体は計画どおりの範囲で完了・決定等価も
+       全項目成立)。
+       A/B省略の根拠: 上記(1)(2)の決定等価が1件の例外もなく成立した(=同一入力に対し常に
+       完全同一出力であることを機械証明済み)ため、winrate A/Bを実施する論理的必要がない
+       (挙動が一切変わっていないことが証明済みのため、A/Bで検出しうる勝率差は原理的に存在しない)。
+       byte-exact: saveCareerToStorage/loadCareerFromStorageは不変(原本・v95・v96と完全一致・
+       e106b886.../f69e5289...)。G/G_B(正準規約・波括弧深度抽出のみ・")();"含めない):
+       G 5c7454c6...(v96)→45a286e2...(v97・現行) / G_B 9c788502...(v96)→2057569e...(v97・現行)。
+       A/Bハーネス内部規約(tests/ab/engine_extract.js・")();"含める・従・参考併記):
+       G 3808d5d9...(v96)→fcb63922...(v97・現行) / G_B 50356fd1...(v96)→f29f7c13...(v97・現行)。
+       diffはG/G_Bとも同一(ddApply/ddUndo新設+ddSearch/ddRootValues本体差替のみ)。
+       既存34テスト全PASS(期待値更新ゼロ=等価崩れなしの傍証)。node --check(4 scriptブロック)
+       合格。CACHE_NAME: v116→v117。 -->
+  <!-- build: v96「し受けの例外」(PLAN_v96_shiuke_exception.md・goita-dev-loopフェーズ2実装・
+       Fable5計画/Sonnet5実装。エンジン(G/G_B)変更を含むコミット。単独コミット・全A/Bプロトコル適用):
+       発端: VERIFICATION_shiuke_miss_20260718.md(検証: ブランダー22件/1,710局、主因13件=
+       相方し攻めへの「味方の攻め — 手番を奪わない(定石)」の無条件パス。deal#128で相方(北)の
+       し攻めを南が受けずパスし続け、敵にし手番を奪われ40点差で敗北。反実仮想では南がし受け→
+       自軍20点勝ち)。
+       F-1(主因対策): 受けMCゲート(respondパイプライン、G:旧L5321付近/G_B:旧L8913付近)の
+       ガード条件 (RULE_LEVEL === 0 || (!isPartnerAtk && view.hand.length <= 6)) を
+       (RULE_LEVEL === 0 || ((!isPartnerAtk || attack === "し") && view.hand.length <= 6)) へ変更。
+       攻め駒が「し」かつ手駒6枚以下の時に限り、相方攻めでも受けMC評価(mcDecideReceive)に回す。
+       MCのロールアウトが敵のし受け・逆転を織り込むため、deal#128型の局面では受けが優位と評価され
+       る見込み。MCが「なし」を選べば従来どおりパス(定石は既定値のまま。評価が覆すべき時だけ覆す)。
+       スコープはし攻めのみに限定(香は相方の香連打計画を乱すリスクがあり観測証拠もないため対象外・
+       次サイクル候補として記録のみ)。receiveRejectShiIntent(isPartnerAtk引数)は無改変。
+       F-1'(Fix1回目・撤回済み): 標準strong optsでMCが5シード全てpassの僅差誤判断を続けることへの
+       対応として、mcDecideReceiveのopts(dd/ddLimit/ddDets/ddNodeCap/wTries)をエンジン内部で
+       自動昇格する方式を実装したが、1決定あたり約70秒・メモリピーク0.4〜2.6GBとなりA/B実行中に
+       ワーカーがOOM killerで強制終了される事態を招き、Reviewerにより不採用(差し戻し)と裁定された
+       (REVIEW_REPORT_v96.md「再レビュー」参照・詳細はFIX_REPORT_v96.md)。
+       F-1''(Fix2回目・撤回済み): 資源昇格を一切行わないコストゼロのタイブレークへ置き換え、
+       isPartnerAtk && attack==="し"の同一分岐で受けMCを実行した結果、「なし」と「受し」の期待値差
+       margin<0.10(candidateRanking/tempoヒューリスティック/coachレビューで既に使われている既存の
+       「互角」定数の再利用)、かつ未見のしが1枚以上(unseenCounts)の場合に無条件で受け側を選ぶ
+       方式を実装したが、A/Bで有意悪化(本命-0.580±0.183・帰属-0.585±0.206)となり、
+       Reviewerにより不採用(差し戻し)と裁定された(REVIEW_REPORT_v96.md「再々レビュー」参照・
+       詳細はFIX_REPORT_v96.md)。
+       F-1'''(Fix3回目・採用・最終): 診断(800配牌・タイブレーク転換候補46件を反実仮想[転換した場合/
+       しない場合の完局比較]で収集: beneficial 8件・harmful 17件・neutral 21件)の結果、優先候補
+       (a)応答者のし>=2 (b)相方し攻め進行中(shiStarted) (c)敵最小手駒<=4 は単独ではほぼ判別力が
+       ないと判明したが((a)単独: harmful保持15/17=88%とほぼ無変化。(b)単独: beneficial保持
+       6/8=75%に対しharmful保持13/17=76%と同率で選別不能。(c)単独: beneficial6/8=75%・
+       harmful12/17=70%)、組合せでは(a)&(c)がbeneficial保持6/8=75%を維持したままharmful保持を
+       10/17=59%まで絞れる最良点(候補(b)を加えた3条件同時=harmful保持は同じ10/17のまま
+       beneficial保持だけ5/8に低下するため(b)は寄与なしと判断し除外)。この(a)&(c)を最小の追加
+       条件として採用し、margin<0.10かつ未見のし>=1かつ応答者のし枚数>=2かつ敵最小手駒<=4の
+       場合に限り受け側を選ぶよう絞り込んだ(deal#128はし2枚・敵最小手駒4で(a)&(c)を満たす)。
+       根拠: MC自身が「区別できない」局面かつ上記データで有害転換の比率が相対的に低い部分集合に
+       限定した上で、パス側の失敗(敵のし受けによる手番奪取→逆転)は受け側の失敗(相方の一時的な
+       テンポ損失)より非対称に重い、というSonar検証済みのドメイン知識でタイを割る。MCが明確な
+       選好を持つ場合(margin>=0.10)は従来どおりMCに従う。
+       修正後は5シード全てreceive しに転じ、決定時間は標準水準(数十ms)のまま(FIX_REPORT_v96.md参照)。
+       F-2(譲りの硬化): 上がり譲り変種1(王合図ベース、G:旧L5245付近/G_B:旧L8837付近)の
+       enemySafe計算 un = unseenMinusPartner(unseenCounts(view.hand, view.hist), seat, view.hist) を
+       変種2(公開王攻めベース)と同じ生の未見 un = unseenCounts(view.hand, view.hist) へ統一。
+       相方保有推定への依存を排除し、人間相方での協力対局における過剰譲り(推定外れ→敵受け→
+       逆転)の理論的な穴を構造的に塞ぐ。unseenMinusPartner関数自体は他用途(solverTeam等)のため
+       残置し、変種1のこの1呼び出しのみ変更。Fixでは無変更(Reviewerも問題なしと確認済み)。
+       横断: JOSEKI辞書「aikata_uke」(相棒受けは確定勝ちか阻止時のみ)のdetailに、し攻めのみ
+       受けMC評価で定石パスを覆しうる旨を1行追記(実装実態との整合)。Fixでも文面は不変。
+       CACHE_NAME: v115→v116(Fixでも据え置き)。
+       byte-exact(sha256、正準規約=素朴な波括弧深度抽出・IIFE呼び出しの")();"は含めない。
+       IMPLEMENTATION_REPORT_v90.3/v90.4以来の歴代規約。tests/extract_sha.jsの説明文とは異なり
+       ")();"を含めないほうが正準であることに注意): G 714964b8...(v95正準)→5c7454c6...
+       (Fix3回目・現行・最終) / G_B dec73381...(v95正準)→9c788502...(Fix3回目・現行・最終)。
+       (意図した差分のみ。diffで確認・出荷時v96は6ハンク、Fix3回目は説明コメントが長くなった影響で
+       8ハンクに分割されるがG/G_Bとも論理的な変更箇所はF-1ゲート・タイブレーク条件式・F-2・
+       JOSEKIの4箇所のみで不変。香関連の変更はコメント中の説明文のみでロジック変更なし)。
+       saveCareerToStorage e106b886.../loadCareerFromStorage f69e5289...は不変(v95・原本と完全一致)。
+       A/Bハーネス内部規約(tests/ab/engine_extract.js。文字列/コメント内波括弧を除外し")();"を
+       含める独自トークナイザ。tests/ab/variants_v96/*.jsの同定用・従・参考併記。両規約の差は
+       ")();"を含めるか否かのみでコード内容そのものの差ではない): この規約ではG 2d7e9443...
+       (v95)→8f623a70...(出荷時v96)→210bb8e9...(Fix2回目・撤回済み)→3808d5d9...(Fix3回目・
+       現行) / G_B f18e9150...(v95)→68d1f079...(出荷時v96)→526e1de4...(Fix2回目・撤回済み)→
+       50356fd1...(Fix3回目・現行)。
+       [A/Bハーネス変種sha256(同規約・tests/ab/engine_extract.js・tests/ab/variants_v96/sha256.json)]:
+       G_base 2d7e9443...(=v95のG) / G_f1(F-1''') b9698e03... / G_f2 869e1185... /
+       G_orig_v96(F-1'''除去状態=F-1のみの出荷時v96・fail-before参照用) 8f623a70... /
+       G_full 3808d5d9...(=実ファイルのGと一致) / B_base f18e9150...(=v95のG_B) /
+       B_full 50356fd1...(=実ファイルのG_Bと一致)。
+       詳細な全文sha256・A/B結果・採掘前後比較はIMPLEMENTATION_REPORT_v96.md(出荷時)・
+       FIX_REPORT_v96.md(Fix1回目・2回目・3回目)の表を参照。
+       A/B検証: ソースレベルのエンジン変種(G_base/G_f1/G_f2/G_full・B_base/B_full)を
+       tests/ab/build_variants_v96.jsで構築し(無ガード保証: G_base+F1+F1'''(条件付きtiebreak)+
+       F2===G_full文字列完全一致・B側も同様)、mixed-engine head-to-head(paired standard error)で
+       直接対戦。
+       ランタイムフラグでのgated A/Bは使用していない(「フラグ伝播の罠」対策)。
+       検証: test_v96_shiuke.js(deal#128実ライン再生によるfail-before→pass-after機械証明を標準opts・
+       5シード全断言に強化・F-2の発火/非発火条件の機械証明)・採掘スキャン前後比較
+       (mine_blunder_v96.js)・既存34テストの回帰・4 scriptブロックnode --check・
+       save/loadのbyte-exact維持。 -->
+  <!-- build: v95「受けを残す伏せ」(PLAN_v95_bury_coverage.md・goita-dev-loopフェーズ2実装・
+       Fable5計画/Sonnet5実装。エンジン(G/G_B)変更を含むコミット。単独コミット・全A/Bプロトコル適用):
+       発端: 実局(第7局・親:西)の#6「伏せ銀」が不合理という指摘。伏せ選択に「受け被覆」
+       (自分の保有枚数から見た、敵が攻めやすいスート)の思考を組み込んだ。従来の通常フォールバックは
+       「単騎(手駒に1枚しかない駒)を最優先で伏せる」だったが、単騎は残り3枚が外にある=敵が攻めに
+       使う可能性が最も高いスートであり、それを伏せるのは受けたい駒を自分から捨てる行為だった。
+       buryChoice()(G/G_B同一diff)に受け被覆スコアラburyCoverPick(pool,c,hist,seat)を新設:
+       unseen(k)=KOMA_COUNT[k]−c[k]−場で可視のk(河の攻め/受け。伏せは不可視のまま)、
+       loseCover(k)=(c[k]===1)?unseen(k):0(単騎を伏せると失う受け被覆)、
+       pairBreak(k)=(c[k]===2 && k∈{金,銀,馬} && 自分の初攻め前)?γ(=2相当):0(ペア符丁の保護。
+       攻め計画確定後=初攻め済みはγ=0)、score(k)=loseCover(k)*10+pairBreak(k)*10+POINTS[k]/100の
+       argmin(同点は低点。縮退時=単騎皆無/全ペア等は従来の低点優先に自然に一致)。
+       F-1: 通常フォールバック(「孤立したXの処分」箇所、G:旧L3210-3214相当/G_B:旧L6716-6720相当)を
+       BURY_COVER時はburyCoverPickに差し替え。F-2: 敵し攻め中モード2(KEEP_SHI_ESHI===2)の
+       「孤立低点」pool選択(し・香温存の上流条件は不変)にも同スコアラを適用(帰属分離)。
+       トグルsetBuryCover(on)を新設(既定ON。公開APIに追加、v92cのsetWidthBury等と同じ流儀)。
+       why文言は事実のみ: 新選択が旧選択と異なる場合のみ受け被覆の観点(例:「受けを広く —
+       金は2枚目を伏せ、敵の攻めやすい銀を受けに残す」)を明示し、旧選択と一致(縮退)する場合は
+       従来文言のまま(buryCoverDecisionが両者を比較し判定)。5し続行分岐・騙し香分岐の単騎選択は
+       対象外(計画どおり)。JOSEKI辞書「ukewidth」のdetail(旧: WIDTH_BURYの受け幅伏せを記述→実装
+       実態と不整合)をburyCoverPickの説明へ是正。
+       CACHE_NAME: v114→v115。
+       byte-exact(sha256、正準規約=素朴な波括弧深度抽出・IIFE呼び出しの")();"は含めない。
+       IMPLEMENTATION_REPORT_v90.3/v90.4以来の歴代規約): G 9ee4302d...→714964b8... /
+       G_B 3108b5b8...→dec73381...(意図した差分のみ。diffで確認)。saveCareerToStorage
+       e106b886.../loadCareerFromStorage f69e5289...は不変(v94・原本と完全一致)。
+       [A/Bハーネス内部規約(tests/ab/engine_extract.js。")();"を含める独自トークナイザ。
+       tests/ab/variants/*.jsの同定用): G 173fd11d...→2d7e9443... / G_B 71169634...→f18e9150...]
+       詳細な全文sha256・A/B結果(本命/帰属/γ感度/B側)はIMPLEMENTATION_REPORT_v95.mdの表を参照。
+       A/B検証: ソースレベルのエンジン変種(G_base/G_f1/G_full/G_full_g0・B_base/B_full)を
+       tests/ab/build_variants_v95.jsで構築し、mixed-engine head-to-head(paired standard error)で
+       直接対戦。ランタイムフラグでのgated A/Bは使用していない(「フラグ伝播の罠」対策)。
+       検証: test_v95_bury.js新設(報告局fixtureのfail-before→pass-after機械証明・
+       buryCoverPick単体の境界確認・G/G_B同一性)・既存32テストの回帰・4 scriptブロックnode --check・
+       saveCareerToStorage/loadCareerFromStorageのbyte-exact維持。 -->
   <!-- build: v94「三者一致」(PLAN_v94_advice_parity.md・goita-dev-loopフェーズ2実装・
        Fable5計画/Sonnet5実装。UI層(推奨手の評価オプション)の変更で、エンジン(G/G_B)・
        saveCareerToStorage/loadCareerFromStorageには一切触れていない):
@@ -2801,6 +2966,13 @@ const G = (() => {
   // 「受けを広く」定石: ONで受け幅(受けられる攻め駒の種類数)を最大化する駒を伏せる(重複優先・同幅は低点)
   let WIDTH_BURY = false;
   function setWidthBury(on) { WIDTH_BURY = !!on; }
+  // 「受けを残す伏せ」(v95・PLAN_v95_bury_coverage.md): 通常フォールバックの伏せ選択に受け被覆
+  // (自分の保有枚数から見た、敵が攻めやすいスート)の思考を組み込む。単騎(c[k]===1)を伏せると
+  // そのスートの受けを丸ごと失う損失を未見枚数(敵の保有尤度の代理)で加重し、金銀馬ペアは
+  // 自分の初攻め前のみペア符丁として保護する(pairBreak)。既定ON。WIDTH_BURYとは独立のトグルで、
+  // buryCoverPick()本体はrecvWidthOf直後に定義する。
+  let BURY_COVER = true;
+  function setBuryCover(on) { BURY_COVER = !!on; }
   // 型破り(例2): ONで馬を決して伏せず温存(終盤の馬攻めで欺瞞)。馬以外の低価値駒を伏せる。
   let UMA_KEEP = false;
   function setUmaKeep(on) { UMA_KEEP = !!on; }
@@ -2814,6 +2986,53 @@ const G = (() => {
     for (const k of ["王","飛","角","金","銀","馬","香","し"])
       if (legalReceives(hand, k).length > 0) w++;
     return w;
+  }
+  // 受け被覆スコアラ(v95): hist(河の攻め/受け。伏せは不可視のまま)から可視駒数を数える。
+  function buryCoverVis(hist) {
+    const v = {};
+    for (const h of hist)
+      if ((h.act === "attack" || h.act === "receive") && h.koma) v[h.koma] = (v[h.koma] || 0) + 1;
+    return v;
+  }
+  let BURY_COVER_GAMMA = 2;   // ペア保護の重み(loseCover換算2相当)。自分の初攻め前のみ発火。A/B感度枝でγ=0を測定。
+  function buryCoverScore(k, c, hist, seat, vis) {
+    const unseenK = Math.max(0, (KOMA_COUNT[k] || 0) - (c[k] || 0) - (vis[k] || 0));
+    const loseCover = (c[k] === 1) ? unseenK : 0;   // 単騎を伏せるとそのスートの受けを丸ごと失う
+    const pairBreak = (c[k] === 2 && (k === "金" || k === "銀" || k === "馬") && isFirstAttackForMe(hist, seat))
+      ? BURY_COVER_GAMMA : 0;   // 自分の初攻め前のみ: ペア符丁の将来価値を保護
+    return {unseenK, loseCover, pairBreak, score: loseCover * 10 + pairBreak * 10 + POINTS[k] / 100};
+  }
+  // pool(伏せ候補の駒種配列。既存の保護/温存フィルタ通過後・重複可)からスコア最小の駒を選ぶ。
+  // 単騎しか無い/全て同点等の縮退時は低点優先(POINTS[k]昇順)に自然に一致する。
+  function buryCoverPick(pool, c, hist, seat) {
+    const vis = buryCoverVis(hist);
+    let best = null, bestScore = Infinity, bestPts = Infinity;
+    for (const k of new Set(pool)) {
+      const s = buryCoverScore(k, c, hist, seat, vis).score;
+      if (best === null || s < bestScore || (s === bestScore && POINTS[k] < bestPts)) {
+        best = k; bestScore = s; bestPts = POINTS[k];
+      }
+    }
+    return best;
+  }
+  // buryCoverPickの結果に加え、旧ロジック(単騎優先→低点)との一致判定(縮退)と、被覆保護している
+  // 単騎駒(protectedKoma)を返す。呼び出し側がwhy文言(事実のみ)を組み立てる。
+  function buryCoverDecision(pool, c, hist, seat) {
+    const picked = buryCoverPick(pool, c, hist, seat);
+    const oldSingles = pool.filter(k => c[k] === 1);
+    const oldPool = (oldSingles.length ? oldSingles : pool).slice().sort((a, b) => POINTS[a] - POINTS[b]);
+    const degenerate = picked === oldPool[0];
+    const hadSingles = oldSingles.length > 0;
+    let protectedKoma = null;
+    if (!degenerate) {
+      const vis = buryCoverVis(hist);
+      let maxUnseen = -1;
+      for (const k of new Set(pool.filter(x => x !== picked && c[x] === 1))) {
+        const u = buryCoverScore(k, c, hist, seat, vis).unseenK;
+        if (u > maxUnseen) { maxUnseen = u; protectedKoma = k; }
+      }
+    }
+    return {koma: picked, degenerate, hadSingles, protectedKoma};
   }
   function setKyoBonus(m) { KYO_BONUS = m | 0; }
   function uncutBonus(k, unseenK) {
@@ -3169,6 +3388,15 @@ const G = (() => {
         // し・香以外の低点を伏せる。自己対戦では香伏せ比 z=-1.59 の微減だが、協力プレイの可読性を優先する方針。
         const nonShiKyo = hand.filter(k => k !== "し" && k !== "香");
         if (nonShiKyo.length) {
+          if (BURY_COVER) {
+            const d = buryCoverDecision(nonShiKyo, c, hist, seat);
+            let why;
+            if (d.degenerate) why = "敵し攻め中 — しと香を温存し" + d.koma + "を伏せる";
+            else if (d.protectedKoma && c[d.koma] === 2) why = `敵し攻め中 — しと香を温存し、${d.koma}は2枚目を伏せて${d.protectedKoma}を受けに残す`;
+            else if (d.protectedKoma) why = `敵し攻め中 — しと香を温存し、${d.protectedKoma}を受けに残し${d.koma}を伏せる`;
+            else why = `敵し攻め中 — しと香を温存し受け被覆を優先して${d.koma}を伏せる`;
+            return {koma: d.koma, why, src: "rule"};
+          }
           const singles = nonShiKyo.filter(k => c[k] === 1);
           const pool = singles.length ? singles : nonShiKyo;
           pool.sort((a, b) => POINTS[a] - POINTS[b]);
@@ -3208,6 +3436,15 @@ const G = (() => {
     let nonProt = nonProtAll.filter(k => !komaSafeToAttack(hist, seat, c, k));   // 攻め安全牌(馬/金/銀等)は伏せず温存
     if (!nonProt.length) nonProt = nonProtAll;   // 全て安全 → 従来通り最安値を伏せる
     if (nonProt.length) {
+      if (BURY_COVER) {
+        const d = buryCoverDecision(nonProt, c, hist, seat);
+        let why;
+        if (d.degenerate) why = `${d.hadSingles ? "孤立した" : ""}${d.koma}の処分 — 王飛角香と攻め安全牌を温存`;
+        else if (d.protectedKoma && c[d.koma] === 2) why = `受けを広く — ${d.koma}は2枚目を伏せ、敵の攻めやすい${d.protectedKoma}を受けに残す`;
+        else if (d.protectedKoma) why = `受けを広く — 敵の攻めやすい${d.protectedKoma}を受けに残し${d.koma}を伏せる`;
+        else why = `受けを広く — 受け被覆を優先し${d.koma}を伏せる`;
+        return {koma: d.koma, why};
+      }
       const singles = nonProt.filter(k => c[k] === 1);
       const pool = singles.length ? singles : nonProt;
       pool.sort((a, b) => POINTS[a] - POINTS[b]);
@@ -4515,6 +4752,122 @@ const G = (() => {
             respQueue: st.respQueue.slice(), respIdx: st.respIdx,
             matchScores: st.matchScores, solverCache: {}};
   }
+  /* ================================================================
+   * v97: DD探索の効率化 (ddClone全廃・apply-undo方式)
+   * ddApply(st,a) / ddUndo(st,u): advance()の全変異点(hands/board/history/
+   * respQueue/respIdx/phase/actor/pendingAttack/attacker/rejShi)を単一の可変状態stに
+   * in-placeで適用し、undoレコードuで完全に巻き戻す。ddSearch/ddRootValuesのノード毎
+   * ddClone(深いコピー)を廃してこの往復に置換する(値としてddClone+advance(child,a)と
+   * 完全等価。探索順・ddKey・budget消費・memo方針は無変更。入口の1回clone(ddSolve/
+   * ddSolveNaive/ddRootValues呼び出し元)は維持し、ddClone関数自体も入口用に残す)。
+   * ================================================================ */
+  function ddApply(st, a) {
+    const actor = st.actor;
+    const u = {type: a.type, actor,
+               prevPhase: st.phase, prevActor: actor,
+               prevPendingAttack: st.pendingAttack, prevAttacker: st.attacker};
+    const ev = {seat: actor, type: a.type, koma: a.koma || null};
+    if (a.type === "bury") {
+      const hand = st.hands[actor];
+      const idx = hand.indexOf(a.koma);
+      u.handIdx = idx; u.handKoma = a.koma;
+      if (idx >= 0) hand.splice(idx, 1);
+      st.board[actor].push({def: {koma: a.koma, type: "bury"}, atk: null});
+      st.history.push({seat: actor, koma: a.koma, act: "bury"});
+      st.phase = "attack";
+    } else if (a.type === "attack") {
+      const hand = st.hands[actor];
+      const idx = hand.indexOf(a.koma);
+      u.handIdx = idx; u.handKoma = a.koma;
+      if (idx >= 0) hand.splice(idx, 1);
+      const row = st.board[actor];
+      let cur = row.length && row[row.length - 1].atk === null ? row[row.length - 1] : null;
+      if (!cur) { cur = {def: null, atk: null}; row.push(cur); u.cellPushed = true; }
+      else { u.cellPushed = false; u.cellRef = cur; }
+      cur.atk = a.koma;
+      st.history.push({seat: actor, koma: a.koma, act: "attack"});
+      if (hand.length === 0) {
+        const dbl = !!(cur.def && cur.def.type === "bury" && cur.def.koma === a.koma);
+        ev.gameOver = {winner: actor, pts: POINTS[a.koma] * (dbl ? 2 : 1), dbl, koma: a.koma};
+        st.phase = "over";
+        return {ev, u};
+      }
+      u.rootChanged = true;
+      u.prevRespQueue = st.respQueue; u.prevRespIdx = st.respIdx;
+      st.attacker = actor;
+      st.pendingAttack = a.koma;
+      st.respQueue = [1, 2, 3].map(i => SEATS[(SEATS.indexOf(actor) + i) % 4]);
+      st.respIdx = 0;
+      st.actor = st.respQueue[0];
+      st.phase = "respond";
+    } else if (a.type === "pass") {
+      st.history.push({seat: actor, koma: null, act: "pass"});
+      u.prevRespIdx = st.respIdx;
+      st.respIdx++;
+      if (st.respIdx < 3) {
+        st.actor = st.respQueue[st.respIdx];
+      } else {
+        st.actor = st.attacker;
+        st.pendingAttack = null;
+        if (st.hands[st.attacker].length < 2) {
+          ev.gameOver = {winner: null, pts: 0, draw: true, nextParent: st.attacker};
+          st.phase = "over";
+          return {ev, u};
+        }
+        st.phase = "bury";
+      }
+    } else if (a.type === "receive") {
+      const hand = st.hands[actor];
+      const idx = hand.indexOf(a.koma);
+      u.handIdx = idx; u.handKoma = a.koma;
+      if (idx >= 0) hand.splice(idx, 1);
+      st.board[actor].push({def: {koma: a.koma, type: "receive"}, atk: null});
+      st.history.push({seat: actor, koma: a.koma, act: "receive"});
+      if (a.intent && a.intent.rejectShi) {
+        u.rejShiTouched = true;
+        u.rejShiCreated = !st.rejShi;
+        if (!st.rejShi) st.rejShi = {};
+        u.rejShiHadKey = Object.prototype.hasOwnProperty.call(st.rejShi, actor);
+        u.rejShiPrevVal = st.rejShi[actor];
+        st.rejShi[actor] = true;
+      }
+      if (hand.length === 0) {
+        ev.gameOver = {winner: actor, pts: POINTS[st.pendingAttack], dbl: false,
+                       koma: st.pendingAttack, recvFinish: true};
+        st.phase = "over";
+        return {ev, u};
+      }
+      st.pendingAttack = null;
+      st.phase = "attack";
+    }
+    return {ev, u};
+  }
+  function ddUndo(st, u) {
+    st.phase = u.prevPhase;
+    st.actor = u.prevActor;
+    st.pendingAttack = u.prevPendingAttack;
+    st.attacker = u.prevAttacker;
+    st.history.pop();
+    if (u.type === "bury") {
+      st.board[u.actor].pop();
+      if (u.handIdx >= 0) st.hands[u.actor].splice(u.handIdx, 0, u.handKoma);
+    } else if (u.type === "attack") {
+      if (u.cellPushed) st.board[u.actor].pop();
+      else u.cellRef.atk = null;
+      if (u.handIdx >= 0) st.hands[u.actor].splice(u.handIdx, 0, u.handKoma);
+      if (u.rootChanged) { st.respQueue = u.prevRespQueue; st.respIdx = u.prevRespIdx; }
+    } else if (u.type === "pass") {
+      st.respIdx = u.prevRespIdx;
+    } else if (u.type === "receive") {
+      st.board[u.actor].pop();
+      if (u.handIdx >= 0) st.hands[u.actor].splice(u.handIdx, 0, u.handKoma);
+      if (u.rejShiTouched) {
+        if (u.rejShiCreated) delete st.rejShi;
+        else if (!u.rejShiHadKey) delete st.rejShi[u.actor];
+        else st.rejShi[u.actor] = u.rejShiPrevVal;
+      }
+    }
+  }
   function ddKey(st) {
     let k = st.phase[0] + st.actor + (st.pendingAttack || "-") + (st.attacker || "-") + st.respIdx;
     for (const s of SEATS) {
@@ -4551,11 +4904,11 @@ const G = (() => {
     let best = maximizing ? -Infinity : Infinity;
     let cut = false;
     for (const a of ddActions(st)) {
-      const child = ddClone(st);
-      const ev = advance(child, a);
+      const {ev, u} = ddApply(st, a);
       let v;
       if (ev.gameOver) v = evalFn(ev.gameOver);
-      else v = ddSearch(child, povTeam, evalFn, alpha, beta, memo, budget, prune);
+      else v = ddSearch(st, povTeam, evalFn, alpha, beta, memo, budget, prune);
+      ddUndo(st, u);
       if (v === null) return null;
       if (maximizing) { if (v > best) best = v; if (prune && best > alpha) alpha = best; }
       else { if (v < best) best = v; if (prune && best < beta) beta = best; }
@@ -4571,10 +4924,10 @@ const G = (() => {
     const memo = new Map();
     const out = new Map();
     for (const a of actions) {
-      const child = ddClone(st);
-      const ev = advance(child, a);
+      const {ev, u} = ddApply(st, a);
       const v = ev.gameOver ? evalFn(ev.gameOver)
-        : ddSearch(child, team(seat), evalFn, -Infinity, Infinity, memo, budget, false);
+        : ddSearch(st, team(seat), evalFn, -Infinity, Infinity, memo, budget, false);
+      ddUndo(st, u);
       if (v === null) return null;     // 予算超過 → 呼び出し元がロールアウトへ後退
       out.set(a.koma !== undefined ? a.koma : null, v);
     }
@@ -5135,7 +5488,7 @@ const G = (() => {
         const pSize = view.sizes ? view.sizes[partner]
                                  : (st.hands[partner] || []).length;
         if (pf > myBest && pSize === 2) {
-          const un = unseenMinusPartner(unseenCounts(view.hand, view.hist), seat, view.hist);
+          const un = unseenCounts(view.hand, view.hist);   // v96: 変種2と同じ生の未見(相方控除しない・過剰譲り防止)
           const enemySafe = (un[attack] || 0) <= 0 &&
                             (UNCUTTABLE.has(attack) || (un["王"] || 0) <= 0);
           if (enemySafe)
@@ -5212,14 +5565,54 @@ const G = (() => {
         }
       }
       // 受けMC (検証済み構成の軽量版): 敵の攻め×手駒6枚以下×候補2つ以上
+      // v96: 相方し攻めは定石パスをMC評価で覆せるようにする(検証報告の主因13件対応)
       if (!o.noMC && (o.mc || RULE_LEVEL === 0) &&
-          (RULE_LEVEL === 0 || (!isPartnerAtk && view.hand.length <= 6))) {
+          (RULE_LEVEL === 0 || ((!isPartnerAtk || attack === "し") && view.hand.length <= 6))) {
         const r = mcDecideReceive(st, seat, view, attack, o);
         if (r !== undefined) {
           if (r.pick) {
             // [A項] MCが選んだ受け駒を事後評価し、し攻め拒否条件を満たせばintent付与(経路非依存でrejShi連動)
             const intent = receiveRejectShiIntent(view, attack, r.pick, isPartnerAtk) ? {rejectShi: true} : undefined;
             return {type: "receive", koma: r.pick, src: "mc", why: r.note, intent};
+          }
+          // v96''': 相方し攻め(isPartnerAtk && attack==="し")限定のタイブレーク(コストゼロ・
+          // 資源昇格なし。F-1'(dd/mcDets等の自動昇格)は1決定70秒・メモリ0.4〜2.6GBで出荷不可と
+          // 判定され撤回済み。F-1''(margin<0.10かつ未見のし>=1のみ)はA/Bで有意悪化(本命
+          // -0.580±0.183・帰属-0.585±0.206)のため不採用 — REVIEW_REPORT_v96.md「再々レビュー」
+          // 参照)。診断(800配牌・タイブレーク転換候補46件を収集し反実仮想[転換した場合/しない場合]
+          // の完局まで比較。beneficial 8件・harmful 17件・neutral 21件)の結果、優先候補
+          // (a)応答者のし>=2 (b)相方し攻め進行中(shiStarted) (c)敵最小手駒<=4 は単独では
+          // ほぼ判別力がない((a)単独: harmful保持15/17=88%とほぼ無変化。(b)単独: beneficial保持
+          // 6/8=75%に対しharmful保持13/17=76%と同率で選別できていない。(c)単独: beneficial
+          // 6/8=75%・harmful12/17=70%)。組合せでは(a)&(c)がbeneficial保持6/8=75%を維持したまま
+          // harmful保持を10/17=59%まで絞れる最良点(候補(b)を加えた3条件同時=harmful保持は同じ
+          // 10/17のままbeneficial保持だけ5/8に低下するため(b)は寄与なしと判断し除外)。この
+          // (a)&(c)を最小の追加条件として採用する(deal#128はし2枚・敵最小手駒4で(a)&(c)を
+          // 満たす)。受けMCが「なし」と「受し」を区別できない(margin<0.10 = candidateRanking/
+          // tempoヒューリスティック/coachと同一の既存「互角」定数の再利用。新設の閾値ではない)、
+          // かつ未見のしが1枚以上(unseenCounts)、かつ応答者のし枚数>=2、かつ敵の最小手駒数<=4の
+          // 場合に限り、受け側を選ぶ。根拠: MC自身が「区別できない」局面かつ上記データで有害転換の
+          // 比率が相対的に低い部分集合に限定した上で、パス側の失敗(敵のし受けによる手番奪取→逆転)は
+          // 受け側の失敗(相方の一時的なテンポ損失)より非対称に重い、というSonar検証済みのドメイン
+          // 知識でタイを割る。MCが明確な選好を持つ場合(margin>=0.10)は従来どおりMCの判断(なし)に
+          // 従う。
+          if (isPartnerAtk && attack === "し" && lr.includes("し")) {
+            const noneM = r.means.find(x => x.c === null);
+            const shiM = r.means.find(x => x.c === "し");
+            if (noneM && shiM) {
+              const margin = noneM.m - shiM.m;
+              const unseenShi = unseenCounts(view.hand, view.hist)["し"] || 0;
+              const respShiCount = view.hand.filter(k => k === "し").length;
+              const enemies = SEATS.filter(s => team(s) !== team(seat));
+              const enemyMinHand = Math.min.apply(null, enemies.map(s => st.hands[s].length));
+              if (margin < 0.10 && unseenShi >= 1 && respShiCount >= 2 && enemyMinHand <= 4) {
+                const intent = receiveRejectShiIntent(view, attack, "し", isPartnerAtk) ? {rejectShi: true} : undefined;
+                return {type: "receive", koma: "し", src: "mc",
+                        why: "受けMC互角(margin" + margin.toFixed(2) + "<0.10)・未見のし残存(" +
+                             unseenShi + "枚)・自し" + respShiCount + "枚・敵最小手駒" + enemyMinHand +
+                             " — 敵の手番奪取を防ぐ側で受け", intent};
+              }
+            }
           }
           return {type: "pass", src: "mc", why: r.note};
         }
@@ -6241,7 +6634,7 @@ const G = (() => {
     }
     return decided ? nsWins / decided : null;
   }
-  return {setTblTrust, tblFactorAt, setOuSignal, setOuTrust, detectOuSignals, partnerSignaledOu, partnerSignaledShi, kakariGotae, shiStarted, canShiAttackC, setOppProfile, oppRatesFromCounts, inferPartnerHoldings, setSigRead, setOuMix, setKyouMix, setShiKyoFix, setShiCommit, setShiCommitReal, setKakariEv, kakariEvidence, setPassMirror, setShiPairEv, shiPairEvidence, setKPairEv, pairAttackEvidence, setOuKyoRisk, setOulessFk, setTakeTurn, setKamizaWait, setKakuSignal, kakuSigEvidence, setKyoCode, kyoCodeEvidence, setKyoBonus, setKyoRetention, kyoBiasOf, setHumanModel, setBeliefSharpen, setBuryUmaFix, setBuryPairShi, setKeepShiEshi, setKeepShiLastGuard, setShiKeep2, setWidthBury, setUmaKeep, setShiBluff, setCoopSignal, setConvTrust, convTrustOf, moveHint, coopContext, setShiRejectStrong, setShiRideKeep, setShiAtkAvoid, setShiAtkAvoidMin, setUncutAtkAvoid, setUncutFb, setOuSigShiGuard, setKyoR1Conserve, setKyoConsMode, setKyoWeakConserve, strongNonShi, setKyoR1Wait, setKyoCertainRecv, cfrSolve2x2, setRuleLevel, setDiag, setRolloutOpp, modelRespAction, matchEquity, ddSolve, ddSolveNaive, ddRootValues, ddParAnalyze, sampleWorldW, makePassEvCache, readingNotes, SEATS, KOMA_COUNT, POINTS, UNCUTTABLE, team, nextSeat, partnerOf, mcEvalReceive, gameEquityMC, countsFor, freshSolverProbe, puzzleTruthProbe, beliefExact, beliefMC,
+  return {setTblTrust, tblFactorAt, setOuSignal, setOuTrust, detectOuSignals, partnerSignaledOu, partnerSignaledShi, kakariGotae, shiStarted, canShiAttackC, setOppProfile, oppRatesFromCounts, inferPartnerHoldings, setSigRead, setOuMix, setKyouMix, setShiKyoFix, setShiCommit, setShiCommitReal, setKakariEv, kakariEvidence, setPassMirror, setShiPairEv, shiPairEvidence, setKPairEv, pairAttackEvidence, setOuKyoRisk, setOulessFk, setTakeTurn, setKamizaWait, setKakuSignal, kakuSigEvidence, setKyoCode, kyoCodeEvidence, setKyoBonus, setKyoRetention, kyoBiasOf, setHumanModel, setBeliefSharpen, setBuryUmaFix, setBuryPairShi, setKeepShiEshi, setKeepShiLastGuard, setShiKeep2, setWidthBury, setBuryCover, buryCoverPick, setUmaKeep, setShiBluff, setCoopSignal, setConvTrust, convTrustOf, moveHint, coopContext, setShiRejectStrong, setShiRideKeep, setShiAtkAvoid, setShiAtkAvoidMin, setUncutAtkAvoid, setUncutFb, setOuSigShiGuard, setKyoR1Conserve, setKyoConsMode, setKyoWeakConserve, strongNonShi, setKyoR1Wait, setKyoCertainRecv, cfrSolve2x2, setRuleLevel, setDiag, setRolloutOpp, modelRespAction, matchEquity, ddSolve, ddSolveNaive, ddRootValues, ddParAnalyze, sampleWorldW, makePassEvCache, readingNotes, SEATS, KOMA_COUNT, POINTS, UNCUTTABLE, team, nextSeat, partnerOf, mcEvalReceive, gameEquityMC, countsFor, freshSolverProbe, puzzleTruthProbe, beliefExact, beliefMC,
           mulberry32, shuffle, fullDeck, counter,
           newGameState, advance, canAttackKing, validReceive, legalReceives, legalAttacks,
           maskHistoryFor, makeView, unseenCounts, solveWin, checkKingAtkOk,
@@ -6307,6 +6700,13 @@ const G_B = (() => {
   // 「受けを広く」定石: ONで受け幅(受けられる攻め駒の種類数)を最大化する駒を伏せる(重複優先・同幅は低点)
   let WIDTH_BURY = false;
   function setWidthBury(on) { WIDTH_BURY = !!on; }
+  // 「受けを残す伏せ」(v95・PLAN_v95_bury_coverage.md): 通常フォールバックの伏せ選択に受け被覆
+  // (自分の保有枚数から見た、敵が攻めやすいスート)の思考を組み込む。単騎(c[k]===1)を伏せると
+  // そのスートの受けを丸ごと失う損失を未見枚数(敵の保有尤度の代理)で加重し、金銀馬ペアは
+  // 自分の初攻め前のみペア符丁として保護する(pairBreak)。既定ON。WIDTH_BURYとは独立のトグルで、
+  // buryCoverPick()本体はrecvWidthOf直後に定義する。
+  let BURY_COVER = true;
+  function setBuryCover(on) { BURY_COVER = !!on; }
   // 型破り(例2): ONで馬を決して伏せず温存(終盤の馬攻めで欺瞞)。馬以外の低価値駒を伏せる。
   let UMA_KEEP = false;
   function setUmaKeep(on) { UMA_KEEP = !!on; }
@@ -6320,6 +6720,53 @@ const G_B = (() => {
     for (const k of ["王","飛","角","金","銀","馬","香","し"])
       if (legalReceives(hand, k).length > 0) w++;
     return w;
+  }
+  // 受け被覆スコアラ(v95): hist(河の攻め/受け。伏せは不可視のまま)から可視駒数を数える。
+  function buryCoverVis(hist) {
+    const v = {};
+    for (const h of hist)
+      if ((h.act === "attack" || h.act === "receive") && h.koma) v[h.koma] = (v[h.koma] || 0) + 1;
+    return v;
+  }
+  let BURY_COVER_GAMMA = 2;   // ペア保護の重み(loseCover換算2相当)。自分の初攻め前のみ発火。A/B感度枝でγ=0を測定。
+  function buryCoverScore(k, c, hist, seat, vis) {
+    const unseenK = Math.max(0, (KOMA_COUNT[k] || 0) - (c[k] || 0) - (vis[k] || 0));
+    const loseCover = (c[k] === 1) ? unseenK : 0;   // 単騎を伏せるとそのスートの受けを丸ごと失う
+    const pairBreak = (c[k] === 2 && (k === "金" || k === "銀" || k === "馬") && isFirstAttackForMe(hist, seat))
+      ? BURY_COVER_GAMMA : 0;   // 自分の初攻め前のみ: ペア符丁の将来価値を保護
+    return {unseenK, loseCover, pairBreak, score: loseCover * 10 + pairBreak * 10 + POINTS[k] / 100};
+  }
+  // pool(伏せ候補の駒種配列。既存の保護/温存フィルタ通過後・重複可)からスコア最小の駒を選ぶ。
+  // 単騎しか無い/全て同点等の縮退時は低点優先(POINTS[k]昇順)に自然に一致する。
+  function buryCoverPick(pool, c, hist, seat) {
+    const vis = buryCoverVis(hist);
+    let best = null, bestScore = Infinity, bestPts = Infinity;
+    for (const k of new Set(pool)) {
+      const s = buryCoverScore(k, c, hist, seat, vis).score;
+      if (best === null || s < bestScore || (s === bestScore && POINTS[k] < bestPts)) {
+        best = k; bestScore = s; bestPts = POINTS[k];
+      }
+    }
+    return best;
+  }
+  // buryCoverPickの結果に加え、旧ロジック(単騎優先→低点)との一致判定(縮退)と、被覆保護している
+  // 単騎駒(protectedKoma)を返す。呼び出し側がwhy文言(事実のみ)を組み立てる。
+  function buryCoverDecision(pool, c, hist, seat) {
+    const picked = buryCoverPick(pool, c, hist, seat);
+    const oldSingles = pool.filter(k => c[k] === 1);
+    const oldPool = (oldSingles.length ? oldSingles : pool).slice().sort((a, b) => POINTS[a] - POINTS[b]);
+    const degenerate = picked === oldPool[0];
+    const hadSingles = oldSingles.length > 0;
+    let protectedKoma = null;
+    if (!degenerate) {
+      const vis = buryCoverVis(hist);
+      let maxUnseen = -1;
+      for (const k of new Set(pool.filter(x => x !== picked && c[x] === 1))) {
+        const u = buryCoverScore(k, c, hist, seat, vis).unseenK;
+        if (u > maxUnseen) { maxUnseen = u; protectedKoma = k; }
+      }
+    }
+    return {koma: picked, degenerate, hadSingles, protectedKoma};
   }
   function setKyoBonus(m) { KYO_BONUS = m | 0; }
   function uncutBonus(k, unseenK) {
@@ -6675,6 +7122,15 @@ const G_B = (() => {
         // し・香以外の低点を伏せる。自己対戦では香伏せ比 z=-1.59 の微減だが、協力プレイの可読性を優先する方針。
         const nonShiKyo = hand.filter(k => k !== "し" && k !== "香");
         if (nonShiKyo.length) {
+          if (BURY_COVER) {
+            const d = buryCoverDecision(nonShiKyo, c, hist, seat);
+            let why;
+            if (d.degenerate) why = "敵し攻め中 — しと香を温存し" + d.koma + "を伏せる";
+            else if (d.protectedKoma && c[d.koma] === 2) why = `敵し攻め中 — しと香を温存し、${d.koma}は2枚目を伏せて${d.protectedKoma}を受けに残す`;
+            else if (d.protectedKoma) why = `敵し攻め中 — しと香を温存し、${d.protectedKoma}を受けに残し${d.koma}を伏せる`;
+            else why = `敵し攻め中 — しと香を温存し受け被覆を優先して${d.koma}を伏せる`;
+            return {koma: d.koma, why, src: "rule"};
+          }
           const singles = nonShiKyo.filter(k => c[k] === 1);
           const pool = singles.length ? singles : nonShiKyo;
           pool.sort((a, b) => POINTS[a] - POINTS[b]);
@@ -6714,6 +7170,15 @@ const G_B = (() => {
     let nonProt = nonProtAll.filter(k => !komaSafeToAttack(hist, seat, c, k));   // 攻め安全牌(馬/金/銀等)は伏せず温存
     if (!nonProt.length) nonProt = nonProtAll;   // 全て安全 → 従来通り最安値を伏せる
     if (nonProt.length) {
+      if (BURY_COVER) {
+        const d = buryCoverDecision(nonProt, c, hist, seat);
+        let why;
+        if (d.degenerate) why = `${d.hadSingles ? "孤立した" : ""}${d.koma}の処分 — 王飛角香と攻め安全牌を温存`;
+        else if (d.protectedKoma && c[d.koma] === 2) why = `受けを広く — ${d.koma}は2枚目を伏せ、敵の攻めやすい${d.protectedKoma}を受けに残す`;
+        else if (d.protectedKoma) why = `受けを広く — 敵の攻めやすい${d.protectedKoma}を受けに残し${d.koma}を伏せる`;
+        else why = `受けを広く — 受け被覆を優先し${d.koma}を伏せる`;
+        return {koma: d.koma, why};
+      }
       const singles = nonProt.filter(k => c[k] === 1);
       const pool = singles.length ? singles : nonProt;
       pool.sort((a, b) => POINTS[a] - POINTS[b]);
@@ -8035,6 +8500,122 @@ const G_B = (() => {
             respQueue: st.respQueue.slice(), respIdx: st.respIdx,
             matchScores: st.matchScores, solverCache: {}};
   }
+  /* ================================================================
+   * v97: DD探索の効率化 (ddClone全廃・apply-undo方式)
+   * ddApply(st,a) / ddUndo(st,u): advance()の全変異点(hands/board/history/
+   * respQueue/respIdx/phase/actor/pendingAttack/attacker/rejShi)を単一の可変状態stに
+   * in-placeで適用し、undoレコードuで完全に巻き戻す。ddSearch/ddRootValuesのノード毎
+   * ddClone(深いコピー)を廃してこの往復に置換する(値としてddClone+advance(child,a)と
+   * 完全等価。探索順・ddKey・budget消費・memo方針は無変更。入口の1回clone(ddSolve/
+   * ddSolveNaive/ddRootValues呼び出し元)は維持し、ddClone関数自体も入口用に残す)。
+   * ================================================================ */
+  function ddApply(st, a) {
+    const actor = st.actor;
+    const u = {type: a.type, actor,
+               prevPhase: st.phase, prevActor: actor,
+               prevPendingAttack: st.pendingAttack, prevAttacker: st.attacker};
+    const ev = {seat: actor, type: a.type, koma: a.koma || null};
+    if (a.type === "bury") {
+      const hand = st.hands[actor];
+      const idx = hand.indexOf(a.koma);
+      u.handIdx = idx; u.handKoma = a.koma;
+      if (idx >= 0) hand.splice(idx, 1);
+      st.board[actor].push({def: {koma: a.koma, type: "bury"}, atk: null});
+      st.history.push({seat: actor, koma: a.koma, act: "bury"});
+      st.phase = "attack";
+    } else if (a.type === "attack") {
+      const hand = st.hands[actor];
+      const idx = hand.indexOf(a.koma);
+      u.handIdx = idx; u.handKoma = a.koma;
+      if (idx >= 0) hand.splice(idx, 1);
+      const row = st.board[actor];
+      let cur = row.length && row[row.length - 1].atk === null ? row[row.length - 1] : null;
+      if (!cur) { cur = {def: null, atk: null}; row.push(cur); u.cellPushed = true; }
+      else { u.cellPushed = false; u.cellRef = cur; }
+      cur.atk = a.koma;
+      st.history.push({seat: actor, koma: a.koma, act: "attack"});
+      if (hand.length === 0) {
+        const dbl = !!(cur.def && cur.def.type === "bury" && cur.def.koma === a.koma);
+        ev.gameOver = {winner: actor, pts: POINTS[a.koma] * (dbl ? 2 : 1), dbl, koma: a.koma};
+        st.phase = "over";
+        return {ev, u};
+      }
+      u.rootChanged = true;
+      u.prevRespQueue = st.respQueue; u.prevRespIdx = st.respIdx;
+      st.attacker = actor;
+      st.pendingAttack = a.koma;
+      st.respQueue = [1, 2, 3].map(i => SEATS[(SEATS.indexOf(actor) + i) % 4]);
+      st.respIdx = 0;
+      st.actor = st.respQueue[0];
+      st.phase = "respond";
+    } else if (a.type === "pass") {
+      st.history.push({seat: actor, koma: null, act: "pass"});
+      u.prevRespIdx = st.respIdx;
+      st.respIdx++;
+      if (st.respIdx < 3) {
+        st.actor = st.respQueue[st.respIdx];
+      } else {
+        st.actor = st.attacker;
+        st.pendingAttack = null;
+        if (st.hands[st.attacker].length < 2) {
+          ev.gameOver = {winner: null, pts: 0, draw: true, nextParent: st.attacker};
+          st.phase = "over";
+          return {ev, u};
+        }
+        st.phase = "bury";
+      }
+    } else if (a.type === "receive") {
+      const hand = st.hands[actor];
+      const idx = hand.indexOf(a.koma);
+      u.handIdx = idx; u.handKoma = a.koma;
+      if (idx >= 0) hand.splice(idx, 1);
+      st.board[actor].push({def: {koma: a.koma, type: "receive"}, atk: null});
+      st.history.push({seat: actor, koma: a.koma, act: "receive"});
+      if (a.intent && a.intent.rejectShi) {
+        u.rejShiTouched = true;
+        u.rejShiCreated = !st.rejShi;
+        if (!st.rejShi) st.rejShi = {};
+        u.rejShiHadKey = Object.prototype.hasOwnProperty.call(st.rejShi, actor);
+        u.rejShiPrevVal = st.rejShi[actor];
+        st.rejShi[actor] = true;
+      }
+      if (hand.length === 0) {
+        ev.gameOver = {winner: actor, pts: POINTS[st.pendingAttack], dbl: false,
+                       koma: st.pendingAttack, recvFinish: true};
+        st.phase = "over";
+        return {ev, u};
+      }
+      st.pendingAttack = null;
+      st.phase = "attack";
+    }
+    return {ev, u};
+  }
+  function ddUndo(st, u) {
+    st.phase = u.prevPhase;
+    st.actor = u.prevActor;
+    st.pendingAttack = u.prevPendingAttack;
+    st.attacker = u.prevAttacker;
+    st.history.pop();
+    if (u.type === "bury") {
+      st.board[u.actor].pop();
+      if (u.handIdx >= 0) st.hands[u.actor].splice(u.handIdx, 0, u.handKoma);
+    } else if (u.type === "attack") {
+      if (u.cellPushed) st.board[u.actor].pop();
+      else u.cellRef.atk = null;
+      if (u.handIdx >= 0) st.hands[u.actor].splice(u.handIdx, 0, u.handKoma);
+      if (u.rootChanged) { st.respQueue = u.prevRespQueue; st.respIdx = u.prevRespIdx; }
+    } else if (u.type === "pass") {
+      st.respIdx = u.prevRespIdx;
+    } else if (u.type === "receive") {
+      st.board[u.actor].pop();
+      if (u.handIdx >= 0) st.hands[u.actor].splice(u.handIdx, 0, u.handKoma);
+      if (u.rejShiTouched) {
+        if (u.rejShiCreated) delete st.rejShi;
+        else if (!u.rejShiHadKey) delete st.rejShi[u.actor];
+        else st.rejShi[u.actor] = u.rejShiPrevVal;
+      }
+    }
+  }
   function ddKey(st) {
     let k = st.phase[0] + st.actor + (st.pendingAttack || "-") + (st.attacker || "-") + st.respIdx;
     for (const s of SEATS) {
@@ -8071,11 +8652,11 @@ const G_B = (() => {
     let best = maximizing ? -Infinity : Infinity;
     let cut = false;
     for (const a of ddActions(st)) {
-      const child = ddClone(st);
-      const ev = advance(child, a);
+      const {ev, u} = ddApply(st, a);
       let v;
       if (ev.gameOver) v = evalFn(ev.gameOver);
-      else v = ddSearch(child, povTeam, evalFn, alpha, beta, memo, budget, prune);
+      else v = ddSearch(st, povTeam, evalFn, alpha, beta, memo, budget, prune);
+      ddUndo(st, u);
       if (v === null) return null;
       if (maximizing) { if (v > best) best = v; if (prune && best > alpha) alpha = best; }
       else { if (v < best) best = v; if (prune && best < beta) beta = best; }
@@ -8091,10 +8672,10 @@ const G_B = (() => {
     const memo = new Map();
     const out = new Map();
     for (const a of actions) {
-      const child = ddClone(st);
-      const ev = advance(child, a);
+      const {ev, u} = ddApply(st, a);
       const v = ev.gameOver ? evalFn(ev.gameOver)
-        : ddSearch(child, team(seat), evalFn, -Infinity, Infinity, memo, budget, false);
+        : ddSearch(st, team(seat), evalFn, -Infinity, Infinity, memo, budget, false);
+      ddUndo(st, u);
       if (v === null) return null;     // 予算超過 → 呼び出し元がロールアウトへ後退
       out.set(a.koma !== undefined ? a.koma : null, v);
     }
@@ -8655,7 +9236,7 @@ const G_B = (() => {
         const pSize = view.sizes ? view.sizes[partner]
                                  : (st.hands[partner] || []).length;
         if (pf > myBest && pSize === 2) {
-          const un = unseenMinusPartner(unseenCounts(view.hand, view.hist), seat, view.hist);
+          const un = unseenCounts(view.hand, view.hist);   // v96: 変種2と同じ生の未見(相方控除しない・過剰譲り防止)
           const enemySafe = (un[attack] || 0) <= 0 &&
                             (UNCUTTABLE.has(attack) || (un["王"] || 0) <= 0);
           if (enemySafe)
@@ -8732,14 +9313,54 @@ const G_B = (() => {
         }
       }
       // 受けMC (検証済み構成の軽量版): 敵の攻め×手駒6枚以下×候補2つ以上
+      // v96: 相方し攻めは定石パスをMC評価で覆せるようにする(検証報告の主因13件対応)
       if (!o.noMC && (o.mc || RULE_LEVEL === 0) &&
-          (RULE_LEVEL === 0 || (!isPartnerAtk && view.hand.length <= 6))) {
+          (RULE_LEVEL === 0 || ((!isPartnerAtk || attack === "し") && view.hand.length <= 6))) {
         const r = mcDecideReceive(st, seat, view, attack, o);
         if (r !== undefined) {
           if (r.pick) {
             // [A項] MCが選んだ受け駒を事後評価し、し攻め拒否条件を満たせばintent付与(経路非依存でrejShi連動)
             const intent = receiveRejectShiIntent(view, attack, r.pick, isPartnerAtk) ? {rejectShi: true} : undefined;
             return {type: "receive", koma: r.pick, src: "mc", why: r.note, intent};
+          }
+          // v96''': 相方し攻め(isPartnerAtk && attack==="し")限定のタイブレーク(コストゼロ・
+          // 資源昇格なし。F-1'(dd/mcDets等の自動昇格)は1決定70秒・メモリ0.4〜2.6GBで出荷不可と
+          // 判定され撤回済み。F-1''(margin<0.10かつ未見のし>=1のみ)はA/Bで有意悪化(本命
+          // -0.580±0.183・帰属-0.585±0.206)のため不採用 — REVIEW_REPORT_v96.md「再々レビュー」
+          // 参照)。診断(800配牌・タイブレーク転換候補46件を収集し反実仮想[転換した場合/しない場合]
+          // の完局まで比較。beneficial 8件・harmful 17件・neutral 21件)の結果、優先候補
+          // (a)応答者のし>=2 (b)相方し攻め進行中(shiStarted) (c)敵最小手駒<=4 は単独では
+          // ほぼ判別力がない((a)単独: harmful保持15/17=88%とほぼ無変化。(b)単独: beneficial保持
+          // 6/8=75%に対しharmful保持13/17=76%と同率で選別できていない。(c)単独: beneficial
+          // 6/8=75%・harmful12/17=70%)。組合せでは(a)&(c)がbeneficial保持6/8=75%を維持したまま
+          // harmful保持を10/17=59%まで絞れる最良点(候補(b)を加えた3条件同時=harmful保持は同じ
+          // 10/17のままbeneficial保持だけ5/8に低下するため(b)は寄与なしと判断し除外)。この
+          // (a)&(c)を最小の追加条件として採用する(deal#128はし2枚・敵最小手駒4で(a)&(c)を
+          // 満たす)。受けMCが「なし」と「受し」を区別できない(margin<0.10 = candidateRanking/
+          // tempoヒューリスティック/coachと同一の既存「互角」定数の再利用。新設の閾値ではない)、
+          // かつ未見のしが1枚以上(unseenCounts)、かつ応答者のし枚数>=2、かつ敵の最小手駒数<=4の
+          // 場合に限り、受け側を選ぶ。根拠: MC自身が「区別できない」局面かつ上記データで有害転換の
+          // 比率が相対的に低い部分集合に限定した上で、パス側の失敗(敵のし受けによる手番奪取→逆転)は
+          // 受け側の失敗(相方の一時的なテンポ損失)より非対称に重い、というSonar検証済みのドメイン
+          // 知識でタイを割る。MCが明確な選好を持つ場合(margin>=0.10)は従来どおりMCの判断(なし)に
+          // 従う。
+          if (isPartnerAtk && attack === "し" && lr.includes("し")) {
+            const noneM = r.means.find(x => x.c === null);
+            const shiM = r.means.find(x => x.c === "し");
+            if (noneM && shiM) {
+              const margin = noneM.m - shiM.m;
+              const unseenShi = unseenCounts(view.hand, view.hist)["し"] || 0;
+              const respShiCount = view.hand.filter(k => k === "し").length;
+              const enemies = SEATS.filter(s => team(s) !== team(seat));
+              const enemyMinHand = Math.min.apply(null, enemies.map(s => st.hands[s].length));
+              if (margin < 0.10 && unseenShi >= 1 && respShiCount >= 2 && enemyMinHand <= 4) {
+                const intent = receiveRejectShiIntent(view, attack, "し", isPartnerAtk) ? {rejectShi: true} : undefined;
+                return {type: "receive", koma: "し", src: "mc",
+                        why: "受けMC互角(margin" + margin.toFixed(2) + "<0.10)・未見のし残存(" +
+                             unseenShi + "枚)・自し" + respShiCount + "枚・敵最小手駒" + enemyMinHand +
+                             " — 敵の手番奪取を防ぐ側で受け", intent};
+              }
+            }
           }
           return {type: "pass", src: "mc", why: r.note};
         }
@@ -9761,7 +10382,7 @@ const G_B = (() => {
     }
     return decided ? nsWins / decided : null;
   }
-  return {setTblTrust, tblFactorAt, setOuSignal, setOuTrust, detectOuSignals, partnerSignaledOu, partnerSignaledShi, kakariGotae, shiStarted, canShiAttackC, setOppProfile, oppRatesFromCounts, inferPartnerHoldings, setSigRead, setOuMix, setKyouMix, setShiKyoFix, setShiCommit, setShiCommitReal, setKakariEv, kakariEvidence, setPassMirror, setShiPairEv, shiPairEvidence, setKPairEv, pairAttackEvidence, setOuKyoRisk, setOulessFk, setTakeTurn, setKamizaWait, setKakuSignal, kakuSigEvidence, setKyoCode, kyoCodeEvidence, setKyoBonus, setKyoRetention, kyoBiasOf, setHumanModel, setBeliefSharpen, setBuryUmaFix, setBuryPairShi, setKeepShiEshi, setKeepShiLastGuard, setShiKeep2, setWidthBury, setUmaKeep, setShiBluff, setCoopSignal, setConvTrust, convTrustOf, moveHint, coopContext, setShiRejectStrong, setShiRideKeep, setShiAtkAvoid, setShiAtkAvoidMin, setUncutAtkAvoid, setUncutFb, setOuSigShiGuard, setKyoR1Conserve, setKyoConsMode, setKyoWeakConserve, strongNonShi, setKyoR1Wait, setKyoCertainRecv, cfrSolve2x2, setRuleLevel, setDiag, setRolloutOpp, modelRespAction, matchEquity, ddSolve, ddSolveNaive, ddRootValues, ddParAnalyze, sampleWorldW, makePassEvCache, readingNotes, SEATS, KOMA_COUNT, POINTS, UNCUTTABLE, team, nextSeat, partnerOf, mcEvalReceive, gameEquityMC, countsFor, freshSolverProbe, puzzleTruthProbe, beliefExact, beliefMC,
+  return {setTblTrust, tblFactorAt, setOuSignal, setOuTrust, detectOuSignals, partnerSignaledOu, partnerSignaledShi, kakariGotae, shiStarted, canShiAttackC, setOppProfile, oppRatesFromCounts, inferPartnerHoldings, setSigRead, setOuMix, setKyouMix, setShiKyoFix, setShiCommit, setShiCommitReal, setKakariEv, kakariEvidence, setPassMirror, setShiPairEv, shiPairEvidence, setKPairEv, pairAttackEvidence, setOuKyoRisk, setOulessFk, setTakeTurn, setKamizaWait, setKakuSignal, kakuSigEvidence, setKyoCode, kyoCodeEvidence, setKyoBonus, setKyoRetention, kyoBiasOf, setHumanModel, setBeliefSharpen, setBuryUmaFix, setBuryPairShi, setKeepShiEshi, setKeepShiLastGuard, setShiKeep2, setWidthBury, setBuryCover, buryCoverPick, setUmaKeep, setShiBluff, setCoopSignal, setConvTrust, convTrustOf, moveHint, coopContext, setShiRejectStrong, setShiRideKeep, setShiAtkAvoid, setShiAtkAvoidMin, setUncutAtkAvoid, setUncutFb, setOuSigShiGuard, setKyoR1Conserve, setKyoConsMode, setKyoWeakConserve, strongNonShi, setKyoR1Wait, setKyoCertainRecv, cfrSolve2x2, setRuleLevel, setDiag, setRolloutOpp, modelRespAction, matchEquity, ddSolve, ddSolveNaive, ddRootValues, ddParAnalyze, sampleWorldW, makePassEvCache, readingNotes, SEATS, KOMA_COUNT, POINTS, UNCUTTABLE, team, nextSeat, partnerOf, mcEvalReceive, gameEquityMC, countsFor, freshSolverProbe, puzzleTruthProbe, beliefExact, beliefMC,
           mulberry32, shuffle, fullDeck, counter,
           newGameState, advance, canAttackKing, validReceive, legalReceives, legalAttacks,
           maskHistoryFor, makeView, unseenCounts, solveWin, checkKingAtkOk,
@@ -11571,7 +12192,7 @@ if (typeof document !== "undefined") (() => {
       "recv": "麻雀と同じく、受けられる攻め駒の種類が多いほど受けやすく攻めに転じやすい。ししし銀で待つより、し銀馬香と幅広く待つ。伏せ駒も受け幅が最も狭まらない駒を選ぶ",
       "when": "伏せ駒・手作りの判断",
       "cnt": "終盤は受け幅より確定の上がり筋を優先。狭く強い手はむしろ死蔵回避で攻め番を取る",
-      "detail": "由来: 大会定石＋保存会。エンジンはburyChoiceの受け幅伏せ(重複優先・同幅は低点)で内在。"
+      "detail": "由来: 大会定石＋保存会。エンジンはburyChoiceの受け被覆スコア(buryCoverPick — 単騎を伏せると失う受け被覆を未見枚数で加重し、敵の攻めやすいスートを受けに残す)で内在。"
     },
     "aikata_uke": {
       "name": "相棒受けは確定勝ちか阻止時のみ",
@@ -11580,7 +12201,7 @@ if (typeof document !== "undefined") (() => {
       "recv": "相方の攻めは原則『なし』でパスし手番を渡さない。受けてよいのは、確実に勝ちが見える時、敵の上がりを阻止する時、または狭く強い手が死蔵するのを避けて攻め番を確保する時に限る",
       "when": "相方が攻めてきた全局面",
       "cnt": "し攻めは例外的に条件成立時のみ乗る(敵し枯渇＋受け後継続可)。安易な相棒受けは味方の上がりを潰す",
-      "detail": "由来: 保存会『相棒の駒を受けるのは確実な勝ちor敵上がり阻止の時に限る』。エンジンは非妨害＋死蔵回避／し攻め継続の例外で実装。"
+      "detail": "由来: 保存会『相棒の駒を受けるのは確実な勝ちor敵上がり阻止の時に限る』。エンジンは非妨害＋死蔵回避／し攻め継続の例外で実装。相方のし攻めに限り、受けMC評価が上がり阻止に有利と判断すれば定石パスを覆して受けることがある(v96)。"
     },
     "aite_yomi": {
       "name": "相手の傾向を読む",
