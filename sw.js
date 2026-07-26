@@ -10,7 +10,8 @@
 
 // v120 (2026-07-26): build v100 反映 — T1(Neural Network)エンジン v7→v7s差替 + matchTarget配線。
 // v121 (2026-07-26): build v101 反映 — T1ティア表示名変更(「Neural Network」→「NN＠oui2039」)。
-const CACHE_NAME = "goita-v121";
+// v122 (2026-07-26): build v102 反映 — 「遊び方」の符丁辞書節削除 + 最強AI注意書き追加。
+const CACHE_NAME = "goita-v122";
 
 const PRECACHE_URLS = [
   "./",
