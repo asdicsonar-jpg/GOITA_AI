@@ -75,7 +75,12 @@
 //   旧チーム最終得点)/局数を先に勝負単位で正規化し、同一シードの2アサインメント平均を対の
 //   代表値として対応ありt検定にかけた2段階集約値であることを明記。(2) 本コメント自体の
 //   CACHE_NAME繰上げ。BURY_FIX_MODE既定1(較正ON)を維持したままデプロイ可。
-const CACHE_NAME = "goita-v143";
+// v144 (2026-08-06): build v144 反映 — T1(最強AI)重みチェックポイント更新(Sonar提供の
+//   t1_weights.js、sha256全文27dacc92bd89379f...)。データのみ差替、スキーマ完全一致・
+//   エンジン/アダプタ無変更。自己対戦A/B(duplicate pairing、全4席T1・1,338対=2,676局)
+//   で新チェックポイント勝率51.9%(95%CI[50.0%,53.8%]、z=1.97で有意)、winrate-neutral-
+//   or-better基準を達成。
+const CACHE_NAME = "goita-v144";
 
 const PRECACHE_URLS = [
   "./",
