@@ -80,7 +80,13 @@
 //   エンジン/アダプタ無変更。自己対戦A/B(duplicate pairing、全4席T1・1,338対=2,676局)
 //   で新チェックポイント勝率51.9%(95%CI[50.0%,53.8%]、z=1.97で有意)、winrate-neutral-
 //   or-better基準を達成。
-const CACHE_NAME = "goita-v144";
+// v145 (2026-08-06): build v145 反映 — 「AI: 対人協調(coop)」ティアのUI削除(Sonar依頼、
+//   goita-dev-loop Planner=Fable5/Executor=Sonnet5、Sonar裁定「案B: UIの選択肢だけ削除」)。
+//   席構成セレクト3箇所のcoop選択肢を削除、cfg-N既定をstrongに変更、TIER_LABELからcoop削除、
+//   LADDER_PRESETS(beginner/practice/tournament)の北席既定をcoop→strongに変更(探索設定は
+//   coopとstrong同一のため強さ不変)。旧保存対局のtiers="coop"はresumeSavedMatchでstrongへ
+//   正規化。COOP_SIGNAL/coopContext/G_Bブロック本体/honestSignalFilterはコード無変更で存置。
+const CACHE_NAME = "goita-v145";
 
 const PRECACHE_URLS = [
   "./",
