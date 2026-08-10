@@ -86,7 +86,124 @@
 //   LADDER_PRESETS(beginner/practice/tournament)の北席既定をcoop→strongに変更(探索設定は
 //   coopとstrong同一のため強さ不変)。旧保存対局のtiers="coop"はresumeSavedMatchでstrongへ
 //   正規化。COOP_SIGNAL/coopContext/G_Bブロック本体/honestSignalFilterはコード無変更で存置。
-const CACHE_NAME = "goita-v145";
+// v146 (2026-08-08): build v146 反映 — 提案C-dd: rolloutのddホライズン打ち切り(LEAF_DD、既定OFF)。
+//   Sonar提案C(T1 value_headをstrongの末端評価に流用)をOpus5計画。段階0診断でT1 forward実測
+//   45.3ms/callが必要19,312回/局→予算1,200倍超過・9,000局A/Bが1アーム37時間で検証不能と判明し
+//   原案却下。代替として、rolloutが必ず残駒total<=16を通過してから終局まで弱方策で進む構造
+//   (到達性100%実測)を利用し、その通過点で既存のddSolve厳密解に打ち切る方式(C-dd)を採用。
+//   rollout()にevalFn引数を追加、forcedFirst消化後にのみ発火するガードで実装、buryMC/attackMC
+//   (evalIn)/mcDecideReceiveの3呼び出し元に配線(G/G_B両ブロック)。NULL等価性(LEAF_DD=0既定で
+//   selfTest 428局が旧v145とbit-for-bit完全一致)・G/G_Bミラー一致・reachability(LEAF_DD=1で
+//   leafDdHit 19,471回・fail 0件・回帰0件)を確認。ただし実測コストは1局あたり約10.6倍
+//   (48.2ms→507.7ms/局)と計画の想定(+37〜316%)を大幅に上回り、事前登録A/Bを実施可能な規模まで
+//   縮小するにはmcDets等の追加調整が必要。既定OFFのまま実験トグルとして温存、A/B本実施は
+//   別セッションへ持ち越し。
+// v147 (2026-08-09): build v147 反映 — 方向3-A1「coop取り残し」整理(fugu計画・案B-1+任意B-2)。
+//   coopティア(v145でUI削除済み)の裏側ロジックの実害確認と整理。実害は説明矛盾のみ(機能欠落なし、
+//   engineFor/tierOptsのcoop分岐は到達不能・無害と確定)。(1)ユーザー可視の「対人協調AI」言及8箇所
+//   (遊び方mc.desc・定石辞書signal_honesty/barabara・ドリル説明2箇所)を実態(strongティア/naive相方
+//   +連携ヒント)に沿って修正。(2)到達不能なcoopコード(engineFor/tierOptsのcoop分岐・COOP_SIGNAL
+//   宣言・バラバラ宣言のCOOP_SIGNALゲート、G/G_B両ブロック)に"dead since v145"コメントを付与(削除
+//   はしない・5点差分規約維持)。coopContext()・resumeSavedMatchのcoop正規化は無改変。
+//   検証: node --check(7ブロック)全通過、G/G_B diff=従来の7箇所のまま(新規差分なし)、
+//   NULL等価性(mc:false 60/60・mc:true 15/15 selfTest結果がbit-for-bit完全一致)、
+//   coopContext/resumeSavedMatch文字列完全一致を確認。
+// v148 (2026-08-09): build v148 反映 — 方向3-U1「AIの読み(pEnemyReceives/pHold)の可視化」
+//   (fugu計画・Phase0〜2完遂)。原則どおりG/G_Bエンジンは無改変、appブロックのみの変更。
+//   Phase0で確定: pEnemyReceives/pHold(komaLedger経由)はclosed-form(MC不使用)で既存の
+//   G.komaLedger/G.pEnemyReceives(いずれも既存export)を読み取り専用で呼べば新規算出コストなしに
+//   取得可能。受け候補のEV(mcDecideReceiveのmeans)は新規MCなしには取得不能なため、fuguの
+//   フォールバック方針どおり既存getRec()の推奨手のみを再利用した簡易表示にスコープを縮小。
+//   実装: 新規トグル「読みヒント」(app.cfg.readHint、既定OFF・COACH_TIERS経由でbeginner=ON/
+//   tournament=OFF/practice=OFF)。attackフェーズは各攻め候補に受けられ率バッジ(色+%+cud時は
+//   記号●▲併記)、respondフェーズは推奨候補に簡易バッジ、長押し駒札(komaCardSubLines)に
+//   相手の保有推定(pHold)を追記。自分の手番のみ表示(既存の手番制御を流用)。SCAFFOLDS(足場卒業
+//   システム)への統合は意図的に見送り(確率表示は卒業判定になじまないため)、コメントで明記。
+//   検証: node --check(7ブロック)全通過。G/G_B diff=従来の7箇所のまま(G/G_Bブロックはbyte単位で
+//   変更前と完全一致・今回の変更が全てappブロックに閉じていることを直接確認)。NULL等価性
+//   (mc:false 60/60・mc:true 15/15 selfTest結果がbit-for-bit完全一致)。komaLedger/pEnemyReceives
+//   の戻り値レンジ(0〜1)を実対局データで検証。
+// v149 (2026-08-09): build v149 反映 — U-1バグ修正「rh-badge(読みヒントバッジ)見切れ」解消。
+//   Sonar報告: 駒の下に出る%/推奨バッジの文字が上半分しか見えない。原因: .rh-badgeは駒の下
+//   (bottom:-7px)にはみ出す作りのため、#handが複数段に折り返すと次段の駒に下半分が隠れ、
+//   最終段では#handareaの余白を超えて#actionbarに隠れていた(いずれもCSSのみの表示不良、
+//   ロジック無関係)。対処: body.readHint(app.cfg.readHintと同期する新規bodyクラス、
+//   既存body.cudと同方式)スコープで#handのrow-gapとpadding-bottomを28px確保し、読みヒント
+//   OFF時の見た目は完全に不変のまま解消。bodyクラス同期はapplyCfgSideEffects()・readSetup()・
+//   調整モーダルの3箇所(cfg反映点)全てに配線。
+//   検証: node --check(7ブロック)全通過。G/G_B/T1/他ブロック(0-5)は変更前とbyte単位で
+//   完全一致(CSSは<head>内、JS3行はappブロックのみに限局)。CSS変更のためNULL等価性は
+//   G/G_Bブロック不変により自明に保証。
+// v150 (2026-08-10): build v150 反映 — v149の見切れ修正では治らなかった件の真因対応。
+//   Sonar再報告: 折り返しが無い1段の手駒でもバッジの文字が上半分しか見えない。
+//   web検索で確認(clip-path/filterは、はみ出す絶対配置の子要素も自身のborder-boxでクリップする、
+//   overflow:hiddenと同種の挙動): .rh-badgeは.koma(clip-path+filter持ち)の子要素だったため、
+//   bottom:-7pxではみ出す部分が常に.koma自身のclip-pathでクリップされていた(折り返し無関係・
+//   v149の行間/余白調整では対処不能な原因)。
+//   対処: renderHandTrayで各駒を.koma-slot(position:relative、clip-path/filterなし)でラップし、
+//   rh-badgeを.komaの子ではなく.koma-slotの子(=komaの兄弟)として配置。#handの実際のflex項目が
+//   .komaから.koma-slotに変わったため、モバイル1段固定(flex:0 0 auto;min-width:0)とペア詰め寄せ
+//   (pair-cont の margin-left)を.koma-slot側にも複製・移設(元の.koma側ルールは到達不能コメントを
+//   付けて残置・削除しない)。
+//   検証: node --check(7ブロック)全通過。G/G_B/T1/他ブロック(0-5)は変更前とbyte単位で完全一致
+//   (appブロックのみの変更)。jsdomによる構造検証: renderHandTrayの実装を抽出して実行し、
+//   全8枚でrh-badgeが.komaの子ではなく.koma-slotの子(=komaの兄弟)になっていること、pair/pair-cont
+//   クラスが.koma-slot側に付与されることを確認(実ブラウザでのレンダリング確認は本セッション環境の
+//   制約により未実施)。
+// v151 (2026-08-10): build v151 反映 — OU_SIG_MIRROR(王持ち合図のし偽信号回避のミラー化、
+//   Opus5計画PLAN_王持ち合図のし偽信号回避修正_Opus5.md)。Sonar報告: 第2局#27で北の攻め候補が
+//   し(占有率0.61)と馬(占有率0.30)のとき、味方(南)が初手し攻め・場のし残数から見て人間ならし攻めが
+//   自然なのにAIは馬を選んだ。原因はF2/F3: 送り手側の偽信号回避(ouSignalContextNow、しを打つと
+//   「王持ち」と誤読されるかを自己判定して攻め候補から除外)が、読み手側の正典(detectOuSignals /
+//   partnerSignaledOu、M-11ガード=partnerSignaledShi/shiStartedで既にし攻め継続中と分かる場合は
+//   王合図と読まない)より緩い述語を使っていたため、相方が絶対に王合図と読まない「し」まで
+//   除外していた(送り手/読み手の定義不整合、新ヒューリスティックではなく既存バグ)。
+//   対処: 新関数ouSigAvoidNow(hist,seat)を追加し、OU_SIG_MIRROR=1のとき読み手側の正典
+//   detectOuSignalsに「これから打つし」を仮追加して問い合わせる方式に統一(=0は従来のまま、
+//   NULL等価性の担保点)。S1(MC候補フィルタ)・S2(フォールバック)・S3(ごめんなさいのし、
+//   Phase0-Eで発火0件を実測確認済み)の3箇所を差し替え。送信分岐・規約の意味論・読み手側は無変更。
+//   検証: Phase0-A(空振り率30%、ゲート10%を通過)・Phase0-D(着手変化率0.56%/0.41%、
+//   オラクル一致率差(McNemar)+23.0pt 95%CI[+13.9,+32.1]、決着再生の得点差+8.97点/局
+//   95%CI[+5.00,+12.94]、Sonar#27個別: オラクル値が馬-50→し+40の90点差)・Phase0-E(S3発火0件)・
+//   NPS(-2.9%、ゲート+10%以内)全通過。node --check(7ブロック)・G/G_B diff=7hunk(内容不変)・
+//   NULL等価性(setOuSignal true/false×selfTest bit-for-bit一致)確認済み。
+//   mixed-engine A/B(ペア化615対9,074局、setOuSignal(true)を両エンジンに明示): 新勝率50.31%
+//   (95%CI[49.28%,51.34%]、下限48.5%基準通過)・ペア化得点差(paired)+0.408点/局
+//   (95%CI[+0.048,+0.767]、0を含まず正)。判定木分岐B(中立・整合性修正として既定1採用、
+//   v122と同じ判断枠組み)によりOU_SIG_MIRROR既定1で反映。
+// v152 (2026-08-10): build v152反映 — 読みヒント攻めバッジを「受けられる確率」から
+//   「通る目安」(1-受けられる確率)表示に反転(Sonar指摘: 緑なのに数字が低く誤読される問題)。
+//   Fable5計画PLAN_受けられ率バッジUX改善_Fable5.md準拠。色は表示値から導出し丸め起因の
+//   矛盾を解消、攻めフェーズ限定の凡例行(#rh-legend)を追加してホバー無しでも意味が伝わる
+//   ようにした。UI表示層のみの変更でエンジン(G/G_B)は無変更、G/G_B/T1ブロックはbyte単位で
+//   変更前と完全一致(機械検証済み)。
+// v153 (2026-08-10): build v153反映(Phase1) — 受けMC矛盾バグA/B修正(Fable5計画
+//   PLAN_受けMC矛盾バグA_B修正_Fable5.md準拠)。Sonar報告: 手駒バッジは「し」推奨なのに
+//   ミスガードダイアログは「なし」が明確推奨と警告する矛盾。バグA(G/G_B): mcDecideReceive()の
+//   noteラベルがロールアウトスキップ用フラグdets=0をそのまま流用しGIB式DD経路使用時も
+//   常に「0決定化」と誤表示していたのをusedDD/ddN分離で修正。構造修正(appブロックのみ):
+//   missGuardWarn()に「AIが推奨する駒そのもの(getRec一致)には根拠レンズが違っても警告しない」
+//   不変条件を追加し、getRec(policyAction層)とcandidateRanking(生MC評価のみ)が正当に
+//   食い違う場合でも矛盾表示が発生しない構造にした。candidateRanking()にキャッシュを追加
+//   (Phase3向けの布石)。G/G_B diff hunk数=7維持・block0/3/4/5byte完全一致・NULL等価性
+//   (pick/means bit-for-bit不変)・第5局#31フィクスチャで矛盾再現→不変条件で解消を確認。
+//   なお受け評価の統計的サンプル不足(バグB)自体はPhase2で対応予定(A/B必須のため本ビルドは
+//   構造修正+表示修正のみ)。
+// v154 (2026-08-10): build v154反映(Phase2) — 受けMC矛盾バグB修正、DD_ADAPT(適応延長)実装。
+//   Phase0診断でddDets固定64(FLAT64)はNPS実測+70.2%でコストゲート超過し不採用、BASE16/BLOCK8/
+//   MAX48/Z1.96の適応延長(DD_ADAPT)はREF一致率96.9%・NPS実測+12.85%でゲート内に収まり採用。
+//   既存ddループは無改変、DD_ADAPT=0で完全NULL等価。mixed-engine A/B(n=5,817局、NS/EW交互に
+//   新旧エンジン付与)で新エンジン勝率58.38%(95%CI[57.11%,59.65%])・ペア化得点差+5.687点/局
+//   (95%CI[+4.813,+6.560])と非劣性基準を大幅にクリアしたため既定ON化。king/receive/
+//   conservation違反0件(混合300局・単一140局)。詳細はPhase0診断レポート・Phase2実装レポート参照。
+// v155 (2026-08-10): build v155反映(Phase3) — candidateRankingパリティ(三者一致の完成)。
+//   appブロックのみ。candidateRanking()の呼び出しをG.mcEvalReceive(st,seat,adviceOpts())に
+//   変更し、getRecの実際のMC評価経路と厳密同一のoptsに揃えた(v94コメントの「完全同一化」の
+//   実態齟齬を解消)。第5局#31フィクスチャでclarityが「明確(なし)」→「互角」に変化し、
+//   dd領域n=350全件でcandidateRankingとmoveHint(getRec相当)のpick一致率が80.9%→92.6%に
+//   改善。残差はv96'''タイブレーク等getRec固有の分岐によるもので想定内、Phase1の
+//   missGuard不変条件が引き続きカバーする。G/G_Bは無変更(byte完全一致)。
+const CACHE_NAME = "goita-v155";
 
 const PRECACHE_URLS = [
   "./",
