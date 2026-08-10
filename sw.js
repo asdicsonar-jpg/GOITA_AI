@@ -266,7 +266,16 @@
 //   NULL等価性(478局・13,627手・0件不一致)・node --check・G/G_B diff hunk数=7(不変)・
 //   他ブロックbyte完全一致・プロパティテスト(569,712組・単調性/scope違反0件、うち硬い制約
 //   ペア109,373組で違反0件)を確認済み。
-const CACHE_NAME = "goita-v160";
+// v161 (2026-08-10): build v161反映(計画書_提案N_攻めdd経路へのDD_ADAPT横展開_fugu.md、
+//   診断レポート_ATK_DD_ADAPT_Phase0_Sonnet5.md) — 受けDD_ADAPT(build v154・+5.687点/局)の
+//   同型機構(適応延長・BASE16/BLOCK8/MAX48/Z1.96)を攻めdd経路(attackMC)へ横展開。
+//   Phase0実測: 攻めdd発火率2.31%は受け側2.39%と有意差なし(懸念されていた「攻めは発火が
+//   稀」を否定)、適応延長でREF一致率が全体+6.9pt・接戦局面(margin<0.05)+17.0pt改善、
+//   NPS増は+1.7〜4.5%(ゲート15%以内)。mixed-engine A/B(ペア化9,000対=18,000局)で
+//   新エンジン勝率57.35%(95%CI[50.71%,63.98%])、事前登録基準(CI下限>50%)を満たし既定ON。
+//   既存ddループは無改変、ATK_DD_ADAPT=0で完全NULL等価(NULL等価性483局・13,503手・
+//   mismatches=0を確認)。node --check・G/G_B diff hunk数=7(不変)・他ブロックbyte完全一致。
+const CACHE_NAME = "goita-v161";
 
 const PRECACHE_URLS = [
   "./",
