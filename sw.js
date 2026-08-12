@@ -291,7 +291,27 @@
 //   winrate-neutral(有意な悪化なし)を確認。node --check(7ブロック全て)・G/G_B diff
 //   hunk数=7(不変、block1/2は無変更のためbyte完全一致)・t1_adapter動作確認(40局・
 //   フォールバック0件・決定論PASS)・新旧T1着手差異5.3%(重み更新が反映されていることを確認)。
-const CACHE_NAME = "goita-v162";
+// v163 (2026-08-12): build v163反映(PLAN_香forced証拠修正_Phase1_Fable5.md・C'案、Sonar承認
+//   「よい」2026-08-12) — komaLedger「香100%通る」誤断定バグ修正。H3(ledgerNoHold由来のパス証拠)
+//   のみに由来するforced/impossible主張が算術的確定(H1)と同格のpHold=1/0断定になっていた過剰
+//   確信を、両側cap/floor(LEDGER_H3_CAP=0.95/LEDGER_H3_FLOOR=0.10)で較正的に妥当な範囲へ抑える。
+//   新トグルLEDGER_H3_SOFT、既定OFF(false)。対象: ledgerProb・ledgerRefine(独立の未ガード上書きを
+//   同型修正、終盤の再発防止)・ledgerTier(facts.isH3フラグ追加)・countWhy/readingNotes(H3のみ由来
+//   の表示文言を「n枚確定」→「n枚濃厚(パス根拠)」に切替)。同時にD2で確定した意味論バグ(minHard=
+//   「手駒+伏せ」の下限を「手駒のみ」のpHold=1に誤読み替え)も同じ行の修正として同梱。
+//   出典: 診断レポート_香forced証拠_Phase0_Sonnet5.md(600局/2,774エピソード、Fable5レビュー承認済み)。
+//   検証: node --check(7ブロック全て)・G/G_B diff hunk数=7(不変、全編集をbyte同一で両ブロックへ
+//   適用)・NULL等価性(LEDGER_H3_SOFT=false既定、v161(=v162)block1とのSHA-256着手列一致
+//   170/170局、mc:false/true both)・回帰フィクスチャ(seed=970002/iter=16/南/香: OFF時pr=0.0000
+//   バグ再現・ON時pr=0.1900で解消)・較正検証out-of-sample(seed920001系600局・16,906観測、
+//   Brier 0.05347→0.05243〈改善1.93%〉、pr=0バケット実際的中率8.2%→0.0%、点精度93.82%→93.87%
+//   〈非劣化〉)・mixed-engine A/B(paired、単発対120対+フルマッチ120対、点差ONほぼ0〈95%CI
+//   [-13.65,+12.40]〉・119/120マッチが完全同一結果=無害性を強く支持)。build v163は既定OFFで出荷。
+// v164 (2026-08-12): build v164反映 — LEDGER_H3_SOFTをSonar裁定「既定ONにして正式採用」により
+//   既定ON化(false→true)。コード変更はこの1行のみ(トグル自体・cap/floor値・分岐ロジックは
+//   v163から無変更)。node --check(7ブロック全て)・G/G_B diff hunk数=7を再確認。ロールバック用に
+//   setLedgerH3Soft(false)は引き続き利用可能。
+const CACHE_NAME = "goita-v164";
 
 const PRECACHE_URLS = [
   "./",
