@@ -357,7 +357,12 @@
 //   app.humanSeatを、振り返りに入る前の値へ復元するようにした(app._humanSeatBeforeReview、
 //   enterReviewFromShare/openReviewOnの初回入場時のみ退避しclosReview()で復元・消費)。
 //   通常(読込でない)振り返りではhumanSeatは元々変化しないため実質無害。
-const CACHE_NAME = "goita-v170";
+// v171 (2026-08-13): build v171反映 — Sonar依頼2点。(1)視点切替セレクタの選択肢を「北/東/南/西」
+//   から現在の視点基準の相対呼称(自分/下家/相方/上家)へ変更(renderSeatSwitchOptions()、valueは
+//   実際の席コードのまま)。(2)局面共有画像(drawBoard)で席名(自分/相方/上家/下家、可変長)と
+//   チーム名(あなた組/相手組)が固定オフセットのままだったため後続の「手N」等と重なっていたのを、
+//   ctx.measureTextで実測してから次要素の開始位置を決めるよう修正。
+const CACHE_NAME = "goita-v171";
 
 const PRECACHE_URLS = [
   "./",
