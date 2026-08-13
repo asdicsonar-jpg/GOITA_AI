@@ -341,7 +341,12 @@
 // v167 (2026-08-13): build v167反映 — QR画像そのものをクリップボードへコピー/保存できるように
 //   showQrForRec()に「QR画像をコピー」「QR画像を保存」ボタンを追加(既存のcopyImageAndKifu・
 //   sm-imgsaveと同じClipboardItem/Blobパターンを踏襲)。他の挙動への影響なし(追記のみ、36行純増)。
-const CACHE_NAME = "goita-v167";
+// v168 (2026-08-13): build v168反映 — マッチ終了モーダルの「共有」を拡張し、そのマッチ内の
+//   好きな局を選んでQR共有できるようにした。shareGameFromMatchEnd()がapp.matchRecsを
+//   現在のapp.matchNoで絞り込み、1局のみなら従来通り即共有、2局以上ならopenMatchGameSharePicker()
+//   の一覧から選ばせる(既存のshareGame/shareRecModal/QR機能はそのまま再利用、新規ロジックは
+//   ピッカーUIのみ)。他の共有経路(振り返り・対局中)は無変更。
+const CACHE_NAME = "goita-v168";
 
 const PRECACHE_URLS = [
   "./",
