@@ -346,7 +346,18 @@
 //   現在のapp.matchNoで絞り込み、1局のみなら従来通り即共有、2局以上ならopenMatchGameSharePicker()
 //   の一覧から選ばせる(既存のshareGame/shareRecModal/QR機能はそのまま再利用、新規ロジックは
 //   ピッカーUIのみ)。他の共有経路(振り返り・対局中)は無変更。
-const CACHE_NAME = "goita-v168";
+// v169 (2026-08-13): build v169反映 — Sonar依頼2点。(1)共有時の席呼称をSEAT_JA(東西南北)から
+//   seatDisp/seatDispFor(自分/相方/上家/下家、app.humanSeat基準)へ変更(recToKifu・viewKifu・
+//   drawBoard[共有画像の席名/チーム名/攻め番表示]が対象。従来「共有はSEAT_JA不変」としていた
+//   設計から変更)。(2)QR/URL経由で読み込んだ対局(rec.imported)の振り返りに視点切替(北/東/南/西)
+//   セレクタを追加。切替はapp.humanSeatを差し替えてopenReviewOn()を再実行するのみ(新規の
+//   状態管理を増やさず既存の初期化パスを再利用)。既知の制約: 振り返りを閉じてもapp.humanSeatは
+//   元に戻らない(enterReviewFromShareが元々"S"に固定していた既存挙動と同じ性質)。
+// v170 (2026-08-13): build v170反映 — 振り返りを閉じた際、QR/URL読込や視点切替で変わった
+//   app.humanSeatを、振り返りに入る前の値へ復元するようにした(app._humanSeatBeforeReview、
+//   enterReviewFromShare/openReviewOnの初回入場時のみ退避しclosReview()で復元・消費)。
+//   通常(読込でない)振り返りではhumanSeatは元々変化しないため実質無害。
+const CACHE_NAME = "goita-v170";
 
 const PRECACHE_URLS = [
   "./",
