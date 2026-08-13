@@ -311,7 +311,34 @@
 //   既定ON化(false→true)。コード変更はこの1行のみ(トグル自体・cap/floor値・分岐ロジックは
 //   v163から無変更)。node --check(7ブロック全て)・G/G_B diff hunk数=7を再確認。ロールバック用に
 //   setLedgerH3Soft(false)は引き続き利用可能。
-const CACHE_NAME = "goita-v164";
+// v165 (2026-08-13): build v165反映 — 設計仕様書改訂第3版 §5-2(詰ごいたビットパッキング)・
+//   §5-4(詰ごいたエディタのリアルタイムバリデーション)の実装(Sonar依頼)。index.html UI層に
+//   TsumePack(combinadicによる32駒配置のBase64url 14文字固定エンコード/デコード)と
+//   TsumeValidate(KOMA_TOTAL上限・G.canAttackKing王解禁条件・G.UNCUTTABLE香/し王受け不可、
+//   による整合性チェック)を追加。両者とも既存のG.counter/G.fullDeck/G.canAttackKing/
+//   G.UNCUTTABLEを再利用するのみで既存関数は一切変更していない(KOMA_TOTAL 17111行目も無変更)。
+//   詰ごいたエディタUI自体・対局フローへの結線はまだ行っていない(新規追加のTsumePack/
+//   TsumeValidateはどこからも呼ばれない未接続のユーティリティ関数、既存のAI思考/対局ロジックへの
+//   経路なし)。検証: node --checkでUI層script構文OK、index.htmlからの差分はbyte-exactで
+//   17111行目直後への202行の単一挿入のみ(diff確認済み、他行の変更ゼロ)。TsumePack/TsumeValidate
+//   単体はNode.js上でランダム3,000往復テスト(全一致・エンコード長14文字で安定)およびバリデーション
+//   5シナリオ(正常配牌/駒数超過/手札0枚重複/王攻め解禁条件あり・なし)で確認済み。
+//   対局AI(beliefMC等)・勝率には無関係(未接続のため)。仕様書側の駒数表記「し:8枚」は実装の
+//   KOMA_TOTAL(し:10枚、合計32枚)と不一致だったため、本実装は常に実装値(KOMA_TOTAL)を正とする。
+// v166 (2026-08-13): build v166反映 — PLAN_QR_sync_branch.md 実装(Sonar依頼)。QRコードによる
+//   盤面即時同期を追加。(1)newMatch()/startGame()にapp.matchSeed/app.dealSeqを追加保持(既存の
+//   対局進行ロジックは無変更、通常プレイに影響なし)。(2)matchSeed+dealSeq+手順を数十バイトに
+//   packするqrPack/qrUnpack/qrRecFromUnpacked(既存の#pos=共有=sharePayloadとは別の軽量#qpos=
+//   形式として共存、既存共有機能は無変更)。(3)qrcode-generator v2.0.4(MIT)・jsQR v1.4.0
+//   (Apache-2.0)を配布物のままterserでminifyしてindex.htmlにベンダリング(外部CDN依存なし、
+//   オフラインでもQR機能が動作)。(4)共有モーダルに「QRコードで共有」ボタン、セットアップ画面に
+//   「QRコードを読み取って局面を開く」ボタン(カメラ/画像選択の2経路、BarcodeDetector APIは
+//   2026-08時点でiOS Safari未対応のためjsQRのみで統一)。
+//   検証: node --checkで全9 script要素の構文OK。qrPack/qrUnpack往復500試行(Node.js)全一致。
+//   rec→QR画像生成(vendored qrcode)→jsQRデコード→matchSeed+dealSeqでの配牌再現、という
+//   フルパイプラインを実際にindex.htmlへ挿入したコードそのもので30試行、全一致を確認。
+//   未検証(実機が必要): 実際のカメラ(getUserMedia)でのスキャン・iPhone実機での動作。
+const CACHE_NAME = "goita-v166";
 
 const PRECACHE_URLS = [
   "./",
