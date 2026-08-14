@@ -405,7 +405,60 @@
 //   (今回の修正が稀な局面のみに影響する狭い修正であることを裏付け)、真のv171ベースラインとの
 //   mixed head-to-head(250配牌×2、ペア和SE)でmean+0.36・SE=0.28・z=1.29(winrate-neutral)。
 //   詳細はFIX_REPORT_nice_to_have_v174.md参照。
-const CACHE_NAME = "goita-v174";
+// v175 (2026-08-13): build v175反映 — PLAN_信頼値学習系統ブラッシュアップ_Fable5.md(Sonar依頼の
+//   総合監査+改善計画、Planner=Fable5)の提案B/C/D/E/F/Gを実装(Sonnet5・実装レポート
+//   IMPLEMENTATION_REPORT_信頼値学習系統ブラッシュアップ_Sonnet5.md参照)。appブロックが主体、
+//   Gエンジンの変更はevLambdaのgE/gPゲート接続1箇所のみ(G/G_B同一diff、diff hunk数7で不変)。
+//   【B・正しさ修正】観戦モード突入(app.humanSeat→null)時、エンジンに残留する人間席の学習状態
+//   (OPP_PROFILE/OU_TRUST/CONV_TRUST/TBL_TRUST/kyoBias)をclearHumanLearningBothで明示クリア。
+//   従来は観戦AIが直前の人間の学習済みプロファイルでモデルされ続けていた。研究モード
+//   (humanSeat="S"を維持する設計)は対象外。
+//   【C・既定OFF実験トグルEV_LAMBDA_GATE】oppRatesFromCountsのgE/gP確信度ゲート(計算されるのみで
+//   消費先がROLLOUT_OPP経由のmodelRespActionのみ=既定OFFのため死値だった)をevLambdaへ接続。
+//   ONにするとprofile注入直後(n=0近傍)の証拠強度が「従来のfallback」から「学習値」へ非連続に
+//   ジャンプしていた挙動(相方攻めパスの尤度が証拠なし1.0→一律0.60等)を、確信度に応じた
+//   滑らかな線形補間に置き換える。既定OFF(NULL等価)。
+//   【D・既定OFF実験トグルKYO_RETENTION_LEARN】配線済み・供給ゼロだったG.setKyoRetention
+//   (信念サンプリングの香温存κ補正)へ、auditOppProfileで新設した実測(app.oppCounts.ky、
+//   G.komaLedgerのpHoldと実際の保有有無を比較するLaplace平滑化比推定)を注入する経路を追加。
+//   合成プロキシ診断(diag_kappa_synthetic.js、実人間ログがないためのSonar裁定による代替検証)を
+//   実施したところ、初版の「意図的バイアスへの感度不足」という結論は測定不備によるものと判明
+//   (FIX/REVIEW Must-fix2): G.policyActionは元々182機会中168回(92%)が既にkoma!=="香"を選んで
+//   おり、pKeepによる伏せ回避介入が実際に着手を変える余地はほぼ無い(実効線量ほぼゼロの実験
+//   だった)ため、pKeep間のkappaHat差の大小から感度を論じることはできない。また中立条件で
+//   観測されたkappaHat(raw)≈1.13というベースライン乖離も「AI自身の香温存傾向」ではなく、
+//   エンジン内コメント(v116)に既に記載されているG.komaLedgerのpHold系統的過小評価(香で最も
+//   顕著)が主因と判明: 駒種別Platt較正LEDGER_CAL_AB.香(a=0.9387, b=0.5055、production版
+//   LEDGER_CALトグルは既定OFFのまま未変更)を分母(sumPredicted)に適用するとkappaHat(Platt較正後)
+//   ≈0.97となり1に近づく(=κ≈1、計画の「実装不要」判定分岐に近い)。この訂正はdiag_kappa_
+//   synthetic.jsとcalibration_harness.js双方に反映済み(dose実効線量カウンタ・Platt較正後
+//   kappaHat出力を追加)。上記いずれの理由によっても新たな有効化根拠は得られていないため、
+//   既定OFF維持の結論そのものは変わらない。app.oppCounts.kyには将来のスキーマ移行に備え
+//   バージョンタグkyV:1を付与した。有効化はしていない(instrumentationのみ出荷)。
+//   【E・裁定E1】CONV_TRUST/dcy汎用チャネルは意図的に非接続のまま(王合図の的中度を一般規約準拠へ
+//   過剰一般化しない設計判断として明文化)。コード変更なし(コメントのみ)。
+//   【F・既定OFF実験トグルLEARNING_RECOMPUTE】3系統のカウンタ累積方式(忘却なし・監査バグ時に
+//   蓄積が全損する)を、保存済みallGames(直近K局、既定300)からの再集計方式に置き換え可能にする
+//   recomputeLearningFromLogを追加。既定OFF時はJSONからの直接復元(従来どおり)でNULL等価。
+//   【G・裁定】ROLLOUT_OPP/modelRespActionは当面現状維持(供給ゼロのまま温存)を既定判断とし、
+//   裁定コメントを追加。
+//   【A・診断】window.__learnTelemetry(局終了ごとの3系統+κのスナップショット記録、v157
+//   ATK_OCC_TELEMETRYと同型)、および独立実行可能なオフライン較正ハーネスcalibration_harness.js
+//   (index.htmlからGエンジンを都度抽出し、エクスポートしたcareer JSONを再生してκ・lamE/lamP/
+//   bluff・convTrust系列・tbl較正・前半/後半の非定常性を診断するNode.jsスクリプト、出荷物とは
+//   別ファイル)を追加。
+//   検証: node --check(全9 script要素)全通過。G/G_B diff hunk数=7(不変、既存の意図的差分のみ)。
+//   自己対戦NULL等価性(新トグル全既定OFF): mc:false基本設定461局・basic設定458局・strongティア
+//   相当の深い探索設定(dd/attackMC/atkBand/matchEq/mcDets:96)57局のいずれも編集前v174と着手列が
+//   完全一致(bit-for-bit)。naiveティアはMath.random()依存のため編集前後を問わずそもそも
+//   非決定的であることを、旧コード同士の2回実行比較で確認済み(regressionではない)。app層の
+//   新規関数(clearHumanLearningBoth/kyoRetentionVal/auditOppProfileのκ収集/
+//   recomputeLearningFromLog等)はindex.htmlから該当コードをそのまま移植したNode単体テスト
+//   (test_app_learning.js、FIX後11件全通過)で検証。recomputeLearningFromLogは同一ログ集合に対し
+//   逐次蓄積方式と完全に同一の結果になることを確認済み。
+//   実データでの再検証待ちの項目(既定OFFのまま出荷): C(Brier較正)・D(κ推定器の再設計要)・
+//   F(K値の非定常性に基づく最終決定)。詳細はIMPLEMENTATION_REPORT参照。
+const CACHE_NAME = "goita-v175";
 
 const PRECACHE_URLS = [
   "./",
