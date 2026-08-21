@@ -467,14 +467,93 @@
 //   の4テンソルのみbyte-exactで不変。全パラメータ通しの相対L2変化量は約8.0%(終盤2層
 //   encoder.layers.4/5・block_embeddings.14/15が最大、norm系は1%前後で最小、継続学習/
 //   ファインチューン相当の規模)。
-//   自己対戦A/B(duplicate pairing・単発対、G.js/t1_engine.js/t1_adapter.jsをNode単体に抽出し
-//   同一配牌シードでNS/EW新旧checkpoint入替、200対=400局)で新チェックポイント勝率51.5%
-//   (95%CI[46.6%,56.4%])、ペア化得点差+0.45点/対(95%CI[-1.71,+2.61]、z=0.41)と
-//   有意差なし(winrate-neutral、旧より弱くなっていないことを確認)。king/receive規約違反0件・
-//   stuck 0件。node --check(G.js/t1_engine.js/t1_adapter.js/weights抽出分すべて)全通過、
-//   index.html本体側の差分はbyte-exactでT1Wデータ行(1行)+直上のヘッダーコメント(1ブロック)
-//   のみ(他ブロックは無変更)であることを確認済み。
-const CACHE_NAME = "goita-v176";
+//   自己対戦A/B(duplicate pairing、G.js/t1_engine.js/t1_adapter.jsをNode単体に抽出し
+//   同一配牌シードでNS/EW新旧checkpoint入替。当初200対=400局の簡易版で走らせたのち、
+//   「厳密に実施」の指示によりv144方式の規模(1,338対)へ拡大再実施。さらに5し/五し
+//   相談の投票を旧来のG簡易ヒューリスティックのままにしていた不備を修正し、T1席の
+//   5し投票にT1AD.goshiVoteFull自身の判断を配線(goshiCheckT1Aware、本番のgoshiCheckT1Aware
+//   と同一ロジックをharness側にも実装)。最終規模: 1,338対=2,676局。新チェックポイント
+//   勝率50.64%(95%CI[48.74%,52.53%])、ペア化得点差平均+0.579点/対(SD=13.834、
+//   SE=0.378、z=1.53)と有意差なし(winrate-neutral、旧より弱くなっていないことを確認)。
+//   king/receive規約違反0件、配り直し(5し)318件を正常消化。チェックポイント再開可能な
+//   harness(run_ab3.js、20対ごとにJSON checkpointへ保存)で計約132分・約14回の
+//   フォアグラウンド実行に分けて完走。node --check(G.js/t1_engine.js/t1_adapter.js/
+//   weights抽出分すべて)全通過、index.html本体側の差分はbyte-exactでT1Wデータ行(1行)+
+//   直上のヘッダーコメント(1ブロック)のみ(他ブロックは無変更)であることを確認済み。
+// v177 (2026-08-20): 手駒欄(#hand)が名札の残り枚数バッジより遅れて更新される不具合を修正
+//   （報告: 「しを打っても、しが減らないように見える」— スマートフォンでの対局中、名札の
+//   バッジは「残6」等に正しく更新されているのに、手駒欄には既に打ったはずの駒(し等)が
+//   残ったまま表示され続ける）。原因調査: G.advance/removeOne自体は正しく手駒配列から
+//   駒を取り除いており(単体検証済み)、onGameOver(K1(v79)修正で無条件renderHandTray呼び出し
+//   あり)・resumeSavedMatch・395局の多様な自己対戦フルゲーム×人間席4パターン総当たりの
+//   自動回帰でも再現せず。手詰まりの末、onHandTap(k)の設計自体に非対称なガード漏れがある
+//   ことを特定: bury分岐は同期的にhumanTurn()を呼んで手駒欄を必ず再描画するのに対し、
+//   attack/respond(受け)分岐は再描画をstep()内部のrenderHandTray(null)呼び出しに委ねており、
+//   step()はapp.stopped/app.matchOver/app.review/app.tutorial.blockStepのいずれかが真だと
+//   早期returnして再描画をスキップする。ところがonHandTap自身の入口ガードはapp.stoppedを
+//   見ていないため、何らかの理由でapp.stoppedが真になっていても手駒のタップ自体は処理され、
+//   applyAndLog→renderAll()（名札バッジは直後に更新）までは実行されつつ、その先のstep()だけが
+//   無言でスキップされて手駒欄が古いまま取り残され得る非対称な穴があった(Playwrightで
+//   app.stopped=trueを強制してこの穴を実際に再現・確認済み: バッジ「残6」/手駒欄7枚のズレ)。
+//   対策: onHandTap()のbury/attack/respondの全3分岐で、applyAndLog+renderAll()の直後に
+//   renderHandTray(null)を追加し、以降のどの分岐(終局・チュートリアル早期return・step()の
+//   ガード等)に進んでも手駒欄が必ずタップ直後の真の手駒を反映した状態からスタートするように
+//   変更(以降のhumanTurn()/step()/onGameOver()自身の再描画は従来どおり上書きで走るため無害)。
+//   検証: node --check(全9 script要素)全通過。差分はonHandTap内3箇所へのrenderHandTray(null)
+//   呼び出し追加(+コメント)のみ、他は無変更であることをdiffで確認。上記app.stopped強制再現
+//   ケースが解消したことに加え、既存の全再現シナリオ(流れ/自分の最終手上がり/相手の受け上がり/
+//   recvFinish/流局/resumeSavedMatch)および395局×人間席4パターン総当たり回帰を再実行し
+//   全件一致(mismatch 0件、リグレッションなし)を確認。なお、report元の正確な再現手順は
+//   未確認(利用者が手順を記憶しておらず、既知の到達可能な穴からの推定修正)であるため、
+//   引き続き再発があれば追加調査を行う。
+// v178 (2026-08-20): 「40点上がりして、振り返りで演出が出て、この演出が消えなくなる」報告を修正。
+//   原因: 上がり点数
+//   40点以上・同駒2倍・受け上がり等の特別演出(#wincut・キリコ)は、既定(fx="full")かつ
+//   人間参加時はhold中(完了ボタン「#wc-done」押下待ち)になり、唯一のクローズ経路は
+//   showWinCut内の_close()(#wc-doneのクリックハンドラ)のみで、自動消去タイマーは設定されない。
+//   ところがonGameOver()は showWinCut()/kirikoBurn() 呼び出しの直後、同じアクションバーに
+//   「振り返り」ボタン(および結果を見る=showMatchEnd)を即座に表示しており、完了ボタンを押す
+//   前にそちらを押すとopenReviewOn()/showMatchEnd()のどちらも演出のクリーンアップを一切
+//   行わないため、演出(キリコの炎・提灯・#wincutカード)が振り返り/結果画面の上に残留した
+//   まま二度と消えなくなっていた。対策: openReviewOn()冒頭とshowMatchEnd()冒頭で、
+//   showWinCutの_close()と同等のクリーンアップ(clearTimeout(app._wcT)・kirikoRelease(true)・
+//   #wincutのshow/outクラス除去)を先に行うよう変更。kirikoRelease()はhold中でなければ
+//   内部で無害にno-opするため、演出が出ていない通常の振り返り/結果表示には影響しない。
+//   検証: node --check(全9 script要素)全通過。差分はopenReviewOn/showMatchEndの各冒頭への
+//   3行+コメント追加のみ(他は無変更)であることをdiffで確認。Playwrightで「40点上がり
+//   (hold中)→振り返りを開く」を再現し、修正前はkiriko-fireの show/hold クラスと#wincutの
+//   showクラスが振り返り画面表示後も残留すること、修正後はいずれも正しく解除され振り返り
+//   画面のみが表示されることを確認。既存の全再現シナリオおよび395局×人間席4パターン
+//   総当たり回帰を再実行し、全件一致(リグレッションなし)を確認。
+// v179 (2026-08-20): 「開幕いきなり双方0点で負けている」報告への防御的対策。
+//   報告: 対局中のスクリーンショットで、第1局・双方0対0のまま「敗北 — 相手組の勝ち」の
+//   マッチ終了モーダルが表示されていた。原因調査: showMatchEnd()の呼び出し元
+//   (onGameOver/onSpecialYaku/endPractice/rv-closeハンドラの4箇所)はいずれも
+//   over=(app.scores.NS>=app.cfg.target || app.scores.EW>=app.cfg.target)を事前に
+//   正しく確認してからボタンを表示しており、また「もう一勝負」(newMatch())で
+//   マッチ終了モーダル表示中にscoresが0/0へリセットされた後にshowMatchEnd()が
+//   再度呼ばれるような経路もPlaywrightでの再現テストでは確認できなかった。利用者も
+//   直前の操作を記憶しておらず、正確な誤呼び出し経路は未特定のまま。
+//   一方でshowMatchEnd()自体のロジックに実害のある欠陥を発見: 勝者判定が
+//   `nsWin = app.scores.NS >= app.cfg.target` の真偽だけで行われ、falseの場合は
+//   無条件に「EW(相手組)の勝ち」と表示する片側だけの判定になっていた。本来
+//   showMatchEnd()はover=trueの時にしか呼ばれない前提のためこれで正しいはずだが、
+//   その前提が何らかの経路(未特定)で崩れて誤って呼ばれた場合、NS・EWのどちらも
+//   targetに未到達(例: 0対0)であっても「相手組の勝ち」という偽の敗北画面を
+//   表示してしまう。対策: showMatchEnd()冒頭で NS>=target || EW>=target を
+//   再検証し、どちらも満たさなければ誤呼び出しとみなしてconsole.warnで
+//   状態(NS/EW/target/gameNo)を記録した上で、モーダルを開かず・app.matchOverも
+//   立てずに何もせず抜けるガードを追加(既にディールされている盤面はそのまま
+//   操作可能な状態で残る)。根本原因(誤呼び出しそのものの経路)は未特定のため
+//   対症療法だが、報告された症状(偽の敗北/勝利表示)自体は確実に防止できる。
+//   検証: node --check(全9 script要素)全通過。差分はshowMatchEnd()冒頭への
+//   ガード追加(+コメント)のみ、他は無変更であることをdiffで確認。Playwrightで
+//   (a) NS=EW=0の状態でshowMatchEnd()を呼ぶと誤呼び出しとして抑制されモーダルが
+//   表示されないこと、(b) NS側が正当にtargetへ到達した場合・(c) EW側が正当に
+//   到達した場合はいずれも従来どおり正しく結果画面が表示されることを確認。
+//   既存の全回帰シナリオおよび395局×人間席4パターン総当たり回帰を再実行し、
+//   全件一致(リグレッションなし)を確認。
+const CACHE_NAME = "goita-v179";
 
 const PRECACHE_URLS = [
   "./",
