@@ -553,7 +553,86 @@
 //   到達した場合はいずれも従来どおり正しく結果画面が表示されることを確認。
 //   既存の全回帰シナリオおよび395局×人間席4パターン総当たり回帰を再実行し、
 //   全件一致(リグレッションなし)を確認。
-const CACHE_NAME = "goita-v179";
+// build v180: 受けMCロールアウト層の逐次適応サンプリング(MC_ADAPT)導入・既定OFF。
+//   計画: PLAN_MC_ADAPT_v2_Opus5.md(Opus5、レビューREVIEW_REPORT_MC_ADAPT計画_Sonnet5.mdの
+//   Must-fix5件を実測データで解消した改訂版)。実装・検証: Sonnet5、
+//   IMPLEMENTATION_REPORT_MC_ADAPT_Sonnet5.md参照。base=v179。
+//   対象: index.htmlのmcDecideReceive(G/G_B共通ブロック)のロールアウトループのみ。app層は無改変。
+//   実装: DD_ADAPTと同型のモジュールスコープ・グローバルフラグ(MC_ADAPT、opts経由ではない)で、
+//   BASE=32標本→上位2候補の対標本z検定(|z|<Z=1.64で非有意なら)BLOCK=16ずつMAX=288まで逐次延長。
+//   MIN_DETS=96ゲートで実対局トリオ(tierOpts strong/adviceOpts/candidateRanking)のみに適用範囲を
+//   限定し、ouTakeTurnPick(32)・aiHesitation(14)・振り返り(24)は従来固定のまま不変。
+//   既存dd/DD_ADAPT経路とは実測で完全排他(0/1,336件が同時成立・コード上もdets=0でMIN_DETSを
+//   下回るため構造的に排他)。三者一致はapp層無改変のグローバルフラグ方式で構造的に担保。
+//   検証結果(実装フェーズ・IMPLEMENTATION_REPORT_MC_ADAPT_Sonnet5.md参照):
+//   - node --check: 9 script要素すべて通過。
+//   - NULL等価性(MC_ADAPT=0): 着手列SHA-256完全一致(strong構成10マッチ・1,875手)、
+//     selfTest(30,{mc:false})・selfTest(8,strong構成)ともJSON完全一致(G・G_B両方)。
+//   - byte-exact diff: index.htmlの差分は計画§5.0の8箇所のみ(7 hunks in index.html + sw.js)。
+//   - G/G_Bの追加行は逐語同一(機械確認)。
+//   - 三者一致(UI実地・Playwright): 実対局AI(tierOpts strong)≡推奨手(getRec→moveHint)が
+//     220/220局面で一致(MC_ADAPT=1)。決定論性: 同一局面2回評価が70/70完全一致。
+//   - 排他性: usedDD===trueの局面でmcN===0が1,336件中0件の例外(exclusivity違反ゼロ)。
+//   - 小予算経路(mcDets 14/24/32・MIN_DETS=96ゲート): MC_ADAPT 0/1間で180件中0件のbyte不一致。
+//   - 境界テスト: cands<2の安全な undefined 返却・MAX<BASE時のMath.maxガード・無限ループなし
+//     (最大レイテンシ227ms)を確認。
+//   - 自己対戦audit(王攻め違反・受け合法性違反・駒保存則・stuck): 単体selfTest(915局)+
+//     mixed-engine A/B(5,329局)の合計6,244局すべてで0件。
+//   - Phase1精度再現(独立サンプルn=750局面・576決定化split-half): 固定96=89.20%→
+//     MC_ADAPT=92.93%(+3.73pt、McNemar z=3.61)。平均決定化数100.9(既定基準の95〜105以内)。
+//     受け入れ基準10(+3.0pt以上・z≥2.58)・基準11前半(平均決定化110以下)をいずれも満たす。
+//   - レイテンシ実測: mcDecideReceive単体+7.7%、フルマッチ平均+8.6%
+//     (基準11後半の+15%以内は満たすが、計画書のプロトタイプ実測(-1.2〜-1.9%)より悪化しており
+//     要注視。原因未特定・今回のサンプルでの実測値をそのまま報告)。
+//   - Phase2 A/B(mixed-engine head-to-head、365ペア/5,329局・計画目標6,000ペアの一部):
+//     新エンジン勝率51.23%(95%CI[47.61%,54.86%])、ペア化得点差 平均+7.78pt/ペア(z=2.92・有意)。
+//     勝率のCI下限が49.0%を下回るため受け入れ基準12は現サンプル数では「既定ON」条件を
+//     満たさない(点推定・得点差検定は改善方向だが、6,000ペア規模での確証的再測定が必要)。
+//   - Phase3(協調性指標)は今回未実施(follow-up)。
+//   結論: MC_ADAPT既定0(OFF)でのマージ条件(基準1〜7)はすべて満たすため本ビルドは安全に配信可能。
+//   既定ON化(基準8〜13)は基準8・9・10・11を満たすが基準12(勝率)・13(協調性)が未確証のため、
+//   今回はMC_ADAPT=0のまま配信し、大規模A/B確証後に既定ON化を再検討する。
+// build v181: MC_ADAPT既定ON化。コード変更は index.html の MC_ADAPT 初期値 0→1 の
+//   1トークンのみ(G/G_B両ブロック、計2箇所、byte-exact diffで確認済み)。
+//   経緯: IMPLEMENTATION_REPORT_MC_ADAPT_Sonnet5.md の受け入れ基準(§8.2)のうち
+//   基準8・9・10・11は満たしていたが、基準12(A/B勝率)は644ペア(目標6,000ペアの
+//   約11%、本サンドボックスでのバックグラウンド長時間実行不安定のため未達)の
+//   時点で有意差を検出できず「判定不能」のまま、Sonnet5は既定OFF配信を推奨していた。
+//   Sonarはこの説明(A/B勝率の検出力不足、EVリグレット48.4%削減(t=3.52)・
+//   オラクル一致率+3.73pt(McNemar z=3.61)という判断の質を測る指標は明確に支持
+//   している旨)を確認した上で、既定ONへの切替を明示的に指示。レビューア推奨の
+//   6,000ペア確証待ちに対するSonar自身の上書き判断であり、経緯を記録する。
+//   MC_ADAPT=1状態での安全性・三者一致・決定論性・自己対戦audit(9,347局超で
+//   違反0件)は既に検証済みで、フラグ初期値の変更自体に新規リスクは無い。
+//   切り戻しは1トークン(MC_ADAPT=1→0)またはG.setMcAdapt(0)で即座に可能。
+// build v182: 振り返り画面の「読み切りの逃し」誤検出バグ修正(computeCoach、index.html 1箇所のみ)。
+//   経緯: Sonarが実対局(第5局・第4勝負・手24 自分伏せ「香」)で、勝ち確定局面にも関わらず
+//   「AIなら伏せ「金」（Solver証明あり — 30点の確実な上がり手順を読み切り）」という⚠が出る事象を
+//   報告し検証を依頼。共有URL(局面share機能)から得た実データをNode上で本番コード(G.js抽出版)に
+//   直接通し、freshSolverProbeとddParAnalyzeの実測値を確認した。
+//   根本原因: computeCoachの「別手順でも同点なら逃しにしない」判定(旧実装)が、人間の手の
+//   ddParAnalyze評価値を par.rows[0].v(全伏せ候補中の絶対最善値)と比較していた。本局面では
+//   freshSolverProbeの推奨手「金」(worst-case前提での確実な30点)自体がddParAnalyzeの絶対最善
+//   ではなく(絶対最善は伏せ「銀」の40点。真の手駒を使った二重盲探索でのみ判明する値で、
+//   worst-case解は不可視駒の所在によらず安全な手しか「確実」と認めないため銀の40点ラインは
+//   証明できない)、人間の実手「香」は「金」と完全に同点(共にddParAnalyze値30)であるにも
+//   関わらず、絶対最善(40)との差(10点 > 0.5点閾値)により誤って「読み切り逃し」と判定されていた。
+//   検証: solveWinの候補探索を手動列挙し、伏せ「金」「銀」「香」がworst-case確実勝ちとして
+//   全て同点30であることを確認。ddParAnalyzeの実行結果も 銀40/角30/金30/香30 で、香と金が
+//   厳密に同点であることを独立に確認済み(信頼度5/5・実データ・実コードでの直接再現)。
+//   修正: 比較基準をpar.rows[0].v(絶対最善)からprobe.move(AIの推奨手)自身のddParAnalyze値に
+//   変更。「AIの推奨手と同点かどうか」を正しく判定するようにした(index.htmlのみ、G/G_Bエンジン
+//   本体には変更なし。MC_ADAPTとは無関係で、v180/v181双方に存在していた既存バグ)。
+// build v183: 信念モデル(passViolates)の王温存パス証拠誤判定を修正(既定OFF、PASS_OU_KEEP=0)。
+//   計画: PLAN_信念モデル2巡目以降王温存未考慮_Opus5.md。詳細はindex.htmlのbuildコメント参照。
+// build v184: v183のPASS_OU_KEEP(免除方式)をpassFactorによる較正λ(段階的減衰)方式へ置き換え。
+//   計画: PLAN_案D_較正λ_王温存パス証拠_Opus5.md(既定OFF、PASS_OU_LAM=0/PASS_OU_HUM=0)。
+//   詳細はindex.htmlのbuildコメント参照。実装前提のλ定数はExecutorによる独立再測定
+//   (検証レポート_Phase0地上真実追試の不一致_Sonnet5.md)で計画書§0.5から一部置き直している。
+// build v185: 案D(較正λ)を既定ONへ昇格(PASS_OU_LAM=2/PASS_OU_HUM=1)。ロジック変更0行、
+//   既定値declaration4箇所のみ変更。検証・昇格判断の経緯はindex.htmlのbuildコメントおよび
+//   IMPLEMENTATION_REPORT_案D_較正λ_王温存パス証拠_build_v184_Sonnet5.md参照。
+const CACHE_NAME = "goita-v185";
 
 const PRECACHE_URLS = [
   "./",
