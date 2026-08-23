@@ -632,7 +632,18 @@
 // build v185: 案D(較正λ)を既定ONへ昇格(PASS_OU_LAM=2/PASS_OU_HUM=1)。ロジック変更0行、
 //   既定値declaration4箇所のみ変更。検証・昇格判断の経緯はindex.htmlのbuildコメントおよび
 //   IMPLEMENTATION_REPORT_案D_較正λ_王温存パス証拠_build_v184_Sonnet5.md参照。
-const CACHE_NAME = "goita-v185";
+// build v186: 五し相談モーダル(askHumanGoshi)に「親: ○○」の表示を追加。UI層のみ、エンジン
+//   (G/G_B)は無変更。詳細はindex.htmlのbuildコメント参照。
+// build v187: 「相方上がり通し」。receiveChoice()のisPartnerAtk分岐に、相方(攻め手)が
+//   手駒2枚で確定上がり間近の局面を専用ルールが誤って手番を奪う問題への新規ガードを追加
+//   (既定ON=setFlowbackYield(true))。詳細はindex.htmlのbuildコメントおよび
+//   IMPLEMENTATION_REPORT_相方上がり通し_し受け誤り_build_v187_Sonnet5.md参照。
+// build v188: 「相方上がり通し・上位化」。v187ガードの判定ロジックをflowbackYieldPass()へ
+//   切り出し、policyAction()の受けMCゲート直前でも評価するようにした。本番既定のstrongティア
+//   構成(mc:true+matchEq+dd等)では受けMCゲートに阻まれてv187ガードが到達しなかった問題への
+//   対応。新規トグルFLOWBACK_PREMC。詳細はindex.htmlのbuildコメントおよび
+//   IMPLEMENTATION_REPORT_相方上がり通し上位化_build_v188_Sonnet5.md参照。
+const CACHE_NAME = "goita-v188";
 
 const PRECACHE_URLS = [
   "./",

@@ -4,6 +4,71 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>ごいた — 能登の伝承遊戯</title>
+  <!-- build: v188「相方上がり通し・上位化」base=v187。計画: PLAN_相方上がり通し上位化_build_v188_Opus5.md
+       (goita-dev-loop・Planner=Opus5・Executor=Sonnet5)。
+       背景: build v187はreceiveChoice()のisPartnerAtk分岐に「相方上がり通し」ガードを新設したが、
+       本番既定のstrongティア構成(tierOpts("strong")/adviceOpts() = mc:true+matchEq+dd+wSample+
+       danger+atkBand)では受けMCゲートがガードより先に決着をつけてしまい到達しなかった。build v96
+       由来の既存MCタイブレーク処理(margin<0.10で強制的にreceiveを選ぶ、相方の残り手駒数を見ない
+       別ロジック)が先に発火するため、ユーザー報告局面(第5局35手目・上家W席のし受け誤り)は
+       strongティア既定設定・推奨手パネル・振り返りコーチのいずれでも未解決のまま残っていた
+       (REVIEW_REPORT_相方上がり通し_し受け誤り_build_v187_Opus5.md §2参照)。
+       修正: v187ガードの判定ロジックをflowbackYieldPass()という単一の関数へ切り出し(receiveChoice
+       側もこの関数を呼ぶ形に統一)、policyAction()の受けMCゲート直前でも同じ関数を評価するように
+       した。発火時のみ即座にパスを返し(src:"rule")、非発火時は従来どおりMCへ進む。v96タイブレーク
+       には一切触れていない。新規トグルFLOWBACK_PREMC(FLOWBACK_YIELDとは独立)で切替可能。
+       検証結果・既定値の判断根拠はIMPLEMENTATION_REPORT_相方上がり通し上位化_build_v188_Sonnet5.md
+       参照。
+  -->
+  <!-- build: v187「相方上がり通し」base=v186。計画: PLAN_相方上がり通し_し受け誤り_Opus5.md
+       (goita-dev-loop・Planner=Opus5・Executor=Sonnet5)。
+       起票: Sonarから共有URL(第5局38手目)とともに「上家(W)が25手目でし受けのし攻めしたことで、
+       攻めるしの枚数が足りなくなり敗北した。し受けせずし攻めを続ければ勝つことができたはず」との報告。
+       診断(Planner段階・Executor独立追試で再現): 相方(=攻め手E)の手駒がちょうど2枚の局面で、
+       応答者W(手駒6枚)がpendingAttack=しを受けた。しかしこの局面はW以外の残り応答者(S)が
+       し0枚で受けられず、Wが受けずパスしていれば全員パス→advance()が攻め手Eへ手番を戻し
+       phase="bury"に遷移(伏せ1+攻め1=確定上がり)する構造だった。実際にパスを注入して
+       完局まで自己対戦させたところ、実局(Wが受けた)はN20点勝ちだったが、反実仮想(Wがパス)は
+       E30点勝ちとなり、一手で勝敗が反転し得点差50点に達することを確認した。
+       原因: receiveChoice()のisPartnerAtk分岐にある「し攻め継続」ルール(攻め駒がしかつ
+       自分がし2枚以上・敵のし枯渇を信念推定で検出、の条件のみで発火)が、相方の確定上がりを
+       一切考慮せず手番を奪っていた。同分岐の既定値(末尾の「味方の攻め — 手番を奪わない」
+       パス)自体は正しく、専用ルール群がそれを不必要に上書きする構図だった。なお受けMC
+       (mcDecideReceive)が動く経路(strong/coopティア・cfg.mc=true)では、縮小オプション
+       {mc:true}/{mc:true,mcDets:96}での検証時はMC評価自体が正しくパスを選ぶ(実測: なし
+       +0.25〜+0.28 / 受し-0.04〜-0.05)ため、本バグはMCが介在しないルール直行経路
+       (basic/naiveティア、cfg.mc=false、T1ADの内部フォールバック)でのみ発現すると
+       当初判断した。過去のbuild v96「し受けの例外」(deal#128・相方のし攻めにAIが
+       無条件でパスし続け40点差で敗北した別方向のバグ)とは逆方向の問題であり、v96の
+       修正(受けMCゲートの拡張)を打ち消すものではない(本修正はMCが動かない場面専用の
+       ルール層のみに閉じている)。
+       【既知の制約・v188で対応予定 → build v188のFLOWBACK_PREMC(下記v188ヘッダー参照)で対応済み】
+       ただし本番既定のstrongティア構成(matchEq/dd/
+       wSample/danger/atkBand込みのフル構成。tierOpts("strong")およびadviceOpts()と
+       同一)で報告局面を再評価すると、build v96由来の既存タイブレーク処理(policyAction
+       内、isPartnerAtk&&attack==="し"&&margin<0.10&&敵最小手駒<=4等の条件で強制的に
+       receiveを選ぶ、相方の残り手駒数を考慮しない別ロジック)がこのガードより先に発火し、
+       依然としてreceive(し)を返すことをレビュー(Opus5)で確認した。v186と完全に同一の
+       挙動でありv187由来の新規回帰ではないが、本ガードは既定strongティアの受けMCゲートを
+       素通りできず、推奨手パネル・振り返りコーチ(adviceOpts()経由)にも同じ制約が及ぶ。
+       詳細はREVIEW_REPORT_相方上がり通し_し受け誤り_build_v187_Opus5.mdおよび
+       IMPLEMENTATION_REPORT側「既知の懸念点2」を参照。
+       修正: receiveChoice()のisPartnerAtk分岐の最上位に「相方上がり通し」ガードを新設。
+       相方(攻め手)の手駒が丁度2枚で、残る応答者が敵1名以下かつその敵の受け確率
+       (枚数読み台帳komaLedger/pCanReceive、生未見unseenCountsではなく)が50%以下なら、
+       以降の専用ルールに優先して手番を奪わないパスを返す。既定PASS_OU_KEEP=0時のNULL等価
+       と同様、既定OFF相当のsetFlowbackYield(false)でv186と完全に同一の挙動へ戻る設計。
+       G/G_B両ブロックへ逐語同一の差分を適用(byte-exact確認済み)。詳細な検証結果は
+       IMPLEMENTATION_REPORT_相方上がり通し_し受け誤り_build_v187_Sonnet5.md参照。
+  -->
+  <!-- build: v186「五し相談モーダルに親の表示を追加」base=v185。UI層のみの変更(エンジンG/G_B無変更)。
+       対象: askHumanGoshi()のモーダルHTML(1箇所、UI層は非重複)。「誰が親か分からないまま続行/配り直しを
+       判断させられる」という指摘に対応し、既存の「○○がしを5枚持っています」の下に「親: ${seatDisp(app.parent)}」
+       を追加(既存のseatDisp()で人間視点の相対表記(自分/相方/上家/下家)に自動変換される)。app.parentは
+       この五し判定が行われる時点で既に確定済みの値であり(配り直しの巡目が変わっても親は変わらない)、
+       finalize()側で同じ値を使ってログ出力しているのと同一のソースを参照しているだけなので、表示の
+       追加のみで判定ロジック・エンジンには一切影響しない。
+  -->
   <!-- build: v185「案D(較正λ)の既定ON昇格」base=v184。コード上のロジック変更は0行、既定値declaration
        4箇所(G/G_B各2行)のみ変更: PASS_OU_LAM 0→2(層1)、PASS_OU_HUM 0→1(層2)。
        検証: 計画書§7.2(層1昇格・9条件)は9条件中8条件を完全合格(王Brier改善−1.04%・t=−6.17、
@@ -5975,6 +6040,31 @@ const G = (() => {
   // 最後の1枚で乗ると相方のリードを切ったうえ継続不能になり、能登・宇出津の「し薄で続行は敵に塩」に反する。
   let SHI_RIDE_KEEP = 1;
   function setShiRideKeep(m) { SHI_RIDE_KEEP = m | 0; }
+  // 【相方上がり通し】(build v187) PLAN_相方上がり通し_し受け誤り_Opus5.md
+  // 相方(=攻め手)が手駒ちょうど2枚の局面で、この攻めが流れれば(全員パス)、advance()は
+  // 攻め手へ手番を戻しphase="bury"に遷移する(伏せ1+攻め1=確定上がり)。この局面で
+  // 「し攻め継続」等の専用ルールが手番を奪って受けてしまうと、確定していたはずの相方の
+  // 上がりを自ら破棄することになる(第5局#25型: Wが受けた結果N20点勝ち、パスしていれば
+  // E30点勝ちだった。診断はPLAN文書§0参照)。既定true。setFlowbackYield(false)でv186
+  // (=v183〜v186)と完全に同一の挙動に戻る(この1行の条件分岐に閉じる)。
+  let FLOWBACK_YIELD = true;
+  let FLOWBACK_TH = 0.50;
+  function setFlowbackYield(on) { FLOWBACK_YIELD = !!on; }
+  function setFlowbackTh(t) { FLOWBACK_TH = +t; }
+  // 【相方上がり通し・上位化】(build v188) 上のFLOWBACK_YIELDガードを、受けMCゲートより
+  // 前段(policyAction内)でも評価するかどうか。false=v187と完全に同一の挙動(strongティア
+  // 既定では本ガードが受けMCゲートに阻まれ不発のまま)。既定true(build v188出荷時)。
+  // 根拠: Phase0/NULL等価性/R3安全性/レイテンシ/Playwright実機検証は全て合格。「流れれば
+  // 相方が確定上がり」は構造的事実だが、FLOWBACK_TH=0.50下の判断自体は約31%で敵に
+  // 止められる賭けであり、A/B(strongティアCRNペアリング456ペア)は目標情報ペア数150件に
+  // 対し実測9件で判定不能(検出力不足、計画§6-4一次基準の第1枝=paired勝率95%CI下限49.74%
+  // も不成立)。true化は基準充足による自動昇格ではなく、変更が着手を書き換える局面が
+  // 約340〜490局に1回と極めて限定的(監査カウンタ全0・協力指標差1pt未満・情報ペアの
+  // 方向性は新経路側に緩やかに優勢)という点を踏まえたSonarの裁量判断。
+  // 詳細はIMPLEMENTATION_REPORT_相方上がり通し上位化_build_v188_Sonnet5.md参照。
+  // FLOWBACK_YIELD=false のときは本トグルの値によらず新経路も停止する。
+  let FLOWBACK_PREMC = true;
+  function setFlowbackPreMc(on) { FLOWBACK_PREMC = !!on; }
   // 非し手の強さ判定: 2ペア以上 / 大駒(飛角)ペア / 金銀馬香が3枚以上
   // 非し手の強さ判定 (ユーザー基準 2026-06): 以下のいずれかで真。
   //  (1) 馬金銀香の2ペア以上 (例 金金銀銀) — ただし数学的に(3)に包含される (2ペア=金銀馬香4枚)
@@ -7707,6 +7797,38 @@ const G = (() => {
 
     return {koma: "王", margin};
   }
+  // 【相方上がり通し】判定の単一の真実の源 (build v188)。build v187ではこのロジックが
+  // receiveChoice()のisPartnerAtk分岐にインラインで置かれていたが、本番既定のstrongティア
+  // (tierOpts("strong") / adviceOpts() = mc:true+matchEq+dd 等のフル構成)では受けMCゲートが
+  // 先に決着をつけてしまい到達しなかった。v188でpolicyAction側の受けMCゲート直前からも
+  // 呼べるよう関数化した(重複実装を作らないため、receiveChoice側もこの関数を呼ぶ)。
+  // 発火時は {pBlock, why} を、非発火時は null を返す。副作用なし・状態を持たない。
+  // コスト順序の厳守: 安価な構造条件(トグル/手駒枚数/応答者の並び)をすべて通過してから
+  // 初めて枚数読み台帳を作る。台帳作成(komaLedgerMaybeRefine→beliefMC)はフル構成で
+  // 実測 約5ms/callであり、無条件に先行させてはならない。
+  function flowbackYieldPass(view, attack, isPartnerAtk, st, o) {
+    if (!(FLOWBACK_YIELD && isPartnerAtk && st && st.attacker &&
+          view.hand.length > 2 && (view.sizes ? view.sizes[st.attacker] : Infinity) === 2)) return null;
+    const rest = (st.respQueue || []).slice((st.respIdx || 0) + 1);
+    const blockers = rest.filter(s => team(s) !== team(view.seat));
+    if (rest.length !== blockers.length) return null;
+    let pBlock = null;
+    try {
+      const L = komaLedgerMaybeRefine(st, view.seat, view, komaLedger(view), o);
+      pBlock = 1;
+      for (const b of blockers) pBlock *= (1 - pCanReceive(L, b, attack));
+      pBlock = 1 - pBlock;
+    } catch (e) { pBlock = null; }
+    if (pBlock == null) {
+      const un = unseenCounts(view.hand, view.hist);
+      const outs = (un[attack] || 0) + (UNCUTTABLE.has(attack) ? 0 : (un["王"] || 0));
+      pBlock = outs > 0 ? 1 : 0;
+    }
+    if (!(pBlock <= FLOWBACK_TH)) return null;
+    return {pBlock: pBlock,
+            why: "相方上がり通し — 相方(攻め手)残2枚、流れれば確定上がり。止めうる敵の受け確率"
+                 + (pBlock * 100).toFixed(0) + "% — 手番を奪わず通す"};
+  }
   function receiveChoice(view, attack, isPartnerAtk, st, o) {
     const hand = view.hand, c = counter(hand), hist = view.hist;
     // 【し飽和】自陣のし攻め確定後、敵のし攻めはしを持つ限り受け続ける
@@ -7714,6 +7836,16 @@ const G = (() => {
       return {koma: "し", why: "し飽和 — 自陣のし攻め確定後は受け続ける（様子見の「なし」は厳禁）"};
     // 【味方の攻め】し攻め発動条件を満たすときのみし受け、それ以外は手番を奪わない
     if (isPartnerAtk) {
+      // 【相方上がり通し】(build v187) 相方=攻め手が手駒ちょうど2枚のとき、この攻めが流れれば
+      // advance()は攻め手へ手番を戻しphase="bury"に遷移する(伏せ1+攻め1=確定上がり)。相方の
+      // 攻めに応答する自分は構造上つねにrespIdx=1(攻め手の対面)であり、流れを止めうるのは
+      // 自分の後ろの敵1人(攻め手+3席)だけ。その敵が受けられる見込みが薄いなら、以降の
+      // 専用ルール(し攻め継続・味方のし攻めに乗る・死蔵回避・手番奪取)より優先して手番を
+      // 奪わず通す。生未見(unseenCounts)ではなく枚数読み台帳(komaLedger)のpCanReceiveを
+      // 使う — 生未見は相手の伏せ札を区別できず、この種の局面で不発になりやすいため。
+      // (build v188) 判定ロジックはflowbackYieldPass()へ切り出し済み(単一の真実の源)。
+      const fy = flowbackYieldPass(view, attack, true, st, o);
+      if (fy) return {koma: null, why: fy.why};
       // 【し攻め継続】自陣のし攻めが確定済み、かつ敵がしを受けきれない(信念推定で敵し枯渇)時のみ
       // 相方のし攻めに乗る。ただし受け後も継続できるよう し2枚以上(SHI_RIDE_KEEP)を要件化:
       // 最後の1枚で乗ると受けでし切れ→直後の攻めが非しに逸れ、相方のリードを切るだけで継続不能になる。
@@ -8247,8 +8379,23 @@ const G = (() => {
       // 新ouTakeTurnPick自身がmcDecideReceiveを固定optsで直接呼びmargin基準で判断するため、
       // ここで先にMCを走らせて生pickをそのまま採用すると二重評価かつmargin基準を迂回してしまう。
       // 味方の非し攻めはこのゲートを素通りしreceiveChoice内のouTakeTurnPickが処理する。
-      if (!o.noMC && (o.mc || RULE_LEVEL === 0) &&
-          (RULE_LEVEL === 0 || ((!isPartnerAtk || attack === "し") && view.hand.length <= 6))) {
+      const mcGateOn = !o.noMC && (o.mc || RULE_LEVEL === 0) &&
+          (RULE_LEVEL === 0 || ((!isPartnerAtk || attack === "し") && view.hand.length <= 6));
+      // 【相方上がり通し・上位化】(build v188) REVIEW_REPORT_相方上がり通し_し受け誤り_
+      // build_v187_Opus5.md §4-2。「相方(攻め手)が残2枚なら、この攻めが流れた時点で
+      // advance()がphase="bury"へ遷移し伏せ1+攻め1=確定上がり」はエンジン実装から演繹
+      // できる構造的事実であり、評価差が±0.02で揺れる探索層(matchEq+dd)の下位に置く
+      // べきものではない。受けMCゲートが動く決定に限って先に判定し、発火時のみ即パスを
+      // 返す(非発火時は従来どおりMCへ進むため、挙動が変わる決定集合は「MCゲート該当
+      // かつ ガード発火」の厳密な部分集合)。build v96由来のタイブレーク(この下のMC分岐
+      // 内、isPartnerAtk&&attack==="し"&&margin<0.10の条件式)には一切触れない — 過去の
+      // A/B調整を壊さないため。mcGateOnを先に見ることでロールアウト内({noMC:true}固定・
+      // rollout()の全呼出元が該当)では本ゲートが1度も評価されず、探索コストは増えない。
+      if (FLOWBACK_PREMC && mcGateOn) {
+        const fyU = flowbackYieldPass(view, attack, isPartnerAtk, st, o);
+        if (fyU) return {type: "pass", src: "rule", why: fyU.why};
+      }
+      if (mcGateOn) {
         const r = mcDecideReceive(st, seat, view, attack, o);
         if (r !== undefined) {
           if (r.pick) {
@@ -9506,7 +9653,7 @@ const G = (() => {
     }
     return decided ? nsWins / decided : null;
   }
-  return {setTblTrust, tblFactorAt, setOuSignal, setOuTrust, detectOuSignals, partnerSignaledOu, partnerSignaledShi, kakariGotae, shiStarted, canShiAttackC, setOppProfile, oppRatesFromCounts, setEvLambdaGate, inferPartnerHoldings, setSigRead, setOuMix, setKyouMix, setShiKyoFix, setShiCommit, setShiCommitReal, setKakariEv, kakariEvidence, setPassMirror, setShiPairEv, shiPairEvidence, setKPairEv, pairAttackEvidence, setKyoNeg, setKyoNegScope, setKyoNegClosed, kyoNegAttackEvidence, _kyClsProbe, setOuKyoRisk, setLedgerCal, calP, setOulessFk, setTakeTurn, setKamizaWait, setKakuSignal, kakuSigEvidence, setKyoCode, kyoCodeEvidence, setKyoBonus, setKyoRetention, kyoBiasOf, setHumanModel, setBeliefSharpen, setBuryUmaFix, setBuryPairShi, setKeepShiEshi, setKeepShiLastGuard, setShiKeep2, setWidthBury, setBuryCover, buryCoverPick, setUmaKeep, setShiBluff, setCoopSignal, setConvTrust, convTrustOf, moveHint, coopContext, setShiRejectStrong, setShiRideKeep, setShiAtkAvoid, setShiAtkAvoidMin, setUncutAtkAvoid, setUncutFb, setOuSigShiGuard, setKyoR1Conserve, setKyoConsMode, setKyoWeakConserve, strongNonShi, setKyoR1Wait, setKyoCertainRecv, cfrSolve2x2, setRuleLevel, setDiag, setRolloutOpp, modelRespAction, setLeafDd, setLeafDdLimit, setLeafDdCap, matchEquity, ddSolve, ddSolveNaive, ddRootValues, ddParAnalyze, sampleWorldW, makePassEvCache, readingNotes, komaLedger, setCountRead, countWhy, setCountGate, setCountPlanConf, setCountPlanRisk, planRisk, unseenMinusPartnerLedger, sampleWorldC, setCountSample, setCountRecvp, setCountBelief, setCountBeliefMaxHand, setCountBeliefMinEss, ledgerRefine, komaLedgerMaybeRefine, setSoloSig, setOuTakeTurn, setOuTtMaxHand, setOuTtMinChain, setOuTtMargin, setOuTtDets, ouTakeTurnPick, ouChainThroughP, mcDecideReceive, pCanReceive, pEnemyReceives, isFirstRound, SEATS, KOMA_COUNT, POINTS, UNCUTTABLE, team, nextSeat, partnerOf, mcEvalReceive, gameEquityMC, countsFor, freshSolverProbe, puzzleTruthProbe, beliefExact, beliefMC,
+  return {setTblTrust, tblFactorAt, setOuSignal, setOuTrust, detectOuSignals, partnerSignaledOu, partnerSignaledShi, kakariGotae, shiStarted, canShiAttackC, setOppProfile, oppRatesFromCounts, setEvLambdaGate, inferPartnerHoldings, setSigRead, setOuMix, setKyouMix, setShiKyoFix, setShiCommit, setShiCommitReal, setKakariEv, kakariEvidence, setPassMirror, setShiPairEv, shiPairEvidence, setKPairEv, pairAttackEvidence, setKyoNeg, setKyoNegScope, setKyoNegClosed, kyoNegAttackEvidence, _kyClsProbe, setOuKyoRisk, setLedgerCal, calP, setOulessFk, setTakeTurn, setKamizaWait, setKakuSignal, kakuSigEvidence, setKyoCode, kyoCodeEvidence, setKyoBonus, setKyoRetention, kyoBiasOf, setHumanModel, setBeliefSharpen, setBuryUmaFix, setBuryPairShi, setKeepShiEshi, setKeepShiLastGuard, setShiKeep2, setWidthBury, setBuryCover, buryCoverPick, setUmaKeep, setShiBluff, setCoopSignal, setConvTrust, convTrustOf, moveHint, coopContext, setShiRejectStrong, setShiRideKeep, setFlowbackYield, setFlowbackTh, setFlowbackPreMc, flowbackYieldPass, setShiAtkAvoid, setShiAtkAvoidMin, setUncutAtkAvoid, setUncutFb, setOuSigShiGuard, setKyoR1Conserve, setKyoConsMode, setKyoWeakConserve, strongNonShi, setKyoR1Wait, setKyoCertainRecv, cfrSolve2x2, setRuleLevel, setDiag, setRolloutOpp, modelRespAction, setLeafDd, setLeafDdLimit, setLeafDdCap, matchEquity, ddSolve, ddSolveNaive, ddRootValues, ddParAnalyze, sampleWorldW, makePassEvCache, readingNotes, komaLedger, setCountRead, countWhy, setCountGate, setCountPlanConf, setCountPlanRisk, planRisk, unseenMinusPartnerLedger, sampleWorldC, setCountSample, setCountRecvp, setCountBelief, setCountBeliefMaxHand, setCountBeliefMinEss, ledgerRefine, komaLedgerMaybeRefine, setSoloSig, setOuTakeTurn, setOuTtMaxHand, setOuTtMinChain, setOuTtMargin, setOuTtDets, ouTakeTurnPick, ouChainThroughP, mcDecideReceive, pCanReceive, pEnemyReceives, isFirstRound, SEATS, KOMA_COUNT, POINTS, UNCUTTABLE, team, nextSeat, partnerOf, mcEvalReceive, gameEquityMC, countsFor, freshSolverProbe, puzzleTruthProbe, beliefExact, beliefMC,
           mulberry32, shuffle, fullDeck, counter,
           newGameState, advance, canAttackKing, validReceive, legalReceives, legalAttacks,
           maskHistoryFor, makeView, unseenCounts, solveWin, checkKingAtkOk,
@@ -11297,6 +11444,31 @@ const G_B = (() => {
   // 最後の1枚で乗ると相方のリードを切ったうえ継続不能になり、能登・宇出津の「し薄で続行は敵に塩」に反する。
   let SHI_RIDE_KEEP = 1;
   function setShiRideKeep(m) { SHI_RIDE_KEEP = m | 0; }
+  // 【相方上がり通し】(build v187) PLAN_相方上がり通し_し受け誤り_Opus5.md
+  // 相方(=攻め手)が手駒ちょうど2枚の局面で、この攻めが流れれば(全員パス)、advance()は
+  // 攻め手へ手番を戻しphase="bury"に遷移する(伏せ1+攻め1=確定上がり)。この局面で
+  // 「し攻め継続」等の専用ルールが手番を奪って受けてしまうと、確定していたはずの相方の
+  // 上がりを自ら破棄することになる(第5局#25型: Wが受けた結果N20点勝ち、パスしていれば
+  // E30点勝ちだった。診断はPLAN文書§0参照)。既定true。setFlowbackYield(false)でv186
+  // (=v183〜v186)と完全に同一の挙動に戻る(この1行の条件分岐に閉じる)。
+  let FLOWBACK_YIELD = true;
+  let FLOWBACK_TH = 0.50;
+  function setFlowbackYield(on) { FLOWBACK_YIELD = !!on; }
+  function setFlowbackTh(t) { FLOWBACK_TH = +t; }
+  // 【相方上がり通し・上位化】(build v188) 上のFLOWBACK_YIELDガードを、受けMCゲートより
+  // 前段(policyAction内)でも評価するかどうか。false=v187と完全に同一の挙動(strongティア
+  // 既定では本ガードが受けMCゲートに阻まれ不発のまま)。既定true(build v188出荷時)。
+  // 根拠: Phase0/NULL等価性/R3安全性/レイテンシ/Playwright実機検証は全て合格。「流れれば
+  // 相方が確定上がり」は構造的事実だが、FLOWBACK_TH=0.50下の判断自体は約31%で敵に
+  // 止められる賭けであり、A/B(strongティアCRNペアリング456ペア)は目標情報ペア数150件に
+  // 対し実測9件で判定不能(検出力不足、計画§6-4一次基準の第1枝=paired勝率95%CI下限49.74%
+  // も不成立)。true化は基準充足による自動昇格ではなく、変更が着手を書き換える局面が
+  // 約340〜490局に1回と極めて限定的(監査カウンタ全0・協力指標差1pt未満・情報ペアの
+  // 方向性は新経路側に緩やかに優勢)という点を踏まえたSonarの裁量判断。
+  // 詳細はIMPLEMENTATION_REPORT_相方上がり通し上位化_build_v188_Sonnet5.md参照。
+  // FLOWBACK_YIELD=false のときは本トグルの値によらず新経路も停止する。
+  let FLOWBACK_PREMC = true;
+  function setFlowbackPreMc(on) { FLOWBACK_PREMC = !!on; }
   // 非し手の強さ判定: 2ペア以上 / 大駒(飛角)ペア / 金銀馬香が3枚以上
   // 非し手の強さ判定 (ユーザー基準 2026-06): 以下のいずれかで真。
   //  (1) 馬金銀香の2ペア以上 (例 金金銀銀) — ただし数学的に(3)に包含される (2ペア=金銀馬香4枚)
@@ -13029,6 +13201,38 @@ const G_B = (() => {
 
     return {koma: "王", margin};
   }
+  // 【相方上がり通し】判定の単一の真実の源 (build v188)。build v187ではこのロジックが
+  // receiveChoice()のisPartnerAtk分岐にインラインで置かれていたが、本番既定のstrongティア
+  // (tierOpts("strong") / adviceOpts() = mc:true+matchEq+dd 等のフル構成)では受けMCゲートが
+  // 先に決着をつけてしまい到達しなかった。v188でpolicyAction側の受けMCゲート直前からも
+  // 呼べるよう関数化した(重複実装を作らないため、receiveChoice側もこの関数を呼ぶ)。
+  // 発火時は {pBlock, why} を、非発火時は null を返す。副作用なし・状態を持たない。
+  // コスト順序の厳守: 安価な構造条件(トグル/手駒枚数/応答者の並び)をすべて通過してから
+  // 初めて枚数読み台帳を作る。台帳作成(komaLedgerMaybeRefine→beliefMC)はフル構成で
+  // 実測 約5ms/callであり、無条件に先行させてはならない。
+  function flowbackYieldPass(view, attack, isPartnerAtk, st, o) {
+    if (!(FLOWBACK_YIELD && isPartnerAtk && st && st.attacker &&
+          view.hand.length > 2 && (view.sizes ? view.sizes[st.attacker] : Infinity) === 2)) return null;
+    const rest = (st.respQueue || []).slice((st.respIdx || 0) + 1);
+    const blockers = rest.filter(s => team(s) !== team(view.seat));
+    if (rest.length !== blockers.length) return null;
+    let pBlock = null;
+    try {
+      const L = komaLedgerMaybeRefine(st, view.seat, view, komaLedger(view), o);
+      pBlock = 1;
+      for (const b of blockers) pBlock *= (1 - pCanReceive(L, b, attack));
+      pBlock = 1 - pBlock;
+    } catch (e) { pBlock = null; }
+    if (pBlock == null) {
+      const un = unseenCounts(view.hand, view.hist);
+      const outs = (un[attack] || 0) + (UNCUTTABLE.has(attack) ? 0 : (un["王"] || 0));
+      pBlock = outs > 0 ? 1 : 0;
+    }
+    if (!(pBlock <= FLOWBACK_TH)) return null;
+    return {pBlock: pBlock,
+            why: "相方上がり通し — 相方(攻め手)残2枚、流れれば確定上がり。止めうる敵の受け確率"
+                 + (pBlock * 100).toFixed(0) + "% — 手番を奪わず通す"};
+  }
   function receiveChoice(view, attack, isPartnerAtk, st, o) {
     const hand = view.hand, c = counter(hand), hist = view.hist;
     // 【し飽和】自陣のし攻め確定後、敵のし攻めはしを持つ限り受け続ける
@@ -13036,6 +13240,16 @@ const G_B = (() => {
       return {koma: "し", why: "し飽和 — 自陣のし攻め確定後は受け続ける（様子見の「なし」は厳禁）"};
     // 【味方の攻め】し攻め発動条件を満たすときのみし受け、それ以外は手番を奪わない
     if (isPartnerAtk) {
+      // 【相方上がり通し】(build v187) 相方=攻め手が手駒ちょうど2枚のとき、この攻めが流れれば
+      // advance()は攻め手へ手番を戻しphase="bury"に遷移する(伏せ1+攻め1=確定上がり)。相方の
+      // 攻めに応答する自分は構造上つねにrespIdx=1(攻め手の対面)であり、流れを止めうるのは
+      // 自分の後ろの敵1人(攻め手+3席)だけ。その敵が受けられる見込みが薄いなら、以降の
+      // 専用ルール(し攻め継続・味方のし攻めに乗る・死蔵回避・手番奪取)より優先して手番を
+      // 奪わず通す。生未見(unseenCounts)ではなく枚数読み台帳(komaLedger)のpCanReceiveを
+      // 使う — 生未見は相手の伏せ札を区別できず、この種の局面で不発になりやすいため。
+      // (build v188) 判定ロジックはflowbackYieldPass()へ切り出し済み(単一の真実の源)。
+      const fy = flowbackYieldPass(view, attack, true, st, o);
+      if (fy) return {koma: null, why: fy.why};
       // 【し攻め継続】自陣のし攻めが確定済み、かつ敵がしを受けきれない(信念推定で敵し枯渇)時のみ
       // 相方のし攻めに乗る。ただし受け後も継続できるよう し2枚以上(SHI_RIDE_KEEP)を要件化:
       // 最後の1枚で乗ると受けでし切れ→直後の攻めが非しに逸れ、相方のリードを切るだけで継続不能になる。
@@ -13569,8 +13783,23 @@ const G_B = (() => {
       // 新ouTakeTurnPick自身がmcDecideReceiveを固定optsで直接呼びmargin基準で判断するため、
       // ここで先にMCを走らせて生pickをそのまま採用すると二重評価かつmargin基準を迂回してしまう。
       // 味方の非し攻めはこのゲートを素通りしreceiveChoice内のouTakeTurnPickが処理する。
-      if (!o.noMC && (o.mc || RULE_LEVEL === 0) &&
-          (RULE_LEVEL === 0 || ((!isPartnerAtk || attack === "し") && view.hand.length <= 6))) {
+      const mcGateOn = !o.noMC && (o.mc || RULE_LEVEL === 0) &&
+          (RULE_LEVEL === 0 || ((!isPartnerAtk || attack === "し") && view.hand.length <= 6));
+      // 【相方上がり通し・上位化】(build v188) REVIEW_REPORT_相方上がり通し_し受け誤り_
+      // build_v187_Opus5.md §4-2。「相方(攻め手)が残2枚なら、この攻めが流れた時点で
+      // advance()がphase="bury"へ遷移し伏せ1+攻め1=確定上がり」はエンジン実装から演繹
+      // できる構造的事実であり、評価差が±0.02で揺れる探索層(matchEq+dd)の下位に置く
+      // べきものではない。受けMCゲートが動く決定に限って先に判定し、発火時のみ即パスを
+      // 返す(非発火時は従来どおりMCへ進むため、挙動が変わる決定集合は「MCゲート該当
+      // かつ ガード発火」の厳密な部分集合)。build v96由来のタイブレーク(この下のMC分岐
+      // 内、isPartnerAtk&&attack==="し"&&margin<0.10の条件式)には一切触れない — 過去の
+      // A/B調整を壊さないため。mcGateOnを先に見ることでロールアウト内({noMC:true}固定・
+      // rollout()の全呼出元が該当)では本ゲートが1度も評価されず、探索コストは増えない。
+      if (FLOWBACK_PREMC && mcGateOn) {
+        const fyU = flowbackYieldPass(view, attack, isPartnerAtk, st, o);
+        if (fyU) return {type: "pass", src: "rule", why: fyU.why};
+      }
+      if (mcGateOn) {
         const r = mcDecideReceive(st, seat, view, attack, o);
         if (r !== undefined) {
           if (r.pick) {
@@ -14828,7 +15057,7 @@ const G_B = (() => {
     }
     return decided ? nsWins / decided : null;
   }
-  return {setTblTrust, tblFactorAt, setOuSignal, setOuTrust, detectOuSignals, partnerSignaledOu, partnerSignaledShi, kakariGotae, shiStarted, canShiAttackC, setOppProfile, oppRatesFromCounts, setEvLambdaGate, inferPartnerHoldings, setSigRead, setOuMix, setKyouMix, setShiKyoFix, setShiCommit, setShiCommitReal, setKakariEv, kakariEvidence, setPassMirror, setShiPairEv, shiPairEvidence, setKPairEv, pairAttackEvidence, setKyoNeg, setKyoNegScope, setKyoNegClosed, kyoNegAttackEvidence, _kyClsProbe, setOuKyoRisk, setLedgerCal, calP, setOulessFk, setTakeTurn, setKamizaWait, setKakuSignal, kakuSigEvidence, setKyoCode, kyoCodeEvidence, setKyoBonus, setKyoRetention, kyoBiasOf, setHumanModel, setBeliefSharpen, setBuryUmaFix, setBuryPairShi, setKeepShiEshi, setKeepShiLastGuard, setShiKeep2, setWidthBury, setBuryCover, buryCoverPick, setUmaKeep, setShiBluff, setCoopSignal, setConvTrust, convTrustOf, moveHint, coopContext, setShiRejectStrong, setShiRideKeep, setShiAtkAvoid, setShiAtkAvoidMin, setUncutAtkAvoid, setUncutFb, setOuSigShiGuard, setKyoR1Conserve, setKyoConsMode, setKyoWeakConserve, strongNonShi, setKyoR1Wait, setKyoCertainRecv, cfrSolve2x2, setRuleLevel, setDiag, setRolloutOpp, modelRespAction, setLeafDd, setLeafDdLimit, setLeafDdCap, matchEquity, ddSolve, ddSolveNaive, ddRootValues, ddParAnalyze, sampleWorldW, makePassEvCache, readingNotes, komaLedger, setCountRead, countWhy, setCountGate, setCountPlanConf, setCountPlanRisk, planRisk, unseenMinusPartnerLedger, sampleWorldC, setCountSample, setCountRecvp, setCountBelief, setCountBeliefMaxHand, setCountBeliefMinEss, ledgerRefine, komaLedgerMaybeRefine, setSoloSig, setOuTakeTurn, setOuTtMaxHand, setOuTtMinChain, setOuTtMargin, setOuTtDets, ouTakeTurnPick, ouChainThroughP, mcDecideReceive, pCanReceive, pEnemyReceives, isFirstRound, SEATS, KOMA_COUNT, POINTS, UNCUTTABLE, team, nextSeat, partnerOf, mcEvalReceive, gameEquityMC, countsFor, freshSolverProbe, puzzleTruthProbe, beliefExact, beliefMC,
+  return {setTblTrust, tblFactorAt, setOuSignal, setOuTrust, detectOuSignals, partnerSignaledOu, partnerSignaledShi, kakariGotae, shiStarted, canShiAttackC, setOppProfile, oppRatesFromCounts, setEvLambdaGate, inferPartnerHoldings, setSigRead, setOuMix, setKyouMix, setShiKyoFix, setShiCommit, setShiCommitReal, setKakariEv, kakariEvidence, setPassMirror, setShiPairEv, shiPairEvidence, setKPairEv, pairAttackEvidence, setKyoNeg, setKyoNegScope, setKyoNegClosed, kyoNegAttackEvidence, _kyClsProbe, setOuKyoRisk, setLedgerCal, calP, setOulessFk, setTakeTurn, setKamizaWait, setKakuSignal, kakuSigEvidence, setKyoCode, kyoCodeEvidence, setKyoBonus, setKyoRetention, kyoBiasOf, setHumanModel, setBeliefSharpen, setBuryUmaFix, setBuryPairShi, setKeepShiEshi, setKeepShiLastGuard, setShiKeep2, setWidthBury, setBuryCover, buryCoverPick, setUmaKeep, setShiBluff, setCoopSignal, setConvTrust, convTrustOf, moveHint, coopContext, setShiRejectStrong, setShiRideKeep, setFlowbackYield, setFlowbackTh, setFlowbackPreMc, flowbackYieldPass, setShiAtkAvoid, setShiAtkAvoidMin, setUncutAtkAvoid, setUncutFb, setOuSigShiGuard, setKyoR1Conserve, setKyoConsMode, setKyoWeakConserve, strongNonShi, setKyoR1Wait, setKyoCertainRecv, cfrSolve2x2, setRuleLevel, setDiag, setRolloutOpp, modelRespAction, setLeafDd, setLeafDdLimit, setLeafDdCap, matchEquity, ddSolve, ddSolveNaive, ddRootValues, ddParAnalyze, sampleWorldW, makePassEvCache, readingNotes, komaLedger, setCountRead, countWhy, setCountGate, setCountPlanConf, setCountPlanRisk, planRisk, unseenMinusPartnerLedger, sampleWorldC, setCountSample, setCountRecvp, setCountBelief, setCountBeliefMaxHand, setCountBeliefMinEss, ledgerRefine, komaLedgerMaybeRefine, setSoloSig, setOuTakeTurn, setOuTtMaxHand, setOuTtMinChain, setOuTtMargin, setOuTtDets, ouTakeTurnPick, ouChainThroughP, mcDecideReceive, pCanReceive, pEnemyReceives, isFirstRound, SEATS, KOMA_COUNT, POINTS, UNCUTTABLE, team, nextSeat, partnerOf, mcEvalReceive, gameEquityMC, countsFor, freshSolverProbe, puzzleTruthProbe, beliefExact, beliefMC,
           mulberry32, shuffle, fullDeck, counter,
           newGameState, advance, canAttackKing, validReceive, legalReceives, legalAttacks,
           maskHistoryFor, makeView, unseenCounts, solveWin, checkKingAtkOk,
@@ -20983,6 +21212,7 @@ if (typeof document !== "undefined") (() => {
     const m = modal(`
       <h2 class="serif">五し — 相談</h2>
       <p>${seatDisp(req.holder)}が「し」を5枚持っています。公式ルールでは<strong>あなたが自分の手駒だけを見て</strong>、続行か配り直しかを決めます。</p>
+      <p class="note">親: ${seatDisp(app.parent)}</p>
       <div class="handprev">${hand.map(k => `<span class="koma mini">${k}</span>`).join("")}</div>
       ${req.enemyAlso ? `<p class="note">相手組にも5し保持者がいます。両組の相方がともに望んだ場合のみ配り直しです。</p>` : ""}
       ${app.cfg.hints ? `<p class="note">参考（AI検証値）— 続行が有利な型: ①王2枚＋飛飛/角角/4枚組（+44pt） ②し4枚（+20pt） ③し3枚＋王2枚（+24pt）。それ以外は配り直し優位（−19pt）。</p>` : ""}
