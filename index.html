@@ -2653,14 +2653,24 @@ button:focus:not(:focus-visible){outline:none}
 /* ================================================================
    設定画面
    ================================================================ */
-#setup-screen{width:100%;max-width:480px;display:flex;flex-direction:column;gap:14px;padding-top:4vh}
+#setup-screen{position:relative;width:100%;max-width:480px;display:flex;flex-direction:column;gap:14px;padding-top:4vh}
 #setup-screen .title-block{display:flex;align-items:flex-end;gap:14px;padding:0 4px}
 #setup-screen h1{font-size:2.4rem;letter-spacing:.5em;font-weight:700;color:var(--kinari);line-height:1}
 #setup-screen .title-sub{font-size:.68rem;color:var(--gin-d);line-height:1.8;padding-bottom:4px}
+.setup-version{position:absolute;top:0;right:4px;z-index:2;padding:3px 8px;border:1px solid var(--hair2);
+  border-radius:999px;background:var(--ink1);color:var(--gin);font-size:.65rem;font-weight:600;
+  letter-spacing:.08em;line-height:1.4;white-space:nowrap}
 .title-link{align-self:flex-start;padding:5px 4px;margin:-6px 0 0;background:transparent;border:none;
   color:var(--kin);font-size:.72rem;letter-spacing:.04em;text-decoration:underline;text-underline-offset:3px;
   text-decoration-color:rgba(194,163,93,.4)}
 .title-link:hover{text-decoration-color:var(--kin)}
+.btn-qr-prominent{align-self:stretch;display:flex;align-items:center;gap:10px;margin:2px 0 0;
+  padding:10px 14px;border-radius:10px;border:1px solid var(--kin);
+  background:linear-gradient(160deg,rgba(194,163,93,.22),rgba(194,163,93,.09));
+  color:var(--kinari);font-size:.86rem;font-weight:600;text-align:left;transition:border-color .15s,background .15s}
+.btn-qr-prominent:hover{background:linear-gradient(160deg,rgba(194,163,93,.32),rgba(194,163,93,.14))}
+.btn-qr-prominent .qr-mark{flex:0 0 auto;width:26px;height:26px;fill:var(--kin)}
+.footer-links{display:flex;flex-direction:column;align-items:flex-start;gap:2px;margin-top:6px}
 .setup-card{padding:16px 16px 14px}
 .setup-card h2{font-size:.8rem;letter-spacing:.25em;color:var(--kin);margin-bottom:10px;font-weight:500}
 .seatcfg{display:grid;grid-template-columns:auto 1fr;gap:8px 12px;align-items:center}
@@ -3400,7 +3410,8 @@ body.reviewing #board{gap:4px;padding:7px}
   transition:transform .3s cubic-bezier(.32,.72,0,1);overscroll-behavior:contain;will-change:transform}
 #analysis-sheet.open{transform:translateY(0)}
 #sheet-grab{position:relative;flex:none;display:flex;align-items:center;gap:8px;
-  padding:16px 14px 9px;cursor:grab;touch-action:none;border-bottom:1px solid var(--hair)}
+  width:100%;min-height:44px;padding:16px 14px 9px;cursor:grab;touch-action:none;
+  color:inherit;background:transparent;border:0;border-bottom:1px solid var(--hair);font:inherit;text-align:left}
 #sheet-grab:active{cursor:grabbing}
 #sheet-grab .grab-bar{position:absolute;left:50%;top:7px;transform:translateX(-50%);
   width:38px;height:4px;border-radius:3px;background:var(--gin-d);opacity:.55}
@@ -3412,6 +3423,7 @@ body.reviewing #board{gap:4px;padding:7px}
 body.sheet-open{overflow:hidden}
 @media(min-width:760px){#sheet-body{width:100%;max-width:720px;margin:0 auto}}
 @media(prefers-reduced-motion:reduce){#analysis-sheet,#sheet-scrim,#sheet-toggle .st-chev{transition:none}}
+@media(pointer:coarse){#sheet-toggle,#sheet-grab,#rv-close,#rv-share,#rv-back,#rv-fwd,.rv-resume{min-width:44px;min-height:44px}}
 /* ===== フェーズ改修: A11y・操作モード・CUD・横画面 ===== */
 /* スクリーンリーダー専用(視覚的に隠すが読み上げる) */
 .sr-only{position:absolute!important;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;
@@ -3968,13 +3980,22 @@ body.noto #wincut.show .wc-label{animation:wcFude .62s cubic-bezier(.2,.9,.3,1.2
 
 <!-- ================= 設定画面 ================= -->
 <div id="setup-screen">
+  <span class="setup-version" aria-label="ごいたブラウザゲーム バージョン190">v190</span>
   <div class="title-block">
     <h1 class="serif">ごいた</h1>
     <div class="title-sub">能登・宇出津に伝わる竹駒の伝承遊戯</div>
   </div>
-  <button type="button" class="title-link" id="btn-ushitsu-info">宇出津とごいた — 大会・保存会情報</button>
-  <button type="button" class="title-link" id="btn-tour-checklist">宇出津へ出るまえに — 出場前チェックリスト</button>
-  <button type="button" class="title-link" id="btn-qr-scan">QRコードを読み取って局面を開く</button>
+  <button type="button" class="btn-qr-prominent" id="btn-qr-scan">
+    <svg class="qr-mark" viewBox="0 0 21 21" aria-hidden="true" focusable="false">
+      <rect x="0" y="0" width="7" height="7" rx="1"/><rect x="2" y="2" width="3" height="3" fill="var(--ink0)"/>
+      <rect x="14" y="0" width="7" height="7" rx="1"/><rect x="16" y="2" width="3" height="3" fill="var(--ink0)"/>
+      <rect x="0" y="14" width="7" height="7" rx="1"/><rect x="2" y="16" width="3" height="3" fill="var(--ink0)"/>
+      <rect x="9" y="0" width="2" height="2"/><rect x="9" y="9" width="2" height="2"/><rect x="12" y="9" width="2" height="2"/>
+      <rect x="9" y="12" width="2" height="2"/><rect x="16" y="9" width="2" height="2"/><rect x="9" y="16" width="2" height="2"/>
+      <rect x="16" y="16" width="2" height="2"/><rect x="19" y="9" width="2" height="2"/><rect x="12" y="19" width="2" height="2"/>
+    </svg>
+    <span>QRコードを読み取って局面を開く</span>
+  </button>
   <p class="matsuri-note" id="matsuri-note" style="display:none"></p>
   <!-- v66【能登・案1】あばれ祭の奉燈(キリコ)シルエット。body.noto時のみ・極薄の背景装飾 -->
   <svg class="noto-kiriko" aria-hidden="true" viewBox="0 0 120 220" preserveAspectRatio="xMidYMax meet">
@@ -4142,6 +4163,10 @@ body.noto #wincut.show .wc-label{animation:wcFude .62s cubic-bezier(.2,.9,.3,1.2
     <button class="btn" id="btn-watch">観戦（全席AI）</button>
   </div>
   <div id="setup-note">AIはあなたの伏せ駒の種類を見ません。五しの相談は公式どおり、保持者の相方が自分の手駒だけを見て判断します。</div>
+  <div class="footer-links" role="group" aria-label="宇出津のごいた案内">
+    <button type="button" class="title-link" id="btn-ushitsu-info">宇出津とごいた — 大会・保存会情報</button>
+    <button type="button" class="title-link" id="btn-tour-checklist">宇出津へ出るまえに — 出場前チェックリスト</button>
+  </div>
 </div>
 
 <!-- ================= 対局画面 ================= -->
@@ -4220,8 +4245,8 @@ body.noto #wincut.show .wc-label{animation:wcFude .62s cubic-bezier(.2,.9,.3,1.2
   <div id="advice-pill" aria-live="polite"></div>
 
   <div id="sheet-scrim" aria-hidden="true"></div>
-  <aside id="analysis-sheet" role="dialog" aria-label="AI分析パネル（信念推定・読み筋・推奨手）">
-    <div id="sheet-grab" role="button" tabindex="0" aria-label="閉じる（下にドラッグでも閉じる）"><span class="grab-bar" aria-hidden="true"></span><span class="grab-ttl">AI分析</span><span class="grab-x" aria-hidden="true">✕</span></div>
+  <aside id="analysis-sheet" role="dialog" aria-modal="true" aria-labelledby="analysis-sheet-title" aria-hidden="true" inert>
+    <button id="sheet-grab" type="button" aria-label="AI分析を閉じる（下にドラッグでも閉じる）"><span class="grab-bar" aria-hidden="true"></span><span class="grab-ttl" id="analysis-sheet-title">AI分析</span><span class="grab-x" aria-hidden="true">✕</span></button>
     <div id="sheet-body">
       <div id="declbox"></div>
       <div id="beliefbox"></div>
@@ -4233,10 +4258,10 @@ body.noto #wincut.show .wc-label{animation:wcFude .62s cubic-bezier(.2,.9,.3,1.2
   <div class="panel" id="review" role="complementary" aria-label="振り返り">
     <div class="rv-head"><span class="ttl serif">振り返り</span>
       <label><input type="checkbox" id="rv-human">人間の手のみ</label>
-      <label><input type="checkbox" id="rv-coach" checked>コーチ表示</label>
+      <label><input type="checkbox" id="rv-coach" checked>実戦情報コーチ</label>
       <label><input type="checkbox" id="rv-partner">相方の視点</label>
       <label id="rv-seatswitch-wrap" style="display:none">視点を切替<select id="rv-seatswitch"></select></label>
-      <button class="btn small" id="rv-clarity">際どさ分析</button>
+      <button class="btn small" id="rv-clarity">実戦レンズ際どさ</button>
       <span class="ttl" id="rv-stats" style="letter-spacing:0;color:var(--kin);font-size:.7rem"></span>
       <span class="sp"></span>
       <button class="btn small" id="rv-share">局面を共有</button>
@@ -4249,7 +4274,7 @@ body.noto #wincut.show .wc-label{animation:wcFude .62s cubic-bezier(.2,.9,.3,1.2
       <button class="btn small" type="button" id="rv-fwd" aria-label="次の手へ">▶</button>
       <span id="rv-seek-lbl" aria-hidden="true"></span>
     </div>
-    <div id="rv-legend">✓ AIと一致　⚠ 読み切りの逃し（Solver証明あり・「手順」で読み筋）　☆ 学習対象（明確局面での逸脱）　⚡ 早打ち（思考2秒未満）</div>
+    <div id="rv-legend"><strong>実戦情報レンズ（主評価）</strong>: その時点で知り得た情報だけで評価。✓ AIと一致　⚠ 読み切りの逃し　☆ 学習対象　⚡ 早打ち<br><strong>全公開レンズ（事後参考）</strong>: 実際の全手駒で答え合わせ。悪手判定や成績には使いません。</div>
     <div id="rv-worst" role="region" aria-label="悪手ランキング"></div>
     <div id="rv-list"></div>
   </div>
@@ -7593,14 +7618,36 @@ const G = (() => {
     // 木の遷移は本物のadvance()駆動 (DD同様、規則ドリフトゼロ)。葉は規則エージェントのプレイアウト。
     if (o && o.ismcts) {
       const evalFn = makeEvalFn(st, seat, o);
-      const iters = o.ismctsIters || 320;
+      const baseIters = Math.max(1, (o.ismctsIters || 320) | 0);
+      const maxIters = Math.max(baseIters, (o.ismctsMaxIters || baseIters) | 0);
       const C = o.ismctsC != null ? o.ismctsC : 0.7;
       const rootTeam = team(seat);
-      const rngT = mulberry32(0x15c7 ^ ((view.hist.length * 197 + SEATS.indexOf(seat)) >>> 0));
+      const defaultSeed = (0x15c7 ^ ((view.hist.length * 197 + SEATS.indexOf(seat)) >>> 0)) >>> 0;
+      const traceSeed = o.ismctsSeed != null ? (Number(o.ismctsSeed) >>> 0) : defaultSeed;
+      const rngT = mulberry32(traceSeed);
       const mkNode = () => ({ch: new Map(), n: 0, w: 0, avail: 1});
       const root = mkNode();
       const aKey = a => a.type === "pass" ? "p" : a.type[0] + a.koma;
-      for (let t = 0; t < iters; t++) {
+      const earlyStop = !!o.ismctsEarlyStop;
+      const minIters = Math.min(maxIters, Math.max(candidates.length * 8, (o.ismctsMinIters || 64) | 0));
+      const checkEvery = Math.max(1, (o.ismctsCheckEvery || 16) | 0);
+      const delta = Math.min(.5, Math.max(1e-6, Number(o.ismctsDelta) || .05));
+      const rootStats = () => candidates.map(k => {
+        const n = root.ch.get("a" + k);
+        return {koma: k, visits: n ? n.n : 0, availability: n ? n.avail : 0,
+          mean: n && n.n ? n.w / n.n : null};
+      });
+      const confidenceSeparated = () => {
+        const rows = rootStats();
+        if (rows.some(r => r.visits < 2 || r.mean === null)) return false;
+        const logTerm = Math.log((2 * rows.length) / delta);
+        const bands = rows.map(r => Object.assign({}, r,
+          {rad: Math.sqrt((2 * logTerm) / r.visits)}));
+        const leader = bands.slice().sort((a, b) => b.visits - a.visits)[0];
+        return leader.mean - leader.rad > Math.max(...bands.filter(r => r !== leader).map(r => r.mean + r.rad));
+      };
+      let iterationsRun = 0, stopReason = "budget";
+      for (let t = 0; t < maxIters; t++) {
         const sampled = sampleW(rngT);
         const sim = cloneStateForRollout(st, seat, sampled);
         let node = root;
@@ -7644,11 +7691,19 @@ const G = (() => {
         }
         for (const c of path) { c.n++; c.w += v; }
         root.n++;
+        iterationsRun = t + 1;
+        if (earlyStop && iterationsRun >= minIters && iterationsRun % checkEvery === 0 &&
+            confidenceSeparated()) { stopReason = "confidence"; break; }
       }
       let pick = null, bestN = -1;
       for (const k of candidates) {
         const c = root.ch.get("a" + k);
         if (c && c.n > bestN) { bestN = c.n; pick = k; }
+      }
+      if (typeof o.ismctsTrace === "function") {
+        try { o.ismctsTrace({schema: "goita-ismcts-trace-v1", seed: traceSeed,
+          baseBudget: baseIters, maxBudget: maxIters, iterationsRun, stopReason,
+          C, delta, candidates: rootStats(), pick}); } catch (e) { /* 診断callbackは意思決定を壊さない */ }
       }
       if (pick !== null) return pick;
       // 異常時は平坦相へ後退
@@ -7975,6 +8030,37 @@ const G = (() => {
   /* ================================================================
    * サンプラー (v952.1: 伏せ事前分布つき) + ロールアウト + 受けMC
    * ================================================================ */
+  // Phase 1: 既存の席別handプロパティは変えず、非列挙metadataへ席別伏せ駒を保持する。
+  let DETERMINIZATION_V2 = false;
+  function setDeterminizationV2(on) { DETERMINIZATION_V2 = !!on; }
+  function worldV2Metadata(sampled) { return sampled && sampled.__worldV2 ? sampled.__worldV2 : null; }
+  function hiddenBurySlots(view) {
+    const out = [];
+    for (let i = 0; i < view.hist.length; i++) {
+      const h = view.hist[i];
+      if (h.act === "bury" && h.koma === null && h.seat !== view.seat) out.push({seat: h.seat, historyIndex: i});
+    }
+    return out;
+  }
+  function attachWorldV2(sampled, buriedBySeat) {
+    const bySeat = {N: [], W: [], S: [], E: []};
+    for (const s of SEATS) if (buriedBySeat && buriedBySeat[s]) bySeat[s] = buriedBySeat[s].slice();
+    Object.defineProperty(sampled, "__worldV2", {
+      enumerable: false, configurable: false, writable: false,
+      value: {version: 1, buriedBySeat: bySeat}
+    });
+    return sampled;
+  }
+  function worldV2Complete(st, mySeat, meta) {
+    if (!meta || meta.version !== 1 || !meta.buriedBySeat) return false;
+    const need = {N: 0, W: 0, S: 0, E: 0};
+    for (const h of st.history)
+      if (h.act === "bury" && h.seat !== mySeat) need[h.seat]++;
+    return SEATS.every(s => {
+      const xs = meta.buriedBySeat[s];
+      return Array.isArray(xs) && xs.length === need[s] && xs.every(k => KOMA_COUNT[k] > 0);
+    });
+  }
   function sampleWorld(view, rng) {
     const unseen = unseenCounts(view.hand, view.hist);
     const pool = [];
@@ -7984,18 +8070,23 @@ const G = (() => {
     const others = SEATS.filter(s => s !== view.seat);
     const deficit = others.reduce((a, s) => a + view.sizes[s], 0);
     let nDiscard = Math.min(hiddenBurialCount(view.hist), Math.max(0, pool.length - deficit));
+    const __hiddenSlots = hiddenBurySlots(view), __buriedBySeat = {N: [], W: [], S: [], E: []};
+    let __hiddenSlotIdx = 0;
     const __bw = buryWFor(nDiscard);
     if (DIAG) { DIAG.bfDraw = (DIAG.bfDraw || 0) + 1; DIAG.bfNDis = (DIAG.bfNDis || 0) + nDiscard; }
     while (nDiscard-- > 0) {
       let tw = 0; const ws = pool.map(k => { tw += __bw[k]; return __bw[k]; });
       let r = rng() * tw, idx = pool.length - 1;
       for (let i = 0; i < ws.length; i++) { r -= ws[i]; if (r <= 0) { idx = i; break; } }
+      const __downKoma = pool[idx];
       pool.splice(idx, 1);
+      const __slot = __hiddenSlots[__hiddenSlotIdx++];
+      if (__slot) __buriedBySeat[__slot.seat].push(__downKoma);
     }
     const sampled = {};
     let p = 0;
     for (const s of others) { sampled[s] = pool.slice(p, p + view.sizes[s]); p += view.sizes[s]; }
-    return sampled;
+    return attachWorldV2(sampled, __buriedBySeat);
   }
 
   // build v109(段階4): 枚数読み(komaLedger)の硬い制約(min/max)を尊重する決定化サンプラー。
@@ -8037,7 +8128,7 @@ const G = (() => {
     shuffle(pool, rng);
 
     const others = SEATS.filter(s => s !== view.seat);
-    const need = {}, downNeed = {}, sampled = {};
+    const need = {}, downNeed = {}, sampled = {}, __buriedBySeat = {N: [], W: [], S: [], E: []};
     for (const s of others) {
       sampled[s] = [];
       need[s] = view.sizes[s];
@@ -8095,11 +8186,11 @@ const G = (() => {
         sampled[s].push(k); need[s]--;
       } else {
         const s = dCands[Math.floor(rng() * dCands.length)];
-        downNeed[s]--;
+        downNeed[s]--; __buriedBySeat[s].push(k);
       }
     }
     __swcOut = 0;
-    return sampled;
+    return attachWorldV2(sampled, __buriedBySeat);
   }
 
   // AIアクション (noMC: ロールアウト内の再帰禁止)
@@ -8456,6 +8547,36 @@ const G = (() => {
   function cloneStateForRollout(st, mySeat, sampled) {
     const hands = {};
     for (const s of SEATS) hands[s] = (s === mySeat ? st.hands[s] : sampled[s]).slice();
+    const meta = worldV2Metadata(sampled);
+    if (DETERMINIZATION_V2 && worldV2Complete(st, mySeat, meta)) {
+      const pos = {N: 0, W: 0, S: 0, E: 0};
+      const history = st.history.map(h => {
+        if (h.act !== "bury" || h.seat === mySeat) return {seat: h.seat, koma: h.koma, act: h.act};
+        const list = meta && meta.buriedBySeat ? meta.buriedBySeat[h.seat] : null;
+        const koma = list && pos[h.seat] < list.length ? list[pos[h.seat]++] : null;
+        return {seat: h.seat, koma, act: "bury"};
+      });
+      const board = {N: [], W: [], S: [], E: []};
+      for (const h of history) {
+        if (h.act === "bury" || h.act === "receive") {
+          board[h.seat].push({def: {koma: h.koma, type: h.act}, atk: null});
+        } else if (h.act === "attack") {
+          const row = board[h.seat];
+          let cur = row.length && row[row.length - 1].atk === null ? row[row.length - 1] : null;
+          if (!cur) { cur = {def: null, atk: null}; row.push(cur); }
+          cur.atk = h.koma;
+        }
+      }
+      return {
+        hands, board, history,
+        parent: st.parent, actor: st.actor, phase: st.phase,
+        attacker: st.attacker, pendingAttack: st.pendingAttack,
+        respQueue: st.respQueue.slice(), respIdx: st.respIdx,
+        matchScores: st.matchScores, solverCache: {},
+        rejShi: Object.assign({}, st.rejShi),
+        goshiHolders: st.goshiHolders || [],
+      };
+    }
     return {
       hands,
       board: {N: st.board.N.map(c => ({def: c.def, atk: c.atk})),
@@ -9653,7 +9774,7 @@ const G = (() => {
     }
     return decided ? nsWins / decided : null;
   }
-  return {setTblTrust, tblFactorAt, setOuSignal, setOuTrust, detectOuSignals, partnerSignaledOu, partnerSignaledShi, kakariGotae, shiStarted, canShiAttackC, setOppProfile, oppRatesFromCounts, setEvLambdaGate, inferPartnerHoldings, setSigRead, setOuMix, setKyouMix, setShiKyoFix, setShiCommit, setShiCommitReal, setKakariEv, kakariEvidence, setPassMirror, setShiPairEv, shiPairEvidence, setKPairEv, pairAttackEvidence, setKyoNeg, setKyoNegScope, setKyoNegClosed, kyoNegAttackEvidence, _kyClsProbe, setOuKyoRisk, setLedgerCal, calP, setOulessFk, setTakeTurn, setKamizaWait, setKakuSignal, kakuSigEvidence, setKyoCode, kyoCodeEvidence, setKyoBonus, setKyoRetention, kyoBiasOf, setHumanModel, setBeliefSharpen, setBuryUmaFix, setBuryPairShi, setKeepShiEshi, setKeepShiLastGuard, setShiKeep2, setWidthBury, setBuryCover, buryCoverPick, setUmaKeep, setShiBluff, setCoopSignal, setConvTrust, convTrustOf, moveHint, coopContext, setShiRejectStrong, setShiRideKeep, setFlowbackYield, setFlowbackTh, setFlowbackPreMc, flowbackYieldPass, setShiAtkAvoid, setShiAtkAvoidMin, setUncutAtkAvoid, setUncutFb, setOuSigShiGuard, setKyoR1Conserve, setKyoConsMode, setKyoWeakConserve, strongNonShi, setKyoR1Wait, setKyoCertainRecv, cfrSolve2x2, setRuleLevel, setDiag, setRolloutOpp, modelRespAction, setLeafDd, setLeafDdLimit, setLeafDdCap, matchEquity, ddSolve, ddSolveNaive, ddRootValues, ddParAnalyze, sampleWorldW, makePassEvCache, readingNotes, komaLedger, setCountRead, countWhy, setCountGate, setCountPlanConf, setCountPlanRisk, planRisk, unseenMinusPartnerLedger, sampleWorldC, setCountSample, setCountRecvp, setCountBelief, setCountBeliefMaxHand, setCountBeliefMinEss, ledgerRefine, komaLedgerMaybeRefine, setSoloSig, setOuTakeTurn, setOuTtMaxHand, setOuTtMinChain, setOuTtMargin, setOuTtDets, ouTakeTurnPick, ouChainThroughP, mcDecideReceive, pCanReceive, pEnemyReceives, isFirstRound, SEATS, KOMA_COUNT, POINTS, UNCUTTABLE, team, nextSeat, partnerOf, mcEvalReceive, gameEquityMC, countsFor, freshSolverProbe, puzzleTruthProbe, beliefExact, beliefMC,
+  return {setDeterminizationV2, worldV2Metadata, diagnosticCloneStateForRollout: cloneStateForRollout, setTblTrust, tblFactorAt, setOuSignal, setOuTrust, detectOuSignals, partnerSignaledOu, partnerSignaledShi, kakariGotae, shiStarted, canShiAttackC, setOppProfile, oppRatesFromCounts, setEvLambdaGate, inferPartnerHoldings, setSigRead, setOuMix, setKyouMix, setShiKyoFix, setShiCommit, setShiCommitReal, setKakariEv, kakariEvidence, setPassMirror, setShiPairEv, shiPairEvidence, setKPairEv, pairAttackEvidence, setKyoNeg, setKyoNegScope, setKyoNegClosed, kyoNegAttackEvidence, _kyClsProbe, setOuKyoRisk, setLedgerCal, calP, setOulessFk, setTakeTurn, setKamizaWait, setKakuSignal, kakuSigEvidence, setKyoCode, kyoCodeEvidence, setKyoBonus, setKyoRetention, kyoBiasOf, setHumanModel, setBeliefSharpen, setBuryUmaFix, setBuryPairShi, setKeepShiEshi, setKeepShiLastGuard, setShiKeep2, setWidthBury, setBuryCover, buryCoverPick, setUmaKeep, setShiBluff, setCoopSignal, setConvTrust, convTrustOf, moveHint, coopContext, setShiRejectStrong, setShiRideKeep, setFlowbackYield, setFlowbackTh, setFlowbackPreMc, flowbackYieldPass, setShiAtkAvoid, setShiAtkAvoidMin, setUncutAtkAvoid, setUncutFb, setOuSigShiGuard, setKyoR1Conserve, setKyoConsMode, setKyoWeakConserve, strongNonShi, setKyoR1Wait, setKyoCertainRecv, cfrSolve2x2, setRuleLevel, setDiag, setRolloutOpp, modelRespAction, setLeafDd, setLeafDdLimit, setLeafDdCap, matchEquity, ddSolve, ddSolveNaive, ddRootValues, ddParAnalyze, sampleWorldW, makePassEvCache, readingNotes, komaLedger, setCountRead, countWhy, setCountGate, setCountPlanConf, setCountPlanRisk, planRisk, unseenMinusPartnerLedger, sampleWorldC, setCountSample, setCountRecvp, setCountBelief, setCountBeliefMaxHand, setCountBeliefMinEss, ledgerRefine, komaLedgerMaybeRefine, setSoloSig, setOuTakeTurn, setOuTtMaxHand, setOuTtMinChain, setOuTtMargin, setOuTtDets, ouTakeTurnPick, ouChainThroughP, mcDecideReceive, pCanReceive, pEnemyReceives, isFirstRound, SEATS, KOMA_COUNT, POINTS, UNCUTTABLE, team, nextSeat, partnerOf, mcEvalReceive, gameEquityMC, countsFor, freshSolverProbe, puzzleTruthProbe, beliefExact, beliefMC,
           mulberry32, shuffle, fullDeck, counter,
           newGameState, advance, canAttackKing, validReceive, legalReceives, legalAttacks,
           maskHistoryFor, makeView, unseenCounts, solveWin, checkKingAtkOk,
@@ -12997,14 +13118,36 @@ const G_B = (() => {
     // 木の遷移は本物のadvance()駆動 (DD同様、規則ドリフトゼロ)。葉は規則エージェントのプレイアウト。
     if (o && o.ismcts) {
       const evalFn = makeEvalFn(st, seat, o);
-      const iters = o.ismctsIters || 320;
+      const baseIters = Math.max(1, (o.ismctsIters || 320) | 0);
+      const maxIters = Math.max(baseIters, (o.ismctsMaxIters || baseIters) | 0);
       const C = o.ismctsC != null ? o.ismctsC : 0.7;
       const rootTeam = team(seat);
-      const rngT = mulberry32(0x15c7 ^ ((view.hist.length * 197 + SEATS.indexOf(seat)) >>> 0));
+      const defaultSeed = (0x15c7 ^ ((view.hist.length * 197 + SEATS.indexOf(seat)) >>> 0)) >>> 0;
+      const traceSeed = o.ismctsSeed != null ? (Number(o.ismctsSeed) >>> 0) : defaultSeed;
+      const rngT = mulberry32(traceSeed);
       const mkNode = () => ({ch: new Map(), n: 0, w: 0, avail: 1});
       const root = mkNode();
       const aKey = a => a.type === "pass" ? "p" : a.type[0] + a.koma;
-      for (let t = 0; t < iters; t++) {
+      const earlyStop = !!o.ismctsEarlyStop;
+      const minIters = Math.min(maxIters, Math.max(candidates.length * 8, (o.ismctsMinIters || 64) | 0));
+      const checkEvery = Math.max(1, (o.ismctsCheckEvery || 16) | 0);
+      const delta = Math.min(.5, Math.max(1e-6, Number(o.ismctsDelta) || .05));
+      const rootStats = () => candidates.map(k => {
+        const n = root.ch.get("a" + k);
+        return {koma: k, visits: n ? n.n : 0, availability: n ? n.avail : 0,
+          mean: n && n.n ? n.w / n.n : null};
+      });
+      const confidenceSeparated = () => {
+        const rows = rootStats();
+        if (rows.some(r => r.visits < 2 || r.mean === null)) return false;
+        const logTerm = Math.log((2 * rows.length) / delta);
+        const bands = rows.map(r => Object.assign({}, r,
+          {rad: Math.sqrt((2 * logTerm) / r.visits)}));
+        const leader = bands.slice().sort((a, b) => b.visits - a.visits)[0];
+        return leader.mean - leader.rad > Math.max(...bands.filter(r => r !== leader).map(r => r.mean + r.rad));
+      };
+      let iterationsRun = 0, stopReason = "budget";
+      for (let t = 0; t < maxIters; t++) {
         const sampled = sampleW(rngT);
         const sim = cloneStateForRollout(st, seat, sampled);
         let node = root;
@@ -13048,11 +13191,19 @@ const G_B = (() => {
         }
         for (const c of path) { c.n++; c.w += v; }
         root.n++;
+        iterationsRun = t + 1;
+        if (earlyStop && iterationsRun >= minIters && iterationsRun % checkEvery === 0 &&
+            confidenceSeparated()) { stopReason = "confidence"; break; }
       }
       let pick = null, bestN = -1;
       for (const k of candidates) {
         const c = root.ch.get("a" + k);
         if (c && c.n > bestN) { bestN = c.n; pick = k; }
+      }
+      if (typeof o.ismctsTrace === "function") {
+        try { o.ismctsTrace({schema: "goita-ismcts-trace-v1", seed: traceSeed,
+          baseBudget: baseIters, maxBudget: maxIters, iterationsRun, stopReason,
+          C, delta, candidates: rootStats(), pick}); } catch (e) { /* 診断callbackは意思決定を壊さない */ }
       }
       if (pick !== null) return pick;
       // 異常時は平坦相へ後退
@@ -13379,6 +13530,37 @@ const G_B = (() => {
   /* ================================================================
    * サンプラー (v952.1: 伏せ事前分布つき) + ロールアウト + 受けMC
    * ================================================================ */
+  // Phase 1: 既存の席別handプロパティは変えず、非列挙metadataへ席別伏せ駒を保持する。
+  let DETERMINIZATION_V2 = false;
+  function setDeterminizationV2(on) { DETERMINIZATION_V2 = !!on; }
+  function worldV2Metadata(sampled) { return sampled && sampled.__worldV2 ? sampled.__worldV2 : null; }
+  function hiddenBurySlots(view) {
+    const out = [];
+    for (let i = 0; i < view.hist.length; i++) {
+      const h = view.hist[i];
+      if (h.act === "bury" && h.koma === null && h.seat !== view.seat) out.push({seat: h.seat, historyIndex: i});
+    }
+    return out;
+  }
+  function attachWorldV2(sampled, buriedBySeat) {
+    const bySeat = {N: [], W: [], S: [], E: []};
+    for (const s of SEATS) if (buriedBySeat && buriedBySeat[s]) bySeat[s] = buriedBySeat[s].slice();
+    Object.defineProperty(sampled, "__worldV2", {
+      enumerable: false, configurable: false, writable: false,
+      value: {version: 1, buriedBySeat: bySeat}
+    });
+    return sampled;
+  }
+  function worldV2Complete(st, mySeat, meta) {
+    if (!meta || meta.version !== 1 || !meta.buriedBySeat) return false;
+    const need = {N: 0, W: 0, S: 0, E: 0};
+    for (const h of st.history)
+      if (h.act === "bury" && h.seat !== mySeat) need[h.seat]++;
+    return SEATS.every(s => {
+      const xs = meta.buriedBySeat[s];
+      return Array.isArray(xs) && xs.length === need[s] && xs.every(k => KOMA_COUNT[k] > 0);
+    });
+  }
   function sampleWorld(view, rng) {
     const unseen = unseenCounts(view.hand, view.hist);
     const pool = [];
@@ -13388,18 +13570,23 @@ const G_B = (() => {
     const others = SEATS.filter(s => s !== view.seat);
     const deficit = others.reduce((a, s) => a + view.sizes[s], 0);
     let nDiscard = Math.min(hiddenBurialCount(view.hist), Math.max(0, pool.length - deficit));
+    const __hiddenSlots = hiddenBurySlots(view), __buriedBySeat = {N: [], W: [], S: [], E: []};
+    let __hiddenSlotIdx = 0;
     const __bw = buryWFor(nDiscard);
     if (DIAG) { DIAG.bfDraw = (DIAG.bfDraw || 0) + 1; DIAG.bfNDis = (DIAG.bfNDis || 0) + nDiscard; }
     while (nDiscard-- > 0) {
       let tw = 0; const ws = pool.map(k => { tw += __bw[k]; return __bw[k]; });
       let r = rng() * tw, idx = pool.length - 1;
       for (let i = 0; i < ws.length; i++) { r -= ws[i]; if (r <= 0) { idx = i; break; } }
+      const __downKoma = pool[idx];
       pool.splice(idx, 1);
+      const __slot = __hiddenSlots[__hiddenSlotIdx++];
+      if (__slot) __buriedBySeat[__slot.seat].push(__downKoma);
     }
     const sampled = {};
     let p = 0;
     for (const s of others) { sampled[s] = pool.slice(p, p + view.sizes[s]); p += view.sizes[s]; }
-    return sampled;
+    return attachWorldV2(sampled, __buriedBySeat);
   }
 
   // build v109(段階4): 枚数読み(komaLedger)の硬い制約(min/max)を尊重する決定化サンプラー。
@@ -13441,7 +13628,7 @@ const G_B = (() => {
     shuffle(pool, rng);
 
     const others = SEATS.filter(s => s !== view.seat);
-    const need = {}, downNeed = {}, sampled = {};
+    const need = {}, downNeed = {}, sampled = {}, __buriedBySeat = {N: [], W: [], S: [], E: []};
     for (const s of others) {
       sampled[s] = [];
       need[s] = view.sizes[s];
@@ -13499,11 +13686,11 @@ const G_B = (() => {
         sampled[s].push(k); need[s]--;
       } else {
         const s = dCands[Math.floor(rng() * dCands.length)];
-        downNeed[s]--;
+        downNeed[s]--; __buriedBySeat[s].push(k);
       }
     }
     __swcOut = 0;
-    return sampled;
+    return attachWorldV2(sampled, __buriedBySeat);
   }
 
   // AIアクション (noMC: ロールアウト内の再帰禁止)
@@ -13860,6 +14047,36 @@ const G_B = (() => {
   function cloneStateForRollout(st, mySeat, sampled) {
     const hands = {};
     for (const s of SEATS) hands[s] = (s === mySeat ? st.hands[s] : sampled[s]).slice();
+    const meta = worldV2Metadata(sampled);
+    if (DETERMINIZATION_V2 && worldV2Complete(st, mySeat, meta)) {
+      const pos = {N: 0, W: 0, S: 0, E: 0};
+      const history = st.history.map(h => {
+        if (h.act !== "bury" || h.seat === mySeat) return {seat: h.seat, koma: h.koma, act: h.act};
+        const list = meta && meta.buriedBySeat ? meta.buriedBySeat[h.seat] : null;
+        const koma = list && pos[h.seat] < list.length ? list[pos[h.seat]++] : null;
+        return {seat: h.seat, koma, act: "bury"};
+      });
+      const board = {N: [], W: [], S: [], E: []};
+      for (const h of history) {
+        if (h.act === "bury" || h.act === "receive") {
+          board[h.seat].push({def: {koma: h.koma, type: h.act}, atk: null});
+        } else if (h.act === "attack") {
+          const row = board[h.seat];
+          let cur = row.length && row[row.length - 1].atk === null ? row[row.length - 1] : null;
+          if (!cur) { cur = {def: null, atk: null}; row.push(cur); }
+          cur.atk = h.koma;
+        }
+      }
+      return {
+        hands, board, history,
+        parent: st.parent, actor: st.actor, phase: st.phase,
+        attacker: st.attacker, pendingAttack: st.pendingAttack,
+        respQueue: st.respQueue.slice(), respIdx: st.respIdx,
+        matchScores: st.matchScores, solverCache: {},
+        rejShi: Object.assign({}, st.rejShi),
+        goshiHolders: st.goshiHolders || [],
+      };
+    }
     return {
       hands,
       board: {N: st.board.N.map(c => ({def: c.def, atk: c.atk})),
@@ -15057,7 +15274,7 @@ const G_B = (() => {
     }
     return decided ? nsWins / decided : null;
   }
-  return {setTblTrust, tblFactorAt, setOuSignal, setOuTrust, detectOuSignals, partnerSignaledOu, partnerSignaledShi, kakariGotae, shiStarted, canShiAttackC, setOppProfile, oppRatesFromCounts, setEvLambdaGate, inferPartnerHoldings, setSigRead, setOuMix, setKyouMix, setShiKyoFix, setShiCommit, setShiCommitReal, setKakariEv, kakariEvidence, setPassMirror, setShiPairEv, shiPairEvidence, setKPairEv, pairAttackEvidence, setKyoNeg, setKyoNegScope, setKyoNegClosed, kyoNegAttackEvidence, _kyClsProbe, setOuKyoRisk, setLedgerCal, calP, setOulessFk, setTakeTurn, setKamizaWait, setKakuSignal, kakuSigEvidence, setKyoCode, kyoCodeEvidence, setKyoBonus, setKyoRetention, kyoBiasOf, setHumanModel, setBeliefSharpen, setBuryUmaFix, setBuryPairShi, setKeepShiEshi, setKeepShiLastGuard, setShiKeep2, setWidthBury, setBuryCover, buryCoverPick, setUmaKeep, setShiBluff, setCoopSignal, setConvTrust, convTrustOf, moveHint, coopContext, setShiRejectStrong, setShiRideKeep, setFlowbackYield, setFlowbackTh, setFlowbackPreMc, flowbackYieldPass, setShiAtkAvoid, setShiAtkAvoidMin, setUncutAtkAvoid, setUncutFb, setOuSigShiGuard, setKyoR1Conserve, setKyoConsMode, setKyoWeakConserve, strongNonShi, setKyoR1Wait, setKyoCertainRecv, cfrSolve2x2, setRuleLevel, setDiag, setRolloutOpp, modelRespAction, setLeafDd, setLeafDdLimit, setLeafDdCap, matchEquity, ddSolve, ddSolveNaive, ddRootValues, ddParAnalyze, sampleWorldW, makePassEvCache, readingNotes, komaLedger, setCountRead, countWhy, setCountGate, setCountPlanConf, setCountPlanRisk, planRisk, unseenMinusPartnerLedger, sampleWorldC, setCountSample, setCountRecvp, setCountBelief, setCountBeliefMaxHand, setCountBeliefMinEss, ledgerRefine, komaLedgerMaybeRefine, setSoloSig, setOuTakeTurn, setOuTtMaxHand, setOuTtMinChain, setOuTtMargin, setOuTtDets, ouTakeTurnPick, ouChainThroughP, mcDecideReceive, pCanReceive, pEnemyReceives, isFirstRound, SEATS, KOMA_COUNT, POINTS, UNCUTTABLE, team, nextSeat, partnerOf, mcEvalReceive, gameEquityMC, countsFor, freshSolverProbe, puzzleTruthProbe, beliefExact, beliefMC,
+  return {setDeterminizationV2, worldV2Metadata, diagnosticCloneStateForRollout: cloneStateForRollout, setTblTrust, tblFactorAt, setOuSignal, setOuTrust, detectOuSignals, partnerSignaledOu, partnerSignaledShi, kakariGotae, shiStarted, canShiAttackC, setOppProfile, oppRatesFromCounts, setEvLambdaGate, inferPartnerHoldings, setSigRead, setOuMix, setKyouMix, setShiKyoFix, setShiCommit, setShiCommitReal, setKakariEv, kakariEvidence, setPassMirror, setShiPairEv, shiPairEvidence, setKPairEv, pairAttackEvidence, setKyoNeg, setKyoNegScope, setKyoNegClosed, kyoNegAttackEvidence, _kyClsProbe, setOuKyoRisk, setLedgerCal, calP, setOulessFk, setTakeTurn, setKamizaWait, setKakuSignal, kakuSigEvidence, setKyoCode, kyoCodeEvidence, setKyoBonus, setKyoRetention, kyoBiasOf, setHumanModel, setBeliefSharpen, setBuryUmaFix, setBuryPairShi, setKeepShiEshi, setKeepShiLastGuard, setShiKeep2, setWidthBury, setBuryCover, buryCoverPick, setUmaKeep, setShiBluff, setCoopSignal, setConvTrust, convTrustOf, moveHint, coopContext, setShiRejectStrong, setShiRideKeep, setFlowbackYield, setFlowbackTh, setFlowbackPreMc, flowbackYieldPass, setShiAtkAvoid, setShiAtkAvoidMin, setUncutAtkAvoid, setUncutFb, setOuSigShiGuard, setKyoR1Conserve, setKyoConsMode, setKyoWeakConserve, strongNonShi, setKyoR1Wait, setKyoCertainRecv, cfrSolve2x2, setRuleLevel, setDiag, setRolloutOpp, modelRespAction, setLeafDd, setLeafDdLimit, setLeafDdCap, matchEquity, ddSolve, ddSolveNaive, ddRootValues, ddParAnalyze, sampleWorldW, makePassEvCache, readingNotes, komaLedger, setCountRead, countWhy, setCountGate, setCountPlanConf, setCountPlanRisk, planRisk, unseenMinusPartnerLedger, sampleWorldC, setCountSample, setCountRecvp, setCountBelief, setCountBeliefMaxHand, setCountBeliefMinEss, ledgerRefine, komaLedgerMaybeRefine, setSoloSig, setOuTakeTurn, setOuTtMaxHand, setOuTtMinChain, setOuTtMargin, setOuTtDets, ouTakeTurnPick, ouChainThroughP, mcDecideReceive, pCanReceive, pEnemyReceives, isFirstRound, SEATS, KOMA_COUNT, POINTS, UNCUTTABLE, team, nextSeat, partnerOf, mcEvalReceive, gameEquityMC, countsFor, freshSolverProbe, puzzleTruthProbe, beliefExact, beliefMC,
           mulberry32, shuffle, fullDeck, counter,
           newGameState, advance, canAttackKing, validReceive, legalReceives, legalAttacks,
           maskHistoryFor, makeView, unseenCounts, solveWin, checkKingAtkOk,
@@ -17439,6 +17656,81 @@ if (typeof document !== "undefined") (() => {
     _scAtStart: null,     // T-0(v90a): 局開始時点のcfgスナップショット(安全側反映込み)。scaffoldStamp()が参照
     _tourWinRecorded: false,   // A-5(v91a): showMatchEndのtourWinRecord一回性ガード。newMatch/resumeSavedMatchでリセット
   };
+  /* PHASE1_TURN_TOKEN_START */
+  function captureTurnToken(st) {
+    return {ref: st, n: st && st.history ? st.history.length : -1,
+      actor: st ? st.actor : null, phase: st ? st.phase : null,
+      pending: st && st.pendingAttack ? st.pendingAttack : null};
+  }
+  function isCurrentTurnToken(t) {
+    const s = app.st;
+    return !!t && s === t.ref && !!s && s.history.length === t.n &&
+      s.actor === t.actor && s.phase === t.phase &&
+      (s.pendingAttack || null) === t.pending;
+  }
+  /* PHASE1_TURN_TOKEN_END */
+  /* PHASE2_TASK_SCOPE_START
+   * 対局本体が使う遅延処理を単一scopeへ登録する。従来のapp.timer互換を保ちつつ、
+   * 再予約・新局・振り返り開始時に上書き前の孤児timerもまとめて失効させる。
+   */
+  class TaskScope {
+    constructor() { this.epoch = 0; this.handles = new Set(); }
+    schedule(ms, fn) {
+      const epoch = this.epoch;
+      const id = setTimeout(() => {
+        this.handles.delete(id);
+        if (epoch !== this.epoch) return;
+        fn();
+      }, Math.max(0, Number(ms) || 0));
+      this.handles.add(id);
+      return id;
+    }
+    cancelAll() {
+      this.epoch++;
+      this.handles.forEach(id => clearTimeout(id));
+      this.handles.clear();
+    }
+    get pending() { return this.handles.size; }
+  }
+  const appTasks = new TaskScope();
+  function cancelAppTimer() {
+    appTasks.cancelAll();
+    app.timer = null;
+  }
+  function scheduleAppTimer(fn, ms) {
+    cancelAppTimer();
+    app.timer = appTasks.schedule(ms, () => {
+      app.timer = null;
+      fn();
+    });
+    return app.timer;
+  }
+
+  const perfTelemetry = {decision: [], render: []};
+  const perfNow = () => (typeof performance !== "undefined" && performance.now)
+    ? performance.now() : Date.now();
+  function recordPerf(kind, elapsed) {
+    const a = perfTelemetry[kind];
+    if (!a || !Number.isFinite(elapsed) || elapsed < 0) return;
+    a.push(elapsed);
+    if (a.length > 256) a.shift();
+  }
+  function perfSummary() {
+    const one = a => {
+      if (!a.length) return {n: 0, p50: null, p95: null, max: null};
+      const s = a.slice().sort((x, y) => x - y);
+      const q = p => s[Math.min(s.length - 1, Math.floor((s.length - 1) * p))];
+      return {n: s.length, p50: q(.5), p95: q(.95), max: s[s.length - 1]};
+    };
+    return {decision: one(perfTelemetry.decision), render: one(perfTelemetry.render),
+      pendingTasks: appTasks.pending};
+  }
+  try {
+    Object.defineProperty(globalThis, "GOITA_DIAGNOSTICS", {
+      value: Object.freeze({perfSummary}), configurable: true
+    });
+  } catch (e) { /* diagnostics公開不可でも対局は継続 */ }
+  /* PHASE2_TASK_SCOPE_END */
   /* ================================================================
    * ⑧(v69) 設定の永続化 (UI/UX改善計画 Phase1 O1)
    * app.cfg をバージョン付きキーでlocalStorageに保存・復元する。
@@ -17711,7 +18003,7 @@ if (typeof document !== "undefined") (() => {
       applyOppProfile();
       renderScores();
       if (d.phase === "live") {
-        const rec = normalizeRec(d.rec);
+        const rec = sanitizeImportedRec(d.rec, {imported: false, preserveLive: true});
         const st = rebuildState(rec, rec.moves.length);
         if (!st || st.phase === "over") { fail(); return; }   // 破損・競合レース: 通常起動にフォールバック
         app.st = st;
@@ -17818,11 +18110,14 @@ if (typeof document !== "undefined") (() => {
       if (!raw) return;
       const d = JSON.parse(raw);
       if (!d || typeof d !== "object" || d.version !== 1) return;
-      if (Array.isArray(d.career)) app.career = d.career;
+      if (Array.isArray(d.career)) app.career = d.career.map(c => sanitizeCareerEntry(c, c && c.imported === true)).filter(Boolean).slice(-CAREER_MAX_GAMES);
       if (d.puzzleStats && typeof d.puzzleStats === "object") {
-        app.puzzleStats = {tried: d.puzzleStats.tried || 0, solved: d.puzzleStats.solved || 0};
+        const tried = Math.floor(importNumber(d.puzzleStats.tried, 0, 10000000, 0));
+        app.puzzleStats = {tried, solved: Math.floor(importNumber(d.puzzleStats.solved, 0, tried, 0))};
       }
-      if (Array.isArray(d.allGames)) app.importedRecs = d.allGames.map(r => ({...r, imported: true}));
+      if (Array.isArray(d.allGames)) app.importedRecs = d.allGames.slice(-CAREER_MAX_GAMES).map(r => {
+        try { return sanitizeImportedRec(r); } catch (e) { return null; }
+      }).filter(Boolean);
       // 提案F(PLAN_信頼値学習系統ブラッシュアップ_Fable5.md §3-F): LEARNING_RECOMPUTE既定OFF時は
       // 従来どおりJSONに保存済みのカウンタをそのまま復元する(NULL等価)。ON時は復元したallGames
       // (直近CAREER_MAX_GAMES局)から3系統のカウンタを丸ごと再集計する(recomputeLearningFromLog、
@@ -17830,9 +18125,9 @@ if (typeof document !== "undefined") (() => {
       if (LEARNING_RECOMPUTE) {
         recomputeLearningFromLog(CAREER_MAX_GAMES);
       } else {
-        if (d.convTrust && typeof d.convTrust.n === "number") app.convTrust = {n: d.convTrust.n, ok: d.convTrust.ok || 0};
-        if (d.tblTrust && typeof d.tblTrust.n === "number") app.tblTrust = {n: d.tblTrust.n, hit: d.tblTrust.hit || 0};
-        if (d.oppCounts && d.oppCounts.pe) app.oppCounts = d.oppCounts;
+        if (d.convTrust && typeof d.convTrust === "object") app.convTrust = sanitizeLearningPair(d.convTrust, "ok");
+        if (d.tblTrust && typeof d.tblTrust === "object") app.tblTrust = sanitizeLearningPair(d.tblTrust, "hit");
+        if (d.oppCounts && typeof d.oppCounts === "object") app.oppCounts = sanitizeOppCounts(d.oppCounts);
         if (app.humanSeat) { setOuTrustBoth(app.humanSeat); applyOppProfile(); }
       }
     } catch (e) { /* 破損データは無視し、空の状態(既定値)から開始する */ }
@@ -17854,13 +18149,6 @@ if (typeof document !== "undefined") (() => {
     }
     if (app.humanSeat) { setOuTrustBoth(app.humanSeat); applyOppProfile(); }
   }
-  loadCareerFromStorage();   // O2(v70): 成績・棋譜・信頼度学習の自動復元
-  // M-1(v92a): oppCounts.blの1回だけの移行はloadCareerFromStorage自体を不変に保つため、
-  // その呼び出し直後(このスコープ)で行う。blVがあれば冪等でno-op(多重リセット防止)。
-  // loadCareerFromStorage内部のapplyOppProfile()は移行前のbl値で一度エンジンへ反映済みのため、
-  // 移行後にapplyOppProfile()を再度呼び直し、リセット後の値を即座に反映させる。
-  if (oppCountsMigrateBl(app.oppCounts) && app.humanSeat) applyOppProfile();
-
   /* ================================================================
    * S-1/S-2(v90c): SRSストア(goita_srs_v1) — 詰め・定石の想起スケジューリング (PLAN_v90_teacher.md)
    * card = {id, kind:"puzzle"|"joseki", payload, ease, due, reps, lapses, last}
@@ -18527,6 +18815,148 @@ if (typeof document !== "undefined") (() => {
     }, true);
   })();
   // 再現: rec の moves[0..upto-1] を初期配牌から再生
+  /* PHASE1_SANITIZE_START */
+  const IMPORT_SEATS = new Set(["N", "W", "S", "E"]);
+  const IMPORT_TYPES = new Set(["bury", "attack", "receive", "pass"]);
+  const IMPORT_KOMA = new Set(Object.keys(G.KOMA_COUNT));
+  function importText(v, max) {
+    return typeof v === "string" ? v.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, "").slice(0, max) : "";
+  }
+  function importNumber(v, lo, hi, fallback) {
+    return typeof v === "number" && Number.isFinite(v) ? Math.max(lo, Math.min(hi, v)) : fallback;
+  }
+  function sanitizeLearningPair(v, successKey) {
+    const n = Math.floor(importNumber(v && v.n, 0, 10000000, 0));
+    const success = Math.floor(importNumber(v && v[successKey], 0, n, 0));
+    return {n, [successKey]: success};
+  }
+  function sanitizeOppCounts(v) {
+    const pe = sanitizeLearningPair(v && v.pe, "k");
+    const pp = sanitizeLearningPair(v && v.pp, "k");
+    const bl = sanitizeLearningPair(v && v.bl, "k");
+    const kyN = Math.floor(importNumber(v && v.ky && v.ky.n, 0, 10000000, 0));
+    return {pe, pp, bl, blV: Math.floor(importNumber(v && v.blV, 0, 100, 0)),
+      ky: {n: kyN, sa: importNumber(v && v.ky && v.ky.sa, 0, kyN * 4, 0),
+        sp: importNumber(v && v.ky && v.ky.sp, 0, kyN * 4, 0),
+        kyV: Math.floor(importNumber(v && v.ky && v.ky.kyV, 0, 100, 0))}};
+  }
+  function sanitizeInitialHands(ih) {
+    if (!ih || typeof ih !== "object") throw new Error("初期配牌がありません");
+    const out = {}, counts = Object.fromEntries(Object.keys(G.KOMA_COUNT).map(k => [k, 0]));
+    for (const s of G.SEATS) {
+      if (!Array.isArray(ih[s]) || ih[s].length !== 8) throw new Error("初期配牌の枚数が不正です");
+      out[s] = ih[s].map(k => {
+        if (!IMPORT_KOMA.has(k)) throw new Error("未知の駒が含まれています");
+        counts[k]++; return k;
+      });
+    }
+    for (const k of Object.keys(G.KOMA_COUNT)) if (counts[k] !== G.KOMA_COUNT[k]) throw new Error("初期配牌の駒数が不正です");
+    return out;
+  }
+  function sanitizeImportedMove(m) {
+    if (!m || typeof m !== "object" || !IMPORT_SEATS.has(m.seat) || !m.action || typeof m.action !== "object")
+      throw new Error("着手形式が不正です");
+    const type = m.action.type;
+    if (!IMPORT_TYPES.has(type)) throw new Error("未知の着手種別です");
+    const koma = type === "pass" ? null : m.action.koma;
+    if (type !== "pass" && !IMPORT_KOMA.has(koma)) throw new Error("着手駒が不正です");
+    const out = {
+      seat: m.seat,
+      action: {type, koma},
+      human: m.human === true,
+      forced: m.forced === true,
+      thinkMs: importNumber(m.thinkMs, 0, 86400000, 0),
+      why: importText(m.why, 600)
+    };
+    if (m.action.intent && m.action.intent.rejectShi === true) out.action.intent = {rejectShi: true};
+    if (m.cf && typeof m.cf === "object" && IMPORT_TYPES.has(m.cf.type) &&
+        (m.cf.type === "pass" || IMPORT_KOMA.has(m.cf.koma))) {
+      out.cf = {type: m.cf.type, koma: m.cf.type === "pass" ? null : m.cf.koma,
+        why: importText(m.cf.why, 600), src: importText(m.cf.src, 40), agree: m.cf.agree === true, alt: m.cf.alt === true};
+    }
+    if (m.sig && typeof m.sig === "object") {
+      out.sig = {type: importText(m.sig.type, 40), text: importText(m.sig.text, 400), jk: importText(m.sig.jk, 40),
+        honest: m.sig.honest === true, wasted: m.sig.wasted === true};
+    }
+    for (const k of ["pvNote", "mcNote", "lineNote", "parNote"])
+      if (m[k] != null) out[k] = importText(m[k], 1200);
+    if (m.clarity && typeof m.clarity === "object") {
+      const cls = ["明確", "際どい", "互角"].includes(m.clarity.cls) ? m.clarity.cls : "";
+      out.clarity = {cls, margin: importNumber(m.clarity.margin, 0, 2, 0), dev: m.clarity.dev === true, na: m.clarity.na === true};
+    }
+    if (["克服", "別解上がり", "未克服"].includes(m.drillResult)) out.drillResult = m.drillResult;
+    return out;
+  }
+  function validateImportedMoves(rec) {
+    const st = G.newGameState(rec.initialHands, rec.parent);
+    for (let i = 0; i < rec.moves.length; i++) {
+      const mv = rec.moves[i], a = mv.action;
+      if (st.phase === "over") throw new Error("終局後に着手が続いています");
+      if (mv.seat !== st.actor) throw new Error("手番が一致しません");
+      if ((st.phase === "bury" && a.type !== "bury") ||
+          (st.phase === "attack" && a.type !== "attack") ||
+          (st.phase === "respond" && a.type !== "receive" && a.type !== "pass"))
+        throw new Error("局面と着手種別が一致しません");
+      if (a.type !== "pass" && !(st.hands[st.actor] || []).includes(a.koma))
+        throw new Error("手駒にない駒が使われています");
+      if (a.type === "attack" && !G.legalAttacks(st.hands[st.actor], st.history, st.actor).includes(a.koma))
+        throw new Error("攻められない駒が使われています");
+      if (a.type === "receive" &&
+          !(a.koma === st.pendingAttack || (a.koma === "王" && st.pendingAttack !== "王" && !G.UNCUTTABLE.has(st.pendingAttack))))
+        throw new Error("受け駒が攻め駒と一致しません");
+      G.advance(st, a);
+    }
+  }
+  function sanitizeImportedRec(rec, options) {
+    const opt = options || {};
+    if (!rec || typeof rec !== "object") throw new Error("棋譜形式が不正です");
+    if (!Array.isArray(rec.moves) || rec.moves.length > 300) throw new Error("着手数が不正です");
+    const out = {
+      matchNo: importNumber(rec.matchNo, 0, 1000000, 0),
+      gameNo: importNumber(rec.gameNo, 1, 10000, 1),
+      parent: IMPORT_SEATS.has(rec.parent) ? rec.parent : "N",
+      scoresBefore: {
+        NS: importNumber(rec.scoresBefore && rec.scoresBefore.NS, -9999, 9999, 0),
+        EW: importNumber(rec.scoresBefore && rec.scoresBefore.EW, -9999, 9999, 0)
+      },
+      initialHands: sanitizeInitialHands(rec.initialHands),
+      moves: rec.moves.map(sanitizeImportedMove),
+      imported: opt.imported !== false
+    };
+    if (Number.isSafeInteger(rec.matchSeed) && rec.matchSeed >= 0 && rec.matchSeed <= 0xffffffff)
+      out.matchSeed = rec.matchSeed >>> 0;
+    if (Number.isSafeInteger(rec.dealSeq) && rec.dealSeq >= 1 && rec.dealSeq <= 0xffff)
+      out.dealSeq = rec.dealSeq;
+    if (opt.preserveLive && rec.hinted === true) out.hinted = true;
+    if (Array.isArray(rec.misses)) out.misses = rec.misses.filter(i => Number.isSafeInteger(i) && i >= 0 && i < out.moves.length).slice(0, 300);
+    else out.misses = [];
+    if (rec.result && typeof rec.result === "object") {
+      out.result = {winner: IMPORT_SEATS.has(rec.result.winner) ? rec.result.winner : null,
+        pts: importNumber(rec.result.pts, 0, 9999, 0), draw: rec.result.draw === true,
+        dbl: rec.result.dbl === true, koma: IMPORT_KOMA.has(rec.result.koma) ? rec.result.koma : null};
+    }
+    validateImportedMoves(out);
+    return normalizeRec(out);
+  }
+  function sanitizeCareerEntry(c, imported) {
+    if (!c || typeof c !== "object") return null;
+    const out = {matchNo: importNumber(c.matchNo, 0, 1000000, 0), g: importNumber(c.g, 0, 10000, 0),
+      h: importNumber(c.h, 0, 10000, 0), agree: importNumber(c.agree, 0, 10000, 0),
+      miss: importNumber(c.miss, 0, 10000, 0), hasty: importNumber(c.hasty, 0, 10000, 0),
+      avgT: importNumber(c.avgT, 0, 86400000, 0), hinted: c.hinted === true, imported: imported !== false};
+    if (Number.isSafeInteger(c.cfv) && c.cfv >= 0 && c.cfv <= 100) out.cfv = c.cfv;
+    if (c.sc && typeof c.sc === "object") {
+      out.sc = {};
+      for (const k of ["ah", "ad", "mg", "ct", "rq", "lb", "tp", "ex", "rd", "ht"])
+        out.sc[k] = c.sc[k] === true;
+    } else out.sc = null;
+    return out;
+  }
+  /* PHASE1_SANITIZE_END */
+  // Import allow-lists are const values, so restore only after their initialization
+  // (calling this earlier would put sanitizeImportedRec in the temporal dead zone).
+  loadCareerFromStorage();
+  if (oppCountsMigrateBl(app.oppCounts) && app.humanSeat) applyOppProfile();
   function normalizeRec(rec) {
     // 旧バージョンの保存記録との互換: 欠損フィールドを補完
     if (!rec.scoresBefore) rec.scoresBefore = {NS: 0, EW: 0};
@@ -19605,17 +20035,21 @@ if (typeof document !== "undefined") (() => {
     for (const [needle, key] of WHY2JK) if (why.indexOf(needle) >= 0) return key;
     return null;
   }
+  function escapeHtml(value) {
+    return String(value == null ? "" : value).replace(/[&<>"']/g, ch =>
+      ch === "&" ? "&amp;" : ch === "<" ? "&lt;" : ch === ">" ? "&gt;" : ch === '"' ? "&quot;" : "&#39;");
+  }
   // プレーンテキスト中の定石名をタップ可能チップへ（HTMLは渡さないこと）
   function linkifyJoseki(text) {
     if (!text) return text || "";
-    let out = text, used = new Set();
+    let out = escapeHtml(text), used = new Set();
     for (const [needle, key] of WHY2JK) {
       if (used.has(key)) continue;
       const i = out.indexOf(needle);
       if (i >= 0 && JOSEKI[key]) {
         used.add(key);
         out = out.slice(0, i) +
-          '<button class="jk-chip" data-jk="' + key + '">' + needle + '</button>' +
+          '<button class="jk-chip" data-jk="' + escapeHtml(key) + '">' + escapeHtml(needle) + '</button>' +
           out.slice(i + needle.length);
       }
     }
@@ -19958,6 +20392,7 @@ if (typeof document !== "undefined") (() => {
     }
   }
   function renderAll() {
+    const _renderT0 = perfNow();
     _flipCapture();
     const st = displayState();
     app._riverSeq = (app.cfg.riverseq && st && st.history) ? computeRiverSeq(st) : null;
@@ -19982,6 +20417,7 @@ if (typeof document !== "undefined") (() => {
     _flipPlay();
     app._flashKey = null;   // D5: 王受けフラッシュは1描画で消費
     updateTurnToken();   // v90: 番札の位置更新(renderAll末尾のみから呼ぶ)
+    recordPerf("render", perfNow() - _renderT0);
   }
   // ===== 駒移動アニメ (FLIP) =====================================================
   // 全再描画方式のまま、河の駒に付与した data-key で「論理的に同じ駒」を旧→新で対応づけ、
@@ -20268,17 +20704,66 @@ if (typeof document !== "undefined") (() => {
   }
   // 分析ボトムシート: belief/reading/advice を盤面から分離。描画系(renderBelief等)は無改修で、
   // ボックスはこのシート内に移設済み。プレイ中は盤面に集中し、必要時だけ引き上げて確認する。
+  /* PHASE4_SHEET_A11Y_START */
   const Sheet = {
-    isOpen: false, _drag: null,
+    isOpen: false, _drag: null, _returnFocus: null, _bgState: [],
+    _setInert(el, on) {
+      if (!el) return;
+      try { el.inert = !!on; } catch (e) {}
+      if (on) el.setAttribute("inert", ""); else el.removeAttribute("inert");
+    },
+    _setBackgroundInert(on) {
+      const main = $("main-screen"), sheet = $("analysis-sheet"), scrim = $("sheet-scrim");
+      if (!main) return;
+      if (on) {
+        this._bgState = [...main.children].filter(n => n !== sheet && n !== scrim).map(n => ({
+          n, aria: n.getAttribute("aria-hidden"), inert: n.hasAttribute("inert")
+        }));
+        this._bgState.forEach(x => { this._setInert(x.n, true); x.n.setAttribute("aria-hidden", "true"); });
+      } else {
+        this._bgState.forEach(x => {
+          this._setInert(x.n, x.inert);
+          if (x.aria === null) x.n.removeAttribute("aria-hidden"); else x.n.setAttribute("aria-hidden", x.aria);
+        });
+        this._bgState = [];
+      }
+    },
+    _focusables() {
+      const sheet = $("analysis-sheet");
+      if (!sheet) return [];
+      return [...sheet.querySelectorAll('button:not([disabled]),a[href],input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])')]
+        .filter(n => !n.hasAttribute("hidden") && n.getAttribute("aria-hidden") !== "true" &&
+          (typeof n.getClientRects !== "function" || n.getClientRects().length > 0));
+    },
+    trapTab(e) {
+      if (!this.isOpen || e.key !== "Tab") return;
+      const xs = this._focusables();
+      if (!xs.length) { e.preventDefault(); const g = $("sheet-grab"); if (g) g.focus(); return; }
+      const first = xs[0], last = xs[xs.length - 1], active = document.activeElement;
+      if (e.shiftKey && (active === first || !xs.includes(active))) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && (active === last || !xs.includes(active))) { e.preventDefault(); first.focus(); }
+    },
     setOpen(v) {
       const sheet = $("analysis-sheet"), toggle = $("sheet-toggle"), scrim = $("sheet-scrim");
       if (!sheet) return;
+      v = !!v;
+      if (v === this.isOpen) return;
+      if (v) this._returnFocus = document.activeElement;
       this.isOpen = v;
       sheet.style.transition = ""; sheet.style.transform = "";
       sheet.classList.toggle("open", v);
+      sheet.setAttribute("aria-hidden", v ? "false" : "true");
+      this._setInert(sheet, !v);
       if (scrim) scrim.classList.toggle("open", v);
       if (toggle) { toggle.setAttribute("aria-expanded", v ? "true" : "false"); toggle.classList.toggle("active", v); if (v) toggle.classList.remove("fresh"); }
       document.body.classList.toggle("sheet-open", v);
+      this._setBackgroundInert(v);
+      if (v) { const g = $("sheet-grab"); if (g) g.focus(); }
+      else {
+        const back = this._returnFocus && this._returnFocus.isConnected ? this._returnFocus : toggle;
+        this._returnFocus = null;
+        if (back && typeof back.focus === "function") back.focus();
+      }
     },
     markFresh() { const t = $("sheet-toggle"); if (t && !this.isOpen) t.classList.add("fresh"); },
     refresh() {
@@ -20291,16 +20776,21 @@ if (typeof document !== "undefined") (() => {
       if (!toggle || toggle._wired) return; toggle._wired = true;
       toggle.addEventListener("click", () => this.setOpen(!this.isOpen));
       if (scrim) scrim.addEventListener("click", () => this.setOpen(false));
-      document.addEventListener("keydown", e => { if (e.key === "Escape" && this.isOpen) this.setOpen(false); });
+      document.addEventListener("keydown", e => {
+        if (e.key === "Escape" && this.isOpen) { e.preventDefault(); this.setOpen(false); return; }
+        this.trapTab(e);
+      });
       if (grab && sheet) {
-        grab.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); this.setOpen(false); } });
+        grab.addEventListener("click", () => this.setOpen(false));
         const self = this;
         grab.addEventListener("pointerdown", e => { if (!self.isOpen) return; self._drag = (e.touches ? e.touches[0].clientY : e.clientY); sheet.style.transition = "none"; });
         window.addEventListener("pointermove", e => { if (self._drag == null) return; const y = (e.touches ? e.touches[0].clientY : e.clientY); const dy = Math.max(0, y - self._drag); sheet.style.transform = "translateY(" + dy + "px)"; });
         window.addEventListener("pointerup", e => { if (self._drag == null) return; const y = (e.changedTouches ? e.changedTouches[0].clientY : (e.clientY || self._drag)); const dy = Math.max(0, y - self._drag); self._drag = null; sheet.style.transition = ""; sheet.style.transform = ""; if (dy > 80) self.setOpen(false); });
+        window.addEventListener("pointercancel", () => { self._drag = null; sheet.style.transition = ""; sheet.style.transform = ""; });
       }
     }
   };
+  /* PHASE4_SHEET_A11Y_END */
   function updateSheet(st) {
     Sheet.refresh();
     const sig = (app.beliefKey || "") + "|" + (app.readKey || "") + "|" + (app.adviceKey || "");
@@ -20574,7 +21064,7 @@ if (typeof document !== "undefined") (() => {
     const R = app.research;
     const ac = st.history.filter(h => h.act === "attack").length;
     const truth = signalTruth(st, seat, sig);
-    clearTimeout(app.timer);
+    cancelAppTimer();
     status("予測してください（相方の手の読み）");
     modal(`
       <h2 class="serif">相方の手を読む</h2>
@@ -20651,7 +21141,7 @@ if (typeof document !== "undefined") (() => {
         }
       };
       app.stopped = false; app.matchOver = false; app.review = null; app.gameNo = 0;
-      clearTimeout(app.timer);
+      cancelAppTimer();
       closeModal();
       researchStartDeal();
     });
@@ -20659,7 +21149,7 @@ if (typeof document !== "undefined") (() => {
   // F2: 固定seed配牌でディール開始（ミラー: 同 dealInBlock は両条件で同一seed）
   function researchStartDeal() {
     const R = app.research;
-    clearTimeout(app.timer);
+    cancelAppTimer();
     const idx = R.dealInBlock;
     if (idx >= R.seeds.length) { researchEndBlock(); return; }
     const seed = R.seeds[idx], parent = R.parents[idx];
@@ -20700,7 +21190,7 @@ if (typeof document !== "undefined") (() => {
   // ブロック終了 → 主観調査(補助) → 次ブロック or 強制選択
   function researchEndBlock() {
     const R = app.research;
-    clearTimeout(app.timer);
+    cancelAppTimer();
     modal(`
       <h2 class="serif">このブロックの相方について</h2>
       <p>条件 [${R.condition}] の相方AIについてお答えください。</p>
@@ -20729,7 +21219,7 @@ if (typeof document !== "undefined") (() => {
   // F5: 強制選択 + 自信 + 自由記述
   function researchForcedChoice() {
     const R = app.research;
-    clearTimeout(app.timer);
+    cancelAppTimer();
     modal(`
       <h2 class="serif">最終選択</h2>
       <p>符号 A / B の2人の相方AIと組みました。<strong>どちらと組みたいですか？</strong></p>
@@ -20954,16 +21444,22 @@ if (typeof document !== "undefined") (() => {
     // C-1(v89c): 初手AIの保護。配牌演出の終了(_dealAnimUntil)前に手が出て「所作」を追い越さないよう下限を敷く。
     // _dealAnimUntilが過去(=演出済み/対象外)なら差分が負になりMath.maxで無効化される(自己限定的・以後の手には無影響)。
     const _stepMs = app._dealAnimUntil ? Math.max(tempo.ms, app._dealAnimUntil - performance.now() + 120) : tempo.ms;
-    app.timer = setTimeout(() => {
+    const _turnToken = captureTurnToken(app.st);
+    scheduleAppTimer(() => {
+      if (!isCurrentTurnToken(_turnToken)) { card.classList.remove("pondering"); return; }
       hideThinking();
       card.classList.remove("pondering");
       if (app.stopped || app.review) return;
       if (!app.st || app.st.phase === "over" || app.matchOver) return;   // 終局後に古い予約が発火しても適用しない
       /* GOITA-T1 移植 — t1 席は T1AD (transformer) 経由・失敗時は G へ自動フォールバック、他席は原版のまま */
+      const _decisionT0 = perfNow();
       const a = (app.tiers[actor] === "t1")
         ? T1AD.policyAction(app.st, actor, engineFor(actor))
         : engineFor(actor).policyAction(app.st, actor, tierOpts(actor));   // [研究] 席ごとにA/B切替
+      recordPerf("decision", perfNow() - _decisionT0);
+      if (!isCurrentTurnToken(_turnToken)) { card.classList.remove("pondering"); return; }
       const proceed = () => {
+        if (!isCurrentTurnToken(_turnToken)) { card.classList.remove("pondering"); return; }
         const ev = applyAndLog(a);
         if (ev.gameOver) { onGameOver(ev.gameOver); return; }
         step();
@@ -21007,9 +21503,12 @@ if (typeof document !== "undefined") (() => {
           // 自動パス（設定でON、またはチュートリアル進行中は従来どおり）
           status(`「${atk}」は受けられません — なし`);
           actionbar(`「${atk}」を受けられる駒がありません` + (app.cfg.hints && G.UNCUTTABLE.has(atk) ? "（王でも切れません・同じ駒のみ）" : ""));
-          app.timer = setTimeout(() => {
+          const _autoPassToken = captureTurnToken(st);
+          scheduleAppTimer(() => {
+            if (!isCurrentTurnToken(_autoPassToken)) return;
             if (app.stopped || app.review) return;
             actionbar("");
+            if (!isCurrentTurnToken(_autoPassToken)) return;
             applyAndLog({type: "pass"});
             step();
           }, Math.min(750, app.cfg.speed + 250));
@@ -21849,7 +22348,7 @@ if (typeof document !== "undefined") (() => {
       actionbar("", [{label: "結果を見る", primary: true, fn: showMatchEnd}]);
     } else if (!app.humanSeat) {
       actionbar("（観戦中 — 自動で次の局へ）", [{label: "ここで止める", fn: stopToSetup}]);
-      app.timer = setTimeout(() => { if (!app.stopped && !app.review) startGame(); }, 1800);
+      scheduleAppTimer(() => { if (!app.stopped && !app.review) startGame(); }, 1800);
     } else {
       actionbar("", [{label: "次の局へ", primary: true, fn: startGame}]);
     }
@@ -22193,7 +22692,7 @@ if (typeof document !== "undefined") (() => {
     return {html, btn};
   }
   function onGameOver(res) {
-    clearTimeout(app.timer);   // 予約済みAI手が終局後に発火して継続するのを防ぐ
+    cancelAppTimer();   // 予約済みAI手が終局後に発火して継続するのを防ぐ
     hideThinking();
     app.lastWin = res;
     app._wasMyTurn = false;
@@ -22263,7 +22762,7 @@ if (typeof document !== "undefined") (() => {
       const rb = {label: "振り返り", fn: openReview};
       if (!app.humanSeat) {
         actionbar("（観戦中 — 自動で次の局へ）", [rb, {label: "ここで止める", fn: stopToSetup}]);
-        app.timer = setTimeout(() => { if (!app.stopped && !app.review) startGame(); }, 1800);
+        scheduleAppTimer(() => { if (!app.stopped && !app.review) startGame(); }, 1800);
       } else {
         actionbar(km ? km.html : "", [rb, ...(km ? [km.btn] : []), ...(tourBtn ? [tourBtn] : []), {label: "次の局へ", primary: true, fn: startGame}]);
         tourAutoMaybe(finishedRec);   // 悪手ツアー(v87): 流局は非special相当のため即起動
@@ -22321,14 +22820,14 @@ if (typeof document !== "undefined") (() => {
     } else if (!app.humanSeat) {
       actionbar("（観戦中 — 自動で次の局へ）",
         [reviewBtn, shareBtn, {label: "ここで止める", fn: stopToSetup}]);
-      app.timer = setTimeout(() => { if (!app.stopped && !app.review) startGame(); }, 1800);
+      scheduleAppTimer(() => { if (!app.stopped && !app.review) startGame(); }, 1800);
     } else {
       actionbar(kmHtml, [reviewBtn, shareBtn, ...kmBtn, ...(tourBtn ? [tourBtn] : []), {label: "次の局へ", primary: true, fn: startGame}]);
       if (!winSpecial) tourAutoMaybe(finishedRec);   // 悪手ツアー(v87): 非special終局は即起動
     }
   }
   function startPractice(rec, idx, drillMeta, label) {
-    clearTimeout(app.timer);
+    cancelAppTimer();
     closeModal();
     closeReview();
     app.matchOver = false;
@@ -22837,8 +23336,7 @@ if (typeof document !== "undefined") (() => {
       })),
       imported: true, shared: true
     };
-    try { normalizeRec(rec); } catch (e) {}
-    return rec;
+    try { return sanitizeImportedRec(rec); } catch (e) { return null; }
   }
   function shareUrl(rec, idx) {
     return location.href.split("#")[0] + "#pos=" + b64urlEnc(JSON.stringify(sharePayload(rec, idx)));
@@ -23473,7 +23971,7 @@ if (typeof document !== "undefined") (() => {
     // humanSeatは変わらないため実質no-opだが、視点切替との対称性のため統一的に扱う)。
     if (app._humanSeatBeforeReview === undefined) app._humanSeatBeforeReview = app.humanSeat;
     tourStop();   // 悪手ツアー(v87): 別局への切替・再オープンで前回のツアー状態を必ず清掃
-    clearTimeout(app.timer);
+    cancelAppTimer();
     G.SEATS.forEach(x => { const c = cardOf[x]; if (c) c.classList.remove("pondering"); });   // 長考演出の残骸を除去(レビューでカードは可視)
     computeCoach(rec); computeSignals(rec);
     app.reviewRec = rec;
@@ -23521,7 +24019,7 @@ if (typeof document !== "undefined") (() => {
     const best = r.rows[0];
     const fmt = x => (x.koma === null ? "なし" : x.koma) + (x.v >= 0 ? "+" : "") + x.v.toFixed(0);
     const dPar = played ? best.v - played.v : null;
-    mv.parNote = "パー(全手公開の事後評価): " +
+    mv.parNote = "全公開レンズ（事後参考・悪手判定には不使用）: " +
       r.rows.map(x => (played && x === played ? "◆" : "") + fmt(x)).join(" ／ ") +
       (dPar != null ? (dPar > 0.5 ? ` → パー損失 ${dPar.toFixed(0)}点相当` : " → パー一致 ✓") : "");
     renderReviewList();
@@ -23531,7 +24029,7 @@ if (typeof document !== "undefined") (() => {
     if (!mv || !mv.sig || !$("rv-coach").checked) return "";
     const cls = mv.sig.honest ? "sigok" : "sigbad";
     const jk = mv.sig.jk ? linkifyJoseki(JOSEKI[mv.sig.jk] ? JOSEKI[mv.sig.jk].name : "") : "";
-    return '<span class="coach ' + cls + '">📣 符丁: ' + mv.sig.text + (jk ? '（' + jk + '）' : '') + '</span>';
+    return '<span class="coach ' + cls + '">📣 符丁: ' + escapeHtml(mv.sig.text) + (jk ? '（' + jk + '）' : '') + '</span>';
   }
   // §5.3 相方視点リプレイ: 相方(N)が人間(S)の符丁をどう読み何を狙っているかを各手に付与(キャッシュ・追加レンズ)。
   function computePartnerView(rec) {
@@ -23573,19 +24071,19 @@ if (typeof document !== "undefined") (() => {
       item.className = "rv-item" + (mv.human ? " human" : "") +
         (app.review && app.review.idx === i ? " cur" : "");
       const tm = mv.thinkMs != null ? `<span class="tm">⏱ ${(mv.thinkMs / 1000).toFixed(1)}秒</span>` : "";
-      let why = mv.human ? "" : (mv.why || "—");
+      let why = mv.human ? "" : linkifyJoseki(mv.why || "—");
       if (mv.human && mv.forced && $("rv-coach").checked)
         why = `<span class="coach">（受け駒なし・強制的になし — 集計外）</span>`;
       if (mv.human && mv.cf && $("rv-coach").checked) {
         if (mv.cf.agree) {
           why = mv.cf.alt
-            ? `<span class="coach ok">✓ 別手順でも確定 — AIは ${ACT_JA[mv.cf.type]}${mv.cf.koma ? "「" + mv.cf.koma + "」" : ""}だが、あなたの手も同点の確定勝ち（打順の違い）</span>`
+            ? `<span class="coach ok">✓ 別手順でも確定 — AIは ${escapeHtml(ACT_JA[mv.cf.type] || "")}${mv.cf.koma ? "「" + escapeHtml(mv.cf.koma) + "」" : ""}だが、あなたの手も同点の確定勝ち（打順の違い）</span>`
             : `<span class="coach ok">✓ AIと一致</span>`;
         } else {
           const miss = mv.cf.src === "solver";
           const loss = miss ? lossOf(app.reviewRec, mv) : null;
           const hasty = miss && mv.thinkMs != null && mv.thinkMs < 2000;
-          why = `<span class="coach ${miss ? "miss" : ""}">${miss ? "⚠ 読み切りの逃し — " : ""}AIなら ${ACT_JA[mv.cf.type]}${mv.cf.koma ? "「" + mv.cf.koma + "」" : ""}` +
+          why = `<span class="coach ${miss ? "miss" : ""}">${miss ? "⚠ 読み切りの逃し — " : ""}AIなら ${escapeHtml(ACT_JA[mv.cf.type] || "")}${mv.cf.koma ? "「" + escapeHtml(mv.cf.koma) + "」" : ""}` +
                 (mv.cf.why ? `（${linkifyJoseki(mv.cf.why)}）` : "") +
                 (hasty ? " ⚡早打ち" : "") +
                 (loss ? ` ／逸失≈${loss.loss}点` : "") + `</span>`;
@@ -23593,22 +24091,22 @@ if (typeof document !== "undefined") (() => {
       }
       item.innerHTML =
         `<span class="no">${i + 1}</span>` +
-        `<span class="mv"><span class="${G.team(mv.seat) === "NS" ? "ns" : ""}">${seatDisp(mv.seat)}</span> ` +
-        `${ACT_JA[mv.action.type]}${mv.action.koma ? "「" + mv.action.koma + "」" : ""}</span>` +
+        `<span class="mv"><span class="${G.team(mv.seat) === "NS" ? "ns" : ""}">${escapeHtml(seatDisp(mv.seat))}</span> ` +
+        `${escapeHtml(ACT_JA[mv.action.type] || "")}${mv.action.koma ? "「" + escapeHtml(mv.action.koma) + "」" : ""}</span>` +
         `<span class="why">${why}${sigHtml(mv)}` +
-        (($("rv-partner") && $("rv-partner").checked && mv.pvNote) ? `<span class="coach pv">👥 ${mv.pvNote}</span>` : "") +
+        (($("rv-partner") && $("rv-partner").checked && mv.pvNote) ? `<span class="coach pv">👥 ${escapeHtml(mv.pvNote)}</span>` : "") +
         (mv.clarity && !mv.clarity.na
-          ? `<span class="coach ${mv.clarity.cls === "明確" && mv.clarity.dev ? "study" : "mc"}">［${mv.clarity.cls} ±${mv.clarity.margin}${mv.clarity.cls === "明確" && mv.clarity.dev ? " ☆学習対象" : ""}］</span>` : "") +
-        (mv.mcNote ? `<span class="coach mc">${mv.mcNote}</span>` : "") +
-        (mv.lineNote ? `<span class="coach mc">${mv.lineNote}</span>` : "") +
-        (mv.parNote ? `<span class="coach mc">${mv.parNote}</span>` : "") +
+          ? `<span class="coach ${mv.clarity.cls === "明確" && mv.clarity.dev ? "study" : "mc"}">［${escapeHtml(mv.clarity.cls)} ±${escapeHtml(mv.clarity.margin)}${mv.clarity.cls === "明確" && mv.clarity.dev ? " ☆学習対象" : ""}］</span>` : "") +
+        (mv.mcNote ? `<span class="coach mc">${escapeHtml(mv.mcNote)}</span>` : "") +
+        (mv.lineNote ? `<span class="coach mc">${escapeHtml(mv.lineNote)}</span>` : "") +
+        (mv.parNote ? `<span class="coach mc">${escapeHtml(mv.parNote)}</span>` : "") +
         `${tm}` +
         `<span class="rv-btns">` +
         ((mv.action.type === "receive" || mv.action.type === "pass") && !mv.mcNote && !mv.forced
           ? `<button class="rv-resume" data-mc="${i}">MC評価</button>` : "") +
         (mv.human && mv.cf && !mv.cf.agree && mv.cf.src === "solver" && !mv.lineNote
           ? `<button class="rv-resume" data-line="${i}">手順</button>` : "") +
-        (!mv.parNote ? `<button class="rv-resume" data-par="${i}">パー</button>` : "") +
+          (!mv.parNote ? `<button class="rv-resume" data-par="${i}" title="全手駒を公開した事後の答え合わせ。悪手判定には使いません">全公開</button>` : "") +
         `<button class="rv-resume" data-i="${i}">▶ ここから再プレイ</button></span></span>`;
       item.addEventListener("click", ev => {
         if (ev.target.dataset.mc !== undefined) {
@@ -24004,7 +24502,7 @@ if (typeof document !== "undefined") (() => {
    * マッチ・画面遷移・設定
    * ================================================================ */
   function newMatch() {
-    clearTimeout(app.timer);
+    cancelAppTimer();
     deleteMatchProgress();   // A-1(v89b): 新しい対局をはじめる時点で旧マッチの保存は無効化
     closeReview();
     app.scores = {NS: 0, EW: 0};
@@ -24035,7 +24533,7 @@ if (typeof document !== "undefined") (() => {
     app.preDrill = null;
     app.bannerBase = null;
     modeBanner(null);
-    clearTimeout(app.timer);
+    cancelAppTimer();
     closeModal();
     closeReview();
     tourStop();   // 悪手ツアー(v87): closeReview()内でも呼ばれるが明示のため直接呼ぶ
@@ -24578,7 +25076,7 @@ if (typeof document !== "undefined") (() => {
     app.tiers = {S: "human", N: sc.tiers.N, W: _oppT || sc.tiers.W, E: _oppT || sc.tiers.E};
     app.cfg.hints = true; app.cfg.advice = false; app.cfg.explain = false;
     app.tutReveal = !!sc.reveal; app.stopped = false; app.matchOver = false; app.review = null;
-    if (app.timer) clearTimeout(app.timer);
+    cancelAppTimer();
     document.body.classList.add("tut", "tut-" + key);
     $("setup-screen").style.display = "none"; $("main-screen").classList.add("show"); $("handarea").classList.add("show");
     app.scores = {NS: 0, EW: 0}; app.matchNo = 1; app.gameNo = 1;
@@ -24745,7 +25243,7 @@ if (typeof document !== "undefined") (() => {
     // 離脱後に手が勝手に適用されうるため明示的に破棄する(blockStepの解除漏れ対策)。
     if (app.tutorial && app.tutorial.autoTimer) { clearTimeout(app.tutorial.autoTimer); app.tutorial.autoTimer = null; }
     app.tutorial = null; app.tutReveal = false; app.stopped = true;
-    if (app.timer) clearTimeout(app.timer);
+    cancelAppTimer();
     document.body.className = document.body.className.replace(/\btut(-[a-z]+)?\b/g, "").trim();
     $("tut-overlay").classList.remove("on");
     if (!silent) { $("main-screen").classList.remove("show"); $("setup-screen").style.display = ""; syncSetupFormFromCfg(); updateTutorialPanel(); renderKeikoPanel(); keikoEvalWeakAsync(); keikoEvalGradAsync(); }
@@ -24828,37 +25326,40 @@ if (typeof document !== "undefined") (() => {
         const d = JSON.parse(fr.result);
         if (d.version !== 1) throw new Error("形式が違います");
         const ck = c => [c.matchNo, c.g, c.h, c.agree, c.miss, c.avgT].join("|");
-        if (d.convTrust && typeof d.convTrust.n === "number") {
-          app.convTrust = {n: d.convTrust.n, ok: d.convTrust.ok || 0};
-        if (d.tblTrust && typeof d.tblTrust.n === "number") app.tblTrust = {n: d.tblTrust.n, hit: d.tblTrust.hit || 0};
+        if (d.convTrust && typeof d.convTrust === "object") {
+          app.convTrust = sanitizeLearningPair(d.convTrust, "ok");
           if (app.humanSeat) setOuTrustBoth(app.humanSeat);
         }
-        if (d.oppCounts && d.oppCounts.pe) {
-          oppCountsMigrateBl(d.oppCounts);   // M-1(v92a): bl 1回だけ移行(未移行データの再読込み時にも適用)
-          app.oppCounts = d.oppCounts;
+        if (d.tblTrust && typeof d.tblTrust === "object") app.tblTrust = sanitizeLearningPair(d.tblTrust, "hit");
+        if (d.oppCounts && typeof d.oppCounts === "object") {
+          const safeOpp = sanitizeOppCounts(d.oppCounts);
+          oppCountsMigrateBl(safeOpp);   // M-1(v92a): bl 1回だけ移行(未移行データの再読込み時にも適用)
+          app.oppCounts = safeOpp;
           applyOppProfile();
         }
         const have = new Set(app.career.map(ck));
         let nC = 0, nR = 0;
-        for (const c of (d.career || [])) {
+        for (const rawCareer of (Array.isArray(d.career) ? d.career.slice(0, CAREER_MAX_GAMES) : [])) {
+          const c = sanitizeCareerEntry(rawCareer); if (!c) continue;
           if (have.has(ck(c))) continue;
           have.add(ck(c));
-          app.career.push({...c, imported: true});
+          app.career.push(c);
           nC++;
         }
         const rk = r => [r.matchNo, r.gameNo, r.moves.length, JSON.stringify(r.initialHands)].join("|");
         const haveR = new Set([...app.matchRecs, ...app.importedRecs].map(rk));
-        for (const r of (d.missGames || [])) {
-          normalizeRec(r);   // 旧形式の保存記録を補完してから取り込む
+        for (const rawRec of (Array.isArray(d.missGames) ? d.missGames.slice(0, CAREER_MAX_GAMES) : [])) {
+          const r = sanitizeImportedRec(rawRec);
           if (haveR.has(rk(r))) continue;
           haveR.add(rk(r));
-          app.importedRecs.push({...r, imported: true});
+          app.importedRecs.push(r);
           nR++;
         }
         d._nC = nC; d._nR = nR;
-        if (d.puzzleStats) {
-          app.puzzleStats.tried += d.puzzleStats.tried || 0;
-          app.puzzleStats.solved += d.puzzleStats.solved || 0;
+        if (d.puzzleStats && typeof d.puzzleStats === "object") {
+          const tried = Math.floor(importNumber(d.puzzleStats.tried, 0, 10000000, 0));
+          app.puzzleStats.tried += tried;
+          app.puzzleStats.solved += Math.floor(importNumber(d.puzzleStats.solved, 0, tried, 0));
         }
         log(`成績を読み込みました（新規 ${d._nC}局・逃し局面${d._nR}局、重複は除外）`, true);
         openCareer();
@@ -25750,8 +26251,8 @@ if (typeof document !== "undefined") (() => {
           <b>第${e.rec.matchNo}勝負・第${e.rec.gameNo}局 #${e.i + 1}</b>
           ${hasty ? `<span class="badge b-hasty">⚡早打ち</span>` : ""}
           ${e.rec.imported ? `<span class="badge">読込</span>` : ""}</div>
-        <div class="mline">あなた: <b>${ACT_JA[mv.action.type]}${mv.action.koma ? "「" + mv.action.koma + "」" : ""}</b></div>
-        <div class="mline shu">AIなら: <b>${ACT_JA[mv.cf.type]}${mv.cf.koma ? "「" + mv.cf.koma + "」" : ""}</b> — ${mv.cf.why}</div>
+        <div class="mline">あなた: <b>${escapeHtml(ACT_JA[mv.action.type] || "")}${mv.action.koma ? "「" + escapeHtml(mv.action.koma) + "」" : ""}</b></div>
+        <div class="mline shu">AIなら: <b>${escapeHtml(ACT_JA[mv.cf.type] || "")}${mv.cf.koma ? "「" + escapeHtml(mv.cf.koma) + "」" : ""}</b> — ${linkifyJoseki(mv.cf.why || "")}</div>
         ${loss ? `<div class="mline kin">保証${loss.guaranteed}点 → 実際${loss.actual >= 0 ? "+" : ""}${loss.actual}点（逸失≈${loss.loss}点）</div>` : ""}
         <div class="row" style="justify-content:flex-start;margin-top:7px">
           <button class="rv-resume" data-show="${k}">局面を再現</button>
@@ -25920,7 +26421,7 @@ if (typeof document !== "undefined") (() => {
   }
   function runPuzzleGen(band) {
     closeModal();
-    clearTimeout(app.timer);
+    cancelAppTimer();
     app.stopped = true;
     actionbar("詰めごいたを生成中…");
     generatePuzzle(band, t => actionbar(`詰めごいたを生成中… ${t}局探索`), p => {

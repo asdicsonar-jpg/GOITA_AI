@@ -643,12 +643,15 @@
 //   構成(mc:true+matchEq+dd等)では受けMCゲートに阻まれてv187ガードが到達しなかった問題への
 //   対応。新規トグルFLOWBACK_PREMC。詳細はindex.htmlのbuildコメントおよび
 //   IMPLEMENTATION_REPORT_相方上がり通し上位化_build_v188_Sonnet5.md参照。
-const CACHE_NAME = "goita-v188";
+const CACHE_NAME = "goita-v190";
 
-const PRECACHE_URLS = [
+const CRITICAL_URLS = [
   "./",
   "./index.html",
   "./manifest.json",
+];
+
+const OPTIONAL_URLS = [
   "./icons/icon-192.png",
   "./icons/icon-512.png",
   "./icons/icon-maskable-512.png",
@@ -657,24 +660,77 @@ const PRECACHE_URLS = [
 
 const FONT_HOSTS = ["fonts.googleapis.com", "fonts.gstatic.com"];
 
+function responseContentType(response) {
+  try {
+    return String(response.headers.get("content-type") || "").toLowerCase();
+  } catch (e) {
+    return "";
+  }
+}
+
+function isCacheableResponse(request, response) {
+  if (!response || !response.ok) return false;
+
+  let url;
+  try {
+    url = new URL(typeof request === "string" ? request : request.url, self.location.origin);
+  } catch (e) {
+    return false;
+  }
+
+  const path = url.pathname.toLowerCase();
+  const type = responseContentType(response);
+  const isNavigation = request && typeof request !== "string" && request.mode === "navigate";
+
+  if (isNavigation || path === "/" || path.endsWith("/") || path.endsWith("/index.html")) {
+    return type.startsWith("text/html");
+  }
+  if (path.endsWith(".json")) {
+    return type.startsWith("application/json") || type.indexOf("+json") !== -1;
+  }
+  if (/\.(?:png|jpe?g|gif|webp|svg|ico|avif)$/.test(path)) {
+    return type.startsWith("image/");
+  }
+  if (path.endsWith(".css")) return type.startsWith("text/css");
+  if (/\.(?:m?js)$/.test(path)) {
+    return type.startsWith("text/javascript") || type.startsWith("application/javascript");
+  }
+  if (/\.(?:woff2?|ttf|otf)$/.test(path) || FONT_HOSTS.indexOf(url.hostname) !== -1) {
+    return type.startsWith("font/") || type.startsWith("text/css");
+  }
+  return true;
+}
+
 self.addEventListener("install", (event) => {
   event.waitUntil(
     (async () => {
-      try {
-        const cache = await caches.open(CACHE_NAME);
-        // 個別に addAll すると1件の失敗で全体が失敗するため、可能な限り耐性を持たせる
-        await Promise.all(
-          PRECACHE_URLS.map(async (url) => {
-            try {
-              await cache.add(url);
-            } catch (e) {
-              // 1リソースの取得失敗でinstall全体を失敗させない
+      const cache = await caches.open(CACHE_NAME);
+      // Validate every critical response before writing any of them. This keeps a
+      // captive-portal HTML response from being cached as manifest.json and makes
+      // install fail as a unit while the previous active worker/cache stays valid.
+      const critical = await Promise.all(
+        CRITICAL_URLS.map(async (url) => {
+          const response = await fetch(url, {cache: "no-cache"});
+          if (!isCacheableResponse(url, response)) {
+            throw new Error("invalid critical shell response: " + url);
+          }
+          return [url, response];
+        })
+      );
+      await Promise.all(critical.map(([url, response]) => cache.put(url, response.clone())));
+      // Optional artwork must not block an otherwise valid shell install.
+      await Promise.all(
+        OPTIONAL_URLS.map(async (url) => {
+          try {
+            const response = await fetch(url);
+            if (isCacheableResponse(url, response)) {
+              await cache.put(url, response.clone());
             }
-          })
-        );
-      } catch (e) {
-        // プリキャッシュに失敗してもSW自体のインストールは継続させる
-      }
+          } catch (e) {
+            // optional resource: retry on a later install
+          }
+        })
+      );
     })()
   );
   // skipWaiting() は意図的に呼ばない
@@ -708,11 +764,13 @@ self.addEventListener("activate", (event) => {
 async function networkFirstHTML(request) {
   try {
     const fresh = await fetch(request);
-    try {
-      const cache = await caches.open(CACHE_NAME);
-      cache.put(request, fresh.clone());
-    } catch (e) {
-      // キャッシュ書き込み失敗は致命的ではない
+    if (isCacheableResponse(request, fresh)) {
+      try {
+        const cache = await caches.open(CACHE_NAME);
+        await cache.put(request, fresh.clone());
+      } catch (e) {
+        // キャッシュ書き込み失敗は致命的ではない
+      }
     }
     return fresh;
   } catch (e) {
@@ -746,7 +804,7 @@ async function staleWhileRevalidateFont(request) {
   const networkFetch = fetch(request)
     .then((response) => {
       try {
-        if (response && response.ok) {
+        if (isCacheableResponse(request, response)) {
           cache.put(request, response.clone()).catch(() => {});
         }
       } catch (e) {
@@ -807,10 +865,12 @@ self.addEventListener("fetch", (event) => {
             const cached = await cache.match(request);
             if (cached) return cached;
             const fresh = await fetch(request);
-            try {
-              cache.put(request, fresh.clone());
-            } catch (e) {
-              // ignore
+            if (isCacheableResponse(request, fresh)) {
+              try {
+                await cache.put(request, fresh.clone());
+              } catch (e) {
+                // ignore
+              }
             }
             return fresh;
           } catch (e) {
