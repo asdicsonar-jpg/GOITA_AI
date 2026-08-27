@@ -4,6 +4,22 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>ごいた — 能登の伝承遊戯</title>
+  <!-- build: v197「Packed DD kernel (32bitスロット・ビットボード)」base=v196。
+       計画: PLAN_v196_PackedDD_Opus5.md (goita-dev-loop・Planner=Opus5・Executor=Sonnet5)。
+       変更: 完全情報DD探索の内部表現のみを置換する。各席の手駒は最大8枚(32枚÷4席)ゆえ
+       4席×8スロット=32スロットが uint32 1語に収まる。置換表の鍵は物理スロットではなく
+       席ごとの8駒種×4bitニブルカウント(legacy ddKey の等価類と全単射)を使い、探索順・
+       ノード数・予算消費・memo方針を legacy と厳密に一致させる。BigInt・WebAssembly不使用。
+       legacy の ddSearch/ddApply/ddUndo/ddKey/ddActions/_ddMemo/_ddMemoPool は無変更で残し、
+       ddRootValues を ddRootValuesLegacy へ改名して薄いディスパッチャを被せる。
+       PACKED_DD=0(既定)では新コードは1行も実行されず v196 と完全NULL等価。
+       検証: DDコーパス5,440局面・ランダム100,000局面で値bit一致かつ探索ノード数完全一致
+       (不一致0)。ルール境界フィクスチャ10件PASS。強AI着手列SHA-256が mcSeed 5系統・
+       1,247局・35,522手で legacy と完全一致。実Chromiumで出荷版v196と同一ハッシュ。
+       性能(参考・既定OFFのため本番挙動は不変): DDコーパス22.8倍、強AI実対局 Node -27.7%、
+       実Chromium -33%、振り返りパー分析 5.5倍・ピークRSS -50.6%。
+       既定ON化(PACKED_DD=1)は計画書 Stage 3 の実機ゲート(iPhone Safari / Android Chrome)
+       通過まで行わない。起動時 #pkdd=1 で実機計測可能。 -->
   <!-- build: v188「相方上がり通し・上位化」base=v187。計画: PLAN_相方上がり通し上位化_build_v188_Opus5.md
        (goita-dev-loop・Planner=Opus5・Executor=Sonnet5)。
        背景: build v187はreceiveChoice()のisPartnerAtk分岐に「相方上がり通し」ガードを新設したが、
@@ -3256,6 +3272,8 @@ body.nashi-left #actionbar{justify-content:flex-start}
 #rv-graph svg{display:block;width:100%;height:auto}
 #rv-graph .gx-pin{cursor:pointer}
 #rv-graph .gx-pin:hover circle{stroke:var(--kin);stroke-width:1}
+#rv-graph .gx-pin:focus-visible{outline:none}
+#rv-graph .gx-pin:focus-visible circle{stroke:var(--kinari);stroke-width:2}
 #rv-graph .gx-pin.tour-now .gx-tourring{animation:tourPinPulse 1.3s var(--ease-soft) infinite}
 @keyframes tourPinPulse{0%,100%{opacity:.5}50%{opacity:1}}
 #rv-graph .gx-head{display:flex;align-items:center;gap:6px;font-size:.58rem;color:var(--gin-d);margin-bottom:2px}
@@ -3295,6 +3313,17 @@ body.nashi-left #actionbar{justify-content:flex-start}
 #advicebox .av-foot{font-size:.58rem;color:var(--gin-d);margin-top:3px;line-height:1.4}
 #review{display:none;flex-direction:column;gap:8px;padding:10px;max-height:86dvh;overflow-y:auto}
 #review.show{display:flex}
+#rv-lesson{display:flex;flex-direction:column;gap:7px;padding:11px 12px;border:1px solid var(--kin);
+  border-radius:10px;background:rgba(64,52,24,.32);scroll-margin-top:3.3rem}
+#rv-lesson:focus-visible{outline:3px solid var(--kin);outline-offset:2px}
+.rv-lesson-head{display:flex;align-items:baseline;gap:9px;flex-wrap:wrap}
+.rv-lesson-head h3{font-size:.88rem;color:var(--kinari);letter-spacing:.08em}
+.rv-lesson-lens{font-size:.62rem;color:var(--aoi);border:1px solid var(--aoi);border-radius:999px;padding:1px 7px}
+#rv-lesson-body{font-size:.74rem;color:var(--gin);line-height:1.65}
+#rv-lesson-body .rvlf{color:var(--kinari);font-weight:600}
+#rv-lesson-actions{display:flex;gap:7px;flex-wrap:wrap}
+#rv-lesson-actions .btn{padding:6px 12px}
+#rv-lesson[hidden]{display:none}
 /* 振り返り中は手駒・操作・助言は不要 → 隠して振り返り画面を広く使う */
 body.reviewing #handarea,body.reviewing #actionbar,body.reviewing #advice-pill,body.reviewing #mode-banner{display:none!important}
 /* 振り返り中は盤面の駒を一回り小さくして場所を空け、振り返りを広く使う */
@@ -3316,7 +3345,8 @@ body.reviewing #board{gap:4px;padding:7px}
 #rv-worst.show{display:flex}
 #rv-worst .rw-head{color:var(--gin-d);font-size:.6rem;margin-bottom:2px}
 #rv-worst .rw-item{display:grid;grid-template-columns:1.6em 1.4em 4.6em 1fr;gap:6px;
-  align-items:baseline;padding:3px 4px;border-radius:5px;cursor:pointer}
+  align-items:baseline;padding:3px 4px;border:0;border-radius:5px;cursor:pointer;width:100%;
+  background:transparent;color:inherit;text-align:left;font:inherit}
 #rv-worst .rw-item:hover{background:var(--ink2)}
 #rv-worst .rw-item.cur{background:var(--ink2);outline:1px solid rgba(194,163,93,.5)}
 #rv-worst .rw-rank{color:var(--gin-d);text-align:right;font-variant-numeric:tabular-nums}
@@ -3324,6 +3354,7 @@ body.reviewing #board{gap:4px;padding:7px}
 #rv-worst .rw-glyph.study{color:var(--kin)}
 #rv-worst .rw-no{color:var(--kinari);white-space:nowrap}
 #rv-worst .rw-metrics{color:var(--gin)}
+@media(pointer:coarse){#rv-lesson-actions .btn,#rv-worst .rw-item{min-height:44px}}
 #rv-tour{display:none;flex-direction:column;gap:5px;margin:0 0 4px;padding:9px 10px;
   background:rgba(40,44,24,.55);border:1px solid var(--kinari);border-radius:9px;
   max-height:25vh;overflow-y:auto}
@@ -3690,6 +3721,72 @@ body.cud .pcard .phead .nm:not(.ally){color:#e8b89f}  /* 敵=暖色系で寒色�
   #actionbar{min-height:38px}
   #statusline{padding:4px 8px}
 }
+/* PHASE14_MOBILE_A11Y_CSS_START
+   スマートフォンでは「手番・攻め・次の操作」を一列で再構成し、粗いポインタの
+   有効操作領域を全画面44 CSS pxへ統一する。見た目の小さいcheckboxはlabel全体をhit areaにする。 */
+#turn-focus{display:none}
+#turn-focus[hidden]{display:none!important}
+.tf-step{min-width:0;display:flex;flex-direction:column;gap:2px;padding:5px 6px;border:1px solid var(--hair2);
+  border-radius:7px;background:rgba(20,28,30,.52)}
+.tf-label{font-size:.54rem;color:var(--gin-d);letter-spacing:.12em;line-height:1.2}
+.tf-value{font-size:.7rem;color:var(--gin);font-weight:600;line-height:1.25;overflow-wrap:anywhere}
+.tf-step[data-active="true"]{border:2px solid var(--kin);padding:4px 5px;background:rgba(194,163,93,.12)}
+.tf-step[data-active="true"] .tf-value{color:var(--kinari)}
+.tf-step[data-active="true"] .tf-value::before{content:"▶ ";color:var(--kin)}
+@media (max-width:619px){
+  #turn-focus:not([hidden]){display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px}
+  #actionbar{position:sticky;bottom:0;z-index:25;min-height:44px;padding:6px 4px calc(6px + env(safe-area-inset-bottom));
+    margin:0 -2px;background:linear-gradient(180deg,rgba(13,19,29,.96),var(--ink0));border-top:1px solid var(--hair2)}
+  #actionbar>span{order:-2;flex:1 0 100%;text-align:left;font-size:.72rem;line-height:1.35}
+  #actionbar .btn.primary,#actionbar .btn.rec{order:-1;flex:1 1 9em;font-weight:700}
+  #actionbar .btn:not(.primary):not(.rec){flex:0 1 auto}
+}
+body.reviewing #turn-focus{display:none!important}
+@media (pointer:coarse){
+  button,select,summary,a[href],
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),textarea{
+    min-width:44px;min-height:44px}
+  a[href]{display:inline-flex;align-items:center}
+  button.jk-chip,button.gl-chip{display:inline-flex;align-items:center;justify-content:center;padding:9px 6px;vertical-align:middle}
+  input[type="range"]{min-width:44px;min-height:44px}
+  input[type="checkbox"],input[type="radio"]{width:24px;height:24px;min-width:24px;min-height:24px}
+  label.toggle,label.mg-off,label.tour-auto,#review .rv-head label,
+  label.touch-choice{display:flex;min-height:44px;align-items:center}
+  [role="button"]:not(.koma):not(.gx-pin){min-width:44px;min-height:44px}
+  #actionbar{min-height:44px}
+  #rv-seek-row #rv-seek{height:44px}
+  .rv-item,#rv-worst .rw-item{min-height:44px}
+  /* SVG pinは小さい印へ直接tapさせず、直下の44pxランキングbuttonか大きなgraph面を同等経路にする。 */
+  #rv-graph .gx-pin{pointer-events:none}
+}
+/* 320px級は8枚を縮小1段にせず4枚×2段へ。38px駒+左右3pxで非重複44px hit area。 */
+@media (pointer:coarse) and (max-width:375px){
+  #hand{max-width:170px;margin-inline:auto;flex-wrap:wrap;gap:10px 6px;overflow:visible}
+  #hand .koma{--koma-w:38px;--koma-h:47px;min-width:38px}
+  #hand .koma-slot{min-width:38px}
+  #hand .koma::before{inset:-4px -3px}
+}
+/* PHASE14_MOBILE_A11Y_CSS_END */
+/* PHASE15_DEVICE_AUDIT_CSS_START */
+.setup-a11y-audit{align-self:flex-start;margin-top:-7px}
+.a11y-audit-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin:8px 0 12px}
+.a11y-audit-summary>div{border:1px solid var(--hair2);border-radius:8px;padding:8px;text-align:center}
+.a11y-audit-summary b{display:block;font-size:1rem;color:var(--kinari)}
+.a11y-audit-summary span{font-size:.62rem;color:var(--gin)}
+.a11y-audit-status{display:inline-block;padding:3px 8px;border:1px solid var(--hair2);border-radius:999px;
+  font-size:.7rem;font-weight:700;letter-spacing:.05em}
+.a11y-audit-status.pass{color:var(--aoi);border-color:var(--aoi)}
+.a11y-audit-status.fail{color:var(--shu);border-color:var(--shu)}
+.a11y-audit-status.na{color:var(--kin);border-color:var(--kin)}
+.a11y-audit-list{max-height:180px;overflow:auto;margin:8px 0;padding:0;list-style:none!important}
+.a11y-audit-list li{display:grid;grid-template-columns:1fr auto;gap:8px;padding:6px 2px;border-bottom:1px solid var(--hair);
+  font-size:.7rem;line-height:1.45}
+.a11y-audit-list code{color:var(--shu);font-size:.68rem;white-space:nowrap}
+.a11y-sr-test{margin:12px 0;padding:10px;border:1px solid var(--hair2);border-radius:9px}
+.a11y-sr-test h3{font-size:.78rem;color:var(--kinari);margin-bottom:5px}
+.a11y-sr-actions{display:flex;flex-wrap:wrap;gap:7px;margin-top:7px}
+.a11y-sr-actions [aria-pressed="true"]{border-color:var(--kin);box-shadow:0 0 0 1px var(--kin) inset}
+/* PHASE15_DEVICE_AUDIT_CSS_END */
 .jk-chip{display:inline;border:0;background:rgba(116,176,161,.16);color:var(--aoi);
   border-bottom:1px dotted var(--aoi);padding:0 2px;border-radius:3px;cursor:pointer;font:inherit}
 .jk-chip:hover{background:rgba(116,176,161,.30)}
@@ -3980,7 +4077,7 @@ body.noto #wincut.show .wc-label{animation:wcFude .62s cubic-bezier(.2,.9,.3,1.2
 
 <!-- ================= 設定画面 ================= -->
 <div id="setup-screen">
-  <span class="setup-version" aria-label="ごいたブラウザゲーム バージョン190">v190</span>
+  <span class="setup-version" aria-label="ごいたブラウザゲーム バージョン197">v197</span>
   <div class="title-block">
     <h1 class="serif">ごいた</h1>
     <div class="title-sub">能登・宇出津に伝わる竹駒の伝承遊戯</div>
@@ -4162,6 +4259,7 @@ body.noto #wincut.show .wc-label{animation:wcFude .62s cubic-bezier(.2,.9,.3,1.2
     <button class="btn primary" id="btn-start">対局をはじめる</button>
     <button class="btn" id="btn-watch">観戦（全席AI）</button>
   </div>
+  <button type="button" class="title-link setup-a11y-audit" id="btn-a11y-audit-setup">表示・読み上げの実機診断</button>
   <div id="setup-note">AIはあなたの伏せ駒の種類を見ません。五しの相談は公式どおり、保持者の相方が自分の手駒だけを見て判断します。</div>
   <div class="footer-links" role="group" aria-label="宇出津のごいた案内">
     <button type="button" class="title-link" id="btn-ushitsu-info">宇出津とごいた — 大会・保存会情報</button>
@@ -4190,6 +4288,7 @@ body.noto #wincut.show .wc-label{animation:wcFude .62s cubic-bezier(.2,.9,.3,1.2
       <button class="btn small ghost" id="btn-kifu" disabled>棋譜</button>
       <button class="btn small ghost" id="btn-summary" aria-label="現局面を読み上げ（連続押しで詳細）">現局面</button>
       <button class="btn small ghost" id="btn-share-live" aria-label="この局面を自視点で共有">共有</button>
+      <button class="btn small ghost" id="btn-a11y-audit">端末診断</button>
     </div>
     <button class="btn small ghost" id="btn-more" aria-haspopup="true" aria-expanded="false" aria-label="その他のメニュー">⋯</button>
     <input type="file" id="file-career" accept=".json" style="display:none">
@@ -4202,6 +4301,11 @@ body.noto #wincut.show .wc-label{animation:wcFude .62s cubic-bezier(.2,.9,.3,1.2
   <div id="sr-live" class="sr-only" aria-live="polite" aria-atomic="true"></div>
   <div id="sr-alert" class="sr-only" role="alert" aria-live="assertive" aria-atomic="true"></div>
   <div id="mode-banner"></div>
+  <section id="turn-focus" hidden aria-hidden="true">
+    <div class="tf-step" id="tf-turn-step"><span class="tf-label">手番</span><span class="tf-value" id="tf-turn">―</span></div>
+    <div class="tf-step" id="tf-pending-step"><span class="tf-label">攻め</span><span class="tf-value" id="tf-pending">―</span></div>
+    <div class="tf-step" id="tf-action-step"><span class="tf-label">操作</span><span class="tf-value" id="tf-action">―</span></div>
+  </section>
   <div id="summary-toast" aria-hidden="true"></div>
 
   <div id="board" role="main" aria-label="対局盤面" tabindex="-1">
@@ -4242,7 +4346,7 @@ body.noto #wincut.show .wc-label{animation:wcFude .62s cubic-bezier(.2,.9,.3,1.2
   </div>
 
   <div id="actionbar"></div>
-  <div id="advice-pill" aria-live="polite"></div>
+  <div id="advice-pill"></div>
 
   <div id="sheet-scrim" aria-hidden="true"></div>
   <aside id="analysis-sheet" role="dialog" aria-modal="true" aria-labelledby="analysis-sheet-title" aria-hidden="true" inert>
@@ -4255,8 +4359,8 @@ body.noto #wincut.show .wc-label{animation:wcFude .62s cubic-bezier(.2,.9,.3,1.2
     </div>
   </aside>
 
-  <div class="panel" id="review" role="complementary" aria-label="振り返り">
-    <div class="rv-head"><span class="ttl serif">振り返り</span>
+  <div class="panel" id="review" role="complementary" aria-labelledby="rv-title">
+    <div class="rv-head"><h2 class="ttl serif" id="rv-title">振り返り</h2>
       <label><input type="checkbox" id="rv-human">人間の手のみ</label>
       <label><input type="checkbox" id="rv-coach" checked>実戦情報コーチ</label>
       <label><input type="checkbox" id="rv-partner">相方の視点</label>
@@ -4266,8 +4370,16 @@ body.noto #wincut.show .wc-label{animation:wcFude .62s cubic-bezier(.2,.9,.3,1.2
       <span class="sp"></span>
       <button class="btn small" id="rv-share">局面を共有</button>
       <button class="btn small" id="rv-close">対局へ戻る</button></div>
+    <section id="rv-lesson" role="region" aria-labelledby="rv-lesson-title" tabindex="-1">
+      <div class="rv-lesson-head"><span class="rv-lesson-lens">実戦情報レンズ（主評価）</span><h3 id="rv-lesson-title">今回の課題</h3></div>
+      <div id="rv-lesson-body"></div>
+      <div id="rv-lesson-actions">
+        <button type="button" class="btn primary" id="rv-lesson-redo">60秒で解き直す</button>
+        <button type="button" class="btn" id="rv-lesson-later">あとで</button>
+      </div>
+    </section>
     <div id="rv-tour" role="region" aria-label="悪手ツアー"></div>
-    <div id="rv-graph" role="img" aria-label="形勢（南北勝率）推移グラフ。⚠ピンをタップで解き直し"></div>
+    <div id="rv-graph" role="region" aria-label="形勢（南北勝率）推移グラフ。学習ピンはタップまたはEnterキーで解き直し"></div>
     <div id="rv-seek-row">
       <button class="btn small" type="button" id="rv-back" aria-label="前の手へ">◀</button>
       <input type="range" id="rv-seek" min="0" max="0" value="0" step="1" aria-label="手数シークバー（ドラッグで局面を再現）">
@@ -7374,7 +7486,331 @@ const G = (() => {
     }
   };
   const _ddMemoPool = new Map();   // 標準/小探索(nodeCap<1e6)用の高速Map(lever b: clear()再利用)
+  /* ================================================================
+   * build v197「Packed DD kernel (32bitスロット・ビットボード)」base=v196。
+   * 計画: PLAN_v196_PackedDD_Opus5.md (goita-dev-loop / Planner=Opus5 / Executor=Sonnet5)
+   *
+   * 完全情報DD探索(ddRootValues配下)を、文字列鍵・配列splice・一時オブジェクト生成を
+   * 持たない整数状態機械へ置き換える。legacy実装(ddSearch/ddApply/ddUndo/ddKey/ddActions/
+   * _ddMemo/_ddMemoPool)は1行も変更せず、ddRootValues を ddRootValuesLegacy へ改名して
+   * 薄いディスパッチャを被せるだけに留める(PACKED_DD=0 で v196 と完全NULL等価)。
+   *
+   * PACKED_DD: 0=legacy(既定・v196完全等価) / 1=packed / 2=シャドー比較(値のみ)
+   * 既定値0の変更は、計画書 Stage 3 の実機ゲート(iPhone Safari / Android Chrome)
+   * 通過まで行わない。起動時 #pkdd=0|1|2 で切替可能(実機計測用)。
+   * ================================================================ */
+  const PKDD = (function () {
+    /* ================================================================
+     * Packed DD kernel — 完全情報DD探索の32bitスロット・ビットボード実装
+     * 計画: PLAN_v196_PackedDD_Opus5.md (goita-dev-loop / Planner=Opus5 / Executor=Sonnet5)
+     *
+     * 設計要点 (計画書 §4.1-4.3):
+     *  (1) 各席の手駒は最大8枚(32枚÷4席)。ゆえに 4席×8スロット=32スロットが
+     *      uint32 1語 `occ` に収まる。BigInt・WebAssembly・TypedArray以外の依存なし。
+     *  (2) `occ` は「手駒配列の物理位置」であり、legacy の `[...new Set(hand)]` の
+     *      初出順および `hand.indexOf(koma)` を再現するために使う。
+     *  (3) 置換表の鍵は `occ` ではなく席ごとの `cnt`(8駒種×4bitニブルカウント)を使う。
+     *      legacy `ddKey()` の等価類は駒種カウントであり、物理位置で鍵を作ると鍵が
+     *      細かくなりヒット率が落ちてノード数が増える(=速いが非等価な探索になる)。
+     *  (4) `ouV`(ddKeyの王公開数)は履歴から採取する。DD状態の履歴には他席の伏せが
+     *      koma:null にマスクされたエントリが含まれるため、手駒から導出すると値が変わる。
+     *  (5) 置換表への格納は再帰前のプローブ位置を再利用してはならない(子探索中に
+     *      同一スロットへ別エントリが入るため)。格納時に再プローブする。
+     *  (6) 王攻め解禁の3条件 (a)王2枚保有 (b)場に攻め/受けで出た王 (c)自席の伏せ王 は
+     *      独立に保持する。単一フラグへ縮約しない。
+     *
+     * 契約: rootValues() は legacy ddRootValues() と同じ戻り値(Map / null)を返す。
+     *       不変条件を満たさない局面では undefined を返し、呼び出し元が legacy へ委譲する。
+     * ================================================================ */
+    const SEATS = ["N","W","S","E"];
+    const TYPES = ["王","飛","角","金","銀","馬","香","し"];   // KOMA_TYPES_ARR と同順
+    const TIDX = {}; TYPES.forEach((k,i)=>TIDX[k]=i);
+    const PTS = [50,40,40,30,30,20,20,10];
+    const UNCUT = [0,0,0,0,0,0,1,1];                            // 香・し は王で切れない
+    const PHASE_I = {bury:0, attack:1, respond:2, over:3};
+
+    /* ---- pack時に確定し探索中は不変 ---- */
+    const slotType     = new Int8Array(32);      // グローバルスロット(seat*8+idx) → 駒種0..7
+    const seatTypeMask = new Uint32Array(32);    // [seat*8+type] → その席のその駒種のスロット群
+
+    /* ---- 探索中の可変状態 ---- */
+    let occ = 0;                                 // bit(seat*8+idx) = 在席。全4席の手駒配置が1語
+    const cnt  = new Uint32Array(4);             // 席ごと 8駒種×4bit ニブルカウント(置換表鍵)
+    const hlen = new Int32Array(4);              // 席ごと手駒枚数
+    const openKind = new Int8Array(4);           // 0=なし 1=伏せ 2=受け (最終行のatk===nullのdef)
+    const openKoma = new Int8Array(4);
+    const buriedKing = new Int8Array(4);         // 王攻め解禁(c): 自席の伏せ王
+    let actor=0, phase=0, attacker=-1, pending=-1, respIdx=0;
+    let ouV=0;                                   // ddKey用: 履歴中の王出現数
+    let kingPub=0;                               // 王攻め解禁(b): 場に攻め/受けで出た王
+
+    const U      = new Int32Array(512*10);       // undoレコード (深さ×10語)
+    const ACTBUF = new Int32Array(512*10);       // 着手バッファ (深さ×10語)
+
+    /* ---- 置換表: オープンアドレス法 + 世代印(クリア不要) ---- */
+    let MCAP = 1<<14, MMASK = MCAP-1;
+    let mK = new Uint32Array(MCAP*5), mV = new Float64Array(MCAP), mG = new Uint32Array(MCAP);
+    let gen = 0, entries = 0;
+    function grow(){
+      const oK=mK, oV=mV, oG=mG, oCap=MCAP;
+      MCAP <<= 1; MMASK = MCAP-1;
+      mK = new Uint32Array(MCAP*5); mV = new Float64Array(MCAP); mG = new Uint32Array(MCAP);
+      for (let i=0;i<oCap;i++){
+        if (oG[i]!==gen) continue;
+        const b=i*5, k0=oK[b],k1=oK[b+1],k2=oK[b+2],k3=oK[b+3],k4=oK[b+4];
+        let h=2166136261;
+        h=Math.imul(h^k0,16777619); h=Math.imul(h^k1,16777619);
+        h=Math.imul(h^k2,16777619); h=Math.imul(h^k3,16777619); h=Math.imul(h^k4,16777619);
+        let p=(h^(h>>>15))&MMASK;
+        while (mG[p]===gen) p=(p+1)&MMASK;
+        mG[p]=gen; const nb=p*5;
+        mK[nb]=k0;mK[nb+1]=k1;mK[nb+2]=k2;mK[nb+3]=k3;mK[nb+4]=k4; mV[p]=oV[i];
+      }
+    }
+
+    let budget = 0, failed = false, NODES = 0;
+    let evalFn = null, termCache = null;
+
+    /* 不変条件チェック: 満たさない局面は packed を使わず legacy へ委譲する */
+    function packable(st){
+      for (let s=0;s<4;s++){
+        const nm = SEATS[s];
+        if (st.hands[nm].length > 8) return false;                 // 理論上発生しないが弾く
+        const rows = st.board[nm];
+        const last = rows.length ? rows[rows.length-1] : null;
+        // legacy は伏せkoma=null時に openByte が NaN 経由で0になる。再現より委譲が安全。
+        if (last && last.atk === null && last.def && last.def.koma == null) return false;
+      }
+      return true;
+    }
+    function pack(st){
+      slotType.fill(-1); seatTypeMask.fill(0);
+      occ = 0; cnt.fill(0); hlen.fill(0);
+      for (let s=0;s<4;s++){
+        const h = st.hands[SEATS[s]];
+        for (let i=0;i<h.length;i++){
+          const t = TIDX[h[i]], g = s*8+i;
+          slotType[g]=t; occ |= (1<<g)>>>0;
+          seatTypeMask[s*8+t] |= (1<<g)>>>0;
+          cnt[s] += 1<<(4*t);
+        }
+        hlen[s]=h.length;
+        const rows = st.board[SEATS[s]];
+        const last = rows.length ? rows[rows.length-1] : null;
+        if (last && last.atk === null && last.def){ openKind[s] = last.def.type[0]==="b"?1:2; openKoma[s]=TIDX[last.def.koma]; }
+        else { openKind[s]=0; openKoma[s]=-1; }
+        buriedKing[s]=0;
+      }
+      ouV=0; kingPub=0;
+      for (const h of st.history){                    // (4) 履歴から採取。手駒から導出しない
+        if (h.koma === "王"){
+          ouV++;
+          if (h.act==="attack"||h.act==="receive") kingPub=1;
+          else if (h.act==="bury") buriedKing[SEATS.indexOf(h.seat)]=1;
+        }
+      }
+      actor = SEATS.indexOf(st.actor);
+      phase = PHASE_I[st.phase];
+      attacker = st.attacker ? SEATS.indexOf(st.attacker) : -1;
+      pending = st.pendingAttack ? TIDX[st.pendingAttack] : -1;
+      respIdx = st.respIdx|0;
+    }
+
+    /* legacy ddKey の非カウント部を1語へ。openByte の定義は legacy と同一(伏せ0/受け8+駒種、無=16) */
+    function metaKey(){
+      const ob = openKind[actor] ? (openKind[actor]===1?0:8)+openKoma[actor] : 16;
+      return (phase | (actor<<2) | ((pending+1)<<4) | ((attacker+1)<<8) | (respIdx<<11) | (ouV<<13) | (ob<<15))>>>0;
+    }
+    function memoFind(mk){
+      let h = 2166136261;
+      h = Math.imul(h ^ cnt[0],16777619); h = Math.imul(h ^ cnt[1],16777619);
+      h = Math.imul(h ^ cnt[2],16777619); h = Math.imul(h ^ cnt[3],16777619);
+      h = Math.imul(h ^ mk,16777619);
+      let p = (h ^ (h>>>15)) & MMASK;
+      for(;;){
+        if (mG[p] !== gen) return ~p;
+        const b = p*5;
+        if (mK[b]===cnt[0]&&mK[b+1]===cnt[1]&&mK[b+2]===cnt[2]&&mK[b+3]===cnt[3]&&mK[b+4]===mk) return p;
+        p = (p+1)&MMASK;
+      }
+    }
+    function memoStore(mk, v){
+      let p = memoFind(mk);                       // (5) 再帰前の位置を使い回さず再プローブする
+      if (p>=0){ mV[p]=v; return; }
+      p = ~p; mG[p]=gen; const b=p*5;
+      mK[b]=cnt[0];mK[b+1]=cnt[1];mK[b+2]=cnt[2];mK[b+3]=cnt[3];mK[b+4]=mk; mV[p]=v;
+      if (++entries > (MCAP*0.7)) grow();
+    }
+
+    /* 終局値キャッシュ: 鍵に koma を含める(評価関数差し替え時に静かに壊れるため) */
+    function termVal(kind, winner, pts, dbl, komaT, nextParent){
+      const ck = (komaT<<27)|(kind<<20)|((winner+1)<<16)|(pts<<6)|((nextParent+1)<<2)|(dbl?1:0);
+      const hit = termCache.get(ck); if (hit !== undefined) return hit;
+      let res;
+      if (kind===2) res = {winner:null, pts:0, draw:true, nextParent:SEATS[nextParent]};
+      else if (kind===1) res = {winner:SEATS[winner], pts, dbl:false, koma:TYPES[komaT], recvFinish:true};
+      else res = {winner:SEATS[winner], pts, dbl:!!dbl, koma:TYPES[komaT]};
+      const v = evalFn(res); termCache.set(ck, v); return v;
+    }
+
+    /* 着手符号: (kind<<3)|type   kind: 0=bury 1=attack 2=pass 3=receive */
+    function genActions(depth){
+      const base = depth*10; let n=0;
+      if (phase===2){                                   // respond: legacy legalReceives の順序
+        ACTBUF[base]= (2<<3); n=1;                      //   pass が先頭
+        if (pending>=0){
+          if (seatTypeMask[actor*8+pending] & occ) ACTBUF[base+n++] = (3<<3)|pending;   // 同駒受け
+          if (pending!==0 && !UNCUT[pending] && (seatTypeMask[actor*8] & occ)) ACTBUF[base+n++] = (3<<3);  // 王切り
+        }
+        return n;
+      }
+      // bury / attack: 手駒配列の初出順に駒種を列挙 (= legacy [...new Set(hand)])
+      let m = occ & (0xFF << (actor*8));
+      let seen = 0;
+      const kind = phase===0?0:1;
+      while (m){
+        const b = m & (-m), g = 31 - Math.clz32(b), t = slotType[g];
+        if (!((seen>>>t)&1)){ seen |= 1<<t; ACTBUF[base+n++] = (kind<<3)|t; }
+        m ^= b;
+      }
+      if (kind===1){                                    // (6) 王攻め解禁の3条件を独立に判定
+        const kingOk = (cnt[actor]&0xF)===2 || kingPub || buriedKing[actor];
+        if (!kingOk){
+          let w=0; for(let i=0;i<n;i++){ const t=ACTBUF[base+i]&7; if(t!==0) ACTBUF[base+w++]=ACTBUF[base+i]; }
+          if (w>0) n=w;                                 // 王しか無ければ強制 (legacy: out.length? out : ks)
+        }
+      }
+      return n;
+    }
+
+    let TERMV = 0;
+    function apply(a, depth){                           // 戻り値 1 = 終局(値は TERMV)
+      const u = depth*10, kind = a>>>3, t = a&7;
+      U[u]=kind; U[u+1]=actor; U[u+2]=phase; U[u+3]=attacker; U[u+4]=pending;
+      U[u+5]=respIdx; U[u+6]=-1;
+      U[u+7]=(openKind[actor]<<4)|(openKoma[actor]&15);
+      U[u+8]=ouV|(kingPub<<4)|(buriedKing[actor]<<5);
+      if (kind===2){                                    // pass
+        respIdx++;
+        if (respIdx<3){ actor = (attacker+1+respIdx)&3; }
+        else {
+          actor = attacker; pending = -1;
+          if (hlen[attacker] < 2){ phase=3; TERMV = termVal(2,-1,0,0,0,attacker); return 1; }  // 流局
+          phase = 0;                                    // 流れた → 攻め手が伏せ直し
+        }
+        return 0;
+      }
+      const mm = seatTypeMask[actor*8+t] & occ;         // その駒種の最下位スロット = legacy indexOf
+      const b = mm & (-mm), g = 31 - Math.clz32(b);
+      U[u+6]=g;
+      occ ^= b; cnt[actor] -= 1<<(4*t); hlen[actor]--;
+      if (t===0) ouV++;
+      if (kind===0){                                    // bury
+        if (t===0) buriedKing[actor]=1;
+        openKind[actor]=1; openKoma[actor]=t;
+        phase = 1;
+        return 0;
+      }
+      if (kind===1){                                    // attack
+        const dbl = (openKind[actor]===1 && openKoma[actor]===t) ? 1 : 0;   // 同駒2倍
+        if (t===0) kingPub=1;
+        openKind[actor]=0; openKoma[actor]=-1;          // 行が閉じる(またはdef:nullの新行)
+        if (hlen[actor]===0){ phase=3; TERMV = termVal(0,actor,PTS[t]*(dbl?2:1),dbl,t,-1); return 1; }
+        attacker = actor; pending = t; respIdx = 0; actor = (actor+1)&3; phase = 2;
+        return 0;
+      }
+      if (t===0) kingPub=1;                             // receive
+      openKind[actor]=2; openKoma[actor]=t;
+      if (hlen[actor]===0){ phase=3; TERMV = termVal(1,actor,PTS[pending],0,pending,-1); return 1; }  // 受け上がり
+      pending = -1; phase = 1;
+      return 0;
+    }
+    function undo(depth){
+      const u = depth*10, kind=U[u], ac=U[u+1];
+      phase=U[u+2]; attacker=U[u+3]; pending=U[u+4]; respIdx=U[u+5];
+      const g=U[u+6];
+      if (g>=0){ const b=(1<<g)>>>0; occ|=b; const t=slotType[g]; cnt[ac]+=1<<(4*t); hlen[ac]++; }
+      openKind[ac]=U[u+7]>>4; openKoma[ac]=(U[u+7]&15)===15?-1:(U[u+7]&15);
+      const f=U[u+8]; ouV=f&15; kingPub=(f>>4)&1; buriedKing[ac]=(f>>5)&1;
+      actor=ac;
+    }
+
+    function search(depth, povTeam){
+      NODES++;
+      if (--budget <= 0){ failed=true; return 0; }      // legacy: --budget.n<=0 → null
+      const mk = metaKey();
+      const p = memoFind(mk);
+      if (p>=0) return mV[p];
+      const maximizing = ((actor&1)===povTeam);         // SEATS index の偶奇 = NS/EW
+      let best = maximizing ? -Infinity : Infinity;
+      const n = genActions(depth), base = depth*10;
+      for (let i=0;i<n;i++){
+        const a = ACTBUF[base+i];
+        const term = apply(a, depth);
+        const v = term ? TERMV : search(depth+1, povTeam);
+        undo(depth);
+        if (failed) return 0;
+        if (maximizing){ if (v>best) best=v; } else { if (v<best) best=v; }
+      }
+      memoStore(mk, best);
+      return best;
+    }
+
+    /* legacy ddRootValues と同契約。undefined = 不変条件外につき legacy へ委譲されたい */
+    function rootValues(st, seatStr, ef, actions, nodeCap){
+      if (!packable(st)) return undefined;
+      evalFn = ef; termCache = new Map();
+      pack(st);
+      budget = nodeCap || 300000; failed=false;
+      gen++; if (gen===0){ mG.fill(0); gen=1; } entries = 0;
+      const povTeam = SEATS.indexOf(seatStr)&1;
+      const out = new Map();
+      for (const a0 of actions){
+        const a = a0.type==="pass"    ? (2<<3)
+                : a0.type==="bury"    ? (0<<3)|TIDX[a0.koma]
+                : a0.type==="attack"  ? (1<<3)|TIDX[a0.koma]
+                :                       (3<<3)|TIDX[a0.koma];
+        const term = apply(a, 0);
+        const v = term ? TERMV : search(1, povTeam);
+        undo(0);
+        if (failed) return null;                        // 予算超過 → legacy と同じく null
+        out.set(a0.koma !== undefined ? a0.koma : null, v);
+      }
+      return out;
+    }
+
+    return {rootValues: rootValues, nodes: function () { return NODES; }, resetNodes: function () { NODES = 0; }};
+  })();
+  let PACKED_DD = 0;
+  const PACKED_DD_DIAG = {calls: 0, packed: 0, fallback: 0, budgetNull: 0, shadow: 0, mismatch: 0};
+  function setPackedDd(n) { PACKED_DD = n | 0; return PACKED_DD; }
+  function packedDdDiag() { return Object.assign({mode: PACKED_DD}, PACKED_DD_DIAG); }
+  function packedDdSameValues(a, b) {
+    if (a === null || b === null) return a === b;
+    if (a.size !== b.size) return false;
+    for (const [k, v] of a) {
+      if (!b.has(k)) return false;
+      const w = b.get(k);
+      if (!(v === w || (Number.isNaN(v) && Number.isNaN(w)))) return false;   // bit一致を要求
+    }
+    return true;
+  }
   function ddRootValues(st, seat, evalFn, actions, nodeCap) {
+    if (!PACKED_DD) return ddRootValuesLegacy(st, seat, evalFn, actions, nodeCap);
+    PACKED_DD_DIAG.calls++;
+    let r;
+    try { r = PKDD.rootValues(st, seat, evalFn, actions, nodeCap); }
+    catch (e) { r = undefined; }                      // 不変条件違反・想定外は必ずlegacyへ後退
+    if (r === undefined) { PACKED_DD_DIAG.fallback++; return ddRootValuesLegacy(st, seat, evalFn, actions, nodeCap); }
+    if (PACKED_DD === 1) { PACKED_DD_DIAG.packed++; if (r === null) PACKED_DD_DIAG.budgetNull++; return r; }
+    // PACKED_DD===2: シャドー比較。値のみを突き合わせ、返すのは常にlegacy値。
+    // (ノード数一致は phase17/run_nodecount_diff.js が計測用ビルドで検証する)
+    const legacy = ddRootValuesLegacy(st, seat, evalFn, actions, nodeCap);
+    PACKED_DD_DIAG.shadow++;
+    if (!packedDdSameValues(legacy, r)) PACKED_DD_DIAG.mismatch++;
+    return legacy;
+  }
+  function ddRootValuesLegacy(st, seat, evalFn, actions, nodeCap) {
     const budget = {n: nodeCap || 300000};
     // 大探索(促成/振り返り: nodeCap>=1e6)はコンパクトmemoで<300MB。標準(小探索)は高速Mapを再利用
     // (コンパクトの占有fillクリアが小探索では割高で標準テンポを損なうため。しきい値で経路分離)。
@@ -9788,7 +10224,8 @@ const G = (() => {
           certainCore, aiVoteAsPartner, dealOnce, goshiCheck,
           estimatePartnerShi, shouldShiAttack, partnerShiSignalAt,
           setShiTeam, setShiTeamTh, setShiTeamThGoshi, setShiTeamDefault,
-          playOneGame, selfTest};
+          playOneGame, selfTest,
+          setPackedDd, packedDdDiag};
 })();
 if (typeof module !== "undefined" && module.exports) module.exports = G;
 
@@ -12874,7 +13311,331 @@ const G_B = (() => {
     }
   };
   const _ddMemoPool = new Map();   // 標準/小探索(nodeCap<1e6)用の高速Map(lever b: clear()再利用)
+  /* ================================================================
+   * build v197「Packed DD kernel (32bitスロット・ビットボード)」base=v196。
+   * 計画: PLAN_v196_PackedDD_Opus5.md (goita-dev-loop / Planner=Opus5 / Executor=Sonnet5)
+   *
+   * 完全情報DD探索(ddRootValues配下)を、文字列鍵・配列splice・一時オブジェクト生成を
+   * 持たない整数状態機械へ置き換える。legacy実装(ddSearch/ddApply/ddUndo/ddKey/ddActions/
+   * _ddMemo/_ddMemoPool)は1行も変更せず、ddRootValues を ddRootValuesLegacy へ改名して
+   * 薄いディスパッチャを被せるだけに留める(PACKED_DD=0 で v196 と完全NULL等価)。
+   *
+   * PACKED_DD: 0=legacy(既定・v196完全等価) / 1=packed / 2=シャドー比較(値のみ)
+   * 既定値0の変更は、計画書 Stage 3 の実機ゲート(iPhone Safari / Android Chrome)
+   * 通過まで行わない。起動時 #pkdd=0|1|2 で切替可能(実機計測用)。
+   * ================================================================ */
+  const PKDD = (function () {
+    /* ================================================================
+     * Packed DD kernel — 完全情報DD探索の32bitスロット・ビットボード実装
+     * 計画: PLAN_v196_PackedDD_Opus5.md (goita-dev-loop / Planner=Opus5 / Executor=Sonnet5)
+     *
+     * 設計要点 (計画書 §4.1-4.3):
+     *  (1) 各席の手駒は最大8枚(32枚÷4席)。ゆえに 4席×8スロット=32スロットが
+     *      uint32 1語 `occ` に収まる。BigInt・WebAssembly・TypedArray以外の依存なし。
+     *  (2) `occ` は「手駒配列の物理位置」であり、legacy の `[...new Set(hand)]` の
+     *      初出順および `hand.indexOf(koma)` を再現するために使う。
+     *  (3) 置換表の鍵は `occ` ではなく席ごとの `cnt`(8駒種×4bitニブルカウント)を使う。
+     *      legacy `ddKey()` の等価類は駒種カウントであり、物理位置で鍵を作ると鍵が
+     *      細かくなりヒット率が落ちてノード数が増える(=速いが非等価な探索になる)。
+     *  (4) `ouV`(ddKeyの王公開数)は履歴から採取する。DD状態の履歴には他席の伏せが
+     *      koma:null にマスクされたエントリが含まれるため、手駒から導出すると値が変わる。
+     *  (5) 置換表への格納は再帰前のプローブ位置を再利用してはならない(子探索中に
+     *      同一スロットへ別エントリが入るため)。格納時に再プローブする。
+     *  (6) 王攻め解禁の3条件 (a)王2枚保有 (b)場に攻め/受けで出た王 (c)自席の伏せ王 は
+     *      独立に保持する。単一フラグへ縮約しない。
+     *
+     * 契約: rootValues() は legacy ddRootValues() と同じ戻り値(Map / null)を返す。
+     *       不変条件を満たさない局面では undefined を返し、呼び出し元が legacy へ委譲する。
+     * ================================================================ */
+    const SEATS = ["N","W","S","E"];
+    const TYPES = ["王","飛","角","金","銀","馬","香","し"];   // KOMA_TYPES_ARR と同順
+    const TIDX = {}; TYPES.forEach((k,i)=>TIDX[k]=i);
+    const PTS = [50,40,40,30,30,20,20,10];
+    const UNCUT = [0,0,0,0,0,0,1,1];                            // 香・し は王で切れない
+    const PHASE_I = {bury:0, attack:1, respond:2, over:3};
+
+    /* ---- pack時に確定し探索中は不変 ---- */
+    const slotType     = new Int8Array(32);      // グローバルスロット(seat*8+idx) → 駒種0..7
+    const seatTypeMask = new Uint32Array(32);    // [seat*8+type] → その席のその駒種のスロット群
+
+    /* ---- 探索中の可変状態 ---- */
+    let occ = 0;                                 // bit(seat*8+idx) = 在席。全4席の手駒配置が1語
+    const cnt  = new Uint32Array(4);             // 席ごと 8駒種×4bit ニブルカウント(置換表鍵)
+    const hlen = new Int32Array(4);              // 席ごと手駒枚数
+    const openKind = new Int8Array(4);           // 0=なし 1=伏せ 2=受け (最終行のatk===nullのdef)
+    const openKoma = new Int8Array(4);
+    const buriedKing = new Int8Array(4);         // 王攻め解禁(c): 自席の伏せ王
+    let actor=0, phase=0, attacker=-1, pending=-1, respIdx=0;
+    let ouV=0;                                   // ddKey用: 履歴中の王出現数
+    let kingPub=0;                               // 王攻め解禁(b): 場に攻め/受けで出た王
+
+    const U      = new Int32Array(512*10);       // undoレコード (深さ×10語)
+    const ACTBUF = new Int32Array(512*10);       // 着手バッファ (深さ×10語)
+
+    /* ---- 置換表: オープンアドレス法 + 世代印(クリア不要) ---- */
+    let MCAP = 1<<14, MMASK = MCAP-1;
+    let mK = new Uint32Array(MCAP*5), mV = new Float64Array(MCAP), mG = new Uint32Array(MCAP);
+    let gen = 0, entries = 0;
+    function grow(){
+      const oK=mK, oV=mV, oG=mG, oCap=MCAP;
+      MCAP <<= 1; MMASK = MCAP-1;
+      mK = new Uint32Array(MCAP*5); mV = new Float64Array(MCAP); mG = new Uint32Array(MCAP);
+      for (let i=0;i<oCap;i++){
+        if (oG[i]!==gen) continue;
+        const b=i*5, k0=oK[b],k1=oK[b+1],k2=oK[b+2],k3=oK[b+3],k4=oK[b+4];
+        let h=2166136261;
+        h=Math.imul(h^k0,16777619); h=Math.imul(h^k1,16777619);
+        h=Math.imul(h^k2,16777619); h=Math.imul(h^k3,16777619); h=Math.imul(h^k4,16777619);
+        let p=(h^(h>>>15))&MMASK;
+        while (mG[p]===gen) p=(p+1)&MMASK;
+        mG[p]=gen; const nb=p*5;
+        mK[nb]=k0;mK[nb+1]=k1;mK[nb+2]=k2;mK[nb+3]=k3;mK[nb+4]=k4; mV[p]=oV[i];
+      }
+    }
+
+    let budget = 0, failed = false, NODES = 0;
+    let evalFn = null, termCache = null;
+
+    /* 不変条件チェック: 満たさない局面は packed を使わず legacy へ委譲する */
+    function packable(st){
+      for (let s=0;s<4;s++){
+        const nm = SEATS[s];
+        if (st.hands[nm].length > 8) return false;                 // 理論上発生しないが弾く
+        const rows = st.board[nm];
+        const last = rows.length ? rows[rows.length-1] : null;
+        // legacy は伏せkoma=null時に openByte が NaN 経由で0になる。再現より委譲が安全。
+        if (last && last.atk === null && last.def && last.def.koma == null) return false;
+      }
+      return true;
+    }
+    function pack(st){
+      slotType.fill(-1); seatTypeMask.fill(0);
+      occ = 0; cnt.fill(0); hlen.fill(0);
+      for (let s=0;s<4;s++){
+        const h = st.hands[SEATS[s]];
+        for (let i=0;i<h.length;i++){
+          const t = TIDX[h[i]], g = s*8+i;
+          slotType[g]=t; occ |= (1<<g)>>>0;
+          seatTypeMask[s*8+t] |= (1<<g)>>>0;
+          cnt[s] += 1<<(4*t);
+        }
+        hlen[s]=h.length;
+        const rows = st.board[SEATS[s]];
+        const last = rows.length ? rows[rows.length-1] : null;
+        if (last && last.atk === null && last.def){ openKind[s] = last.def.type[0]==="b"?1:2; openKoma[s]=TIDX[last.def.koma]; }
+        else { openKind[s]=0; openKoma[s]=-1; }
+        buriedKing[s]=0;
+      }
+      ouV=0; kingPub=0;
+      for (const h of st.history){                    // (4) 履歴から採取。手駒から導出しない
+        if (h.koma === "王"){
+          ouV++;
+          if (h.act==="attack"||h.act==="receive") kingPub=1;
+          else if (h.act==="bury") buriedKing[SEATS.indexOf(h.seat)]=1;
+        }
+      }
+      actor = SEATS.indexOf(st.actor);
+      phase = PHASE_I[st.phase];
+      attacker = st.attacker ? SEATS.indexOf(st.attacker) : -1;
+      pending = st.pendingAttack ? TIDX[st.pendingAttack] : -1;
+      respIdx = st.respIdx|0;
+    }
+
+    /* legacy ddKey の非カウント部を1語へ。openByte の定義は legacy と同一(伏せ0/受け8+駒種、無=16) */
+    function metaKey(){
+      const ob = openKind[actor] ? (openKind[actor]===1?0:8)+openKoma[actor] : 16;
+      return (phase | (actor<<2) | ((pending+1)<<4) | ((attacker+1)<<8) | (respIdx<<11) | (ouV<<13) | (ob<<15))>>>0;
+    }
+    function memoFind(mk){
+      let h = 2166136261;
+      h = Math.imul(h ^ cnt[0],16777619); h = Math.imul(h ^ cnt[1],16777619);
+      h = Math.imul(h ^ cnt[2],16777619); h = Math.imul(h ^ cnt[3],16777619);
+      h = Math.imul(h ^ mk,16777619);
+      let p = (h ^ (h>>>15)) & MMASK;
+      for(;;){
+        if (mG[p] !== gen) return ~p;
+        const b = p*5;
+        if (mK[b]===cnt[0]&&mK[b+1]===cnt[1]&&mK[b+2]===cnt[2]&&mK[b+3]===cnt[3]&&mK[b+4]===mk) return p;
+        p = (p+1)&MMASK;
+      }
+    }
+    function memoStore(mk, v){
+      let p = memoFind(mk);                       // (5) 再帰前の位置を使い回さず再プローブする
+      if (p>=0){ mV[p]=v; return; }
+      p = ~p; mG[p]=gen; const b=p*5;
+      mK[b]=cnt[0];mK[b+1]=cnt[1];mK[b+2]=cnt[2];mK[b+3]=cnt[3];mK[b+4]=mk; mV[p]=v;
+      if (++entries > (MCAP*0.7)) grow();
+    }
+
+    /* 終局値キャッシュ: 鍵に koma を含める(評価関数差し替え時に静かに壊れるため) */
+    function termVal(kind, winner, pts, dbl, komaT, nextParent){
+      const ck = (komaT<<27)|(kind<<20)|((winner+1)<<16)|(pts<<6)|((nextParent+1)<<2)|(dbl?1:0);
+      const hit = termCache.get(ck); if (hit !== undefined) return hit;
+      let res;
+      if (kind===2) res = {winner:null, pts:0, draw:true, nextParent:SEATS[nextParent]};
+      else if (kind===1) res = {winner:SEATS[winner], pts, dbl:false, koma:TYPES[komaT], recvFinish:true};
+      else res = {winner:SEATS[winner], pts, dbl:!!dbl, koma:TYPES[komaT]};
+      const v = evalFn(res); termCache.set(ck, v); return v;
+    }
+
+    /* 着手符号: (kind<<3)|type   kind: 0=bury 1=attack 2=pass 3=receive */
+    function genActions(depth){
+      const base = depth*10; let n=0;
+      if (phase===2){                                   // respond: legacy legalReceives の順序
+        ACTBUF[base]= (2<<3); n=1;                      //   pass が先頭
+        if (pending>=0){
+          if (seatTypeMask[actor*8+pending] & occ) ACTBUF[base+n++] = (3<<3)|pending;   // 同駒受け
+          if (pending!==0 && !UNCUT[pending] && (seatTypeMask[actor*8] & occ)) ACTBUF[base+n++] = (3<<3);  // 王切り
+        }
+        return n;
+      }
+      // bury / attack: 手駒配列の初出順に駒種を列挙 (= legacy [...new Set(hand)])
+      let m = occ & (0xFF << (actor*8));
+      let seen = 0;
+      const kind = phase===0?0:1;
+      while (m){
+        const b = m & (-m), g = 31 - Math.clz32(b), t = slotType[g];
+        if (!((seen>>>t)&1)){ seen |= 1<<t; ACTBUF[base+n++] = (kind<<3)|t; }
+        m ^= b;
+      }
+      if (kind===1){                                    // (6) 王攻め解禁の3条件を独立に判定
+        const kingOk = (cnt[actor]&0xF)===2 || kingPub || buriedKing[actor];
+        if (!kingOk){
+          let w=0; for(let i=0;i<n;i++){ const t=ACTBUF[base+i]&7; if(t!==0) ACTBUF[base+w++]=ACTBUF[base+i]; }
+          if (w>0) n=w;                                 // 王しか無ければ強制 (legacy: out.length? out : ks)
+        }
+      }
+      return n;
+    }
+
+    let TERMV = 0;
+    function apply(a, depth){                           // 戻り値 1 = 終局(値は TERMV)
+      const u = depth*10, kind = a>>>3, t = a&7;
+      U[u]=kind; U[u+1]=actor; U[u+2]=phase; U[u+3]=attacker; U[u+4]=pending;
+      U[u+5]=respIdx; U[u+6]=-1;
+      U[u+7]=(openKind[actor]<<4)|(openKoma[actor]&15);
+      U[u+8]=ouV|(kingPub<<4)|(buriedKing[actor]<<5);
+      if (kind===2){                                    // pass
+        respIdx++;
+        if (respIdx<3){ actor = (attacker+1+respIdx)&3; }
+        else {
+          actor = attacker; pending = -1;
+          if (hlen[attacker] < 2){ phase=3; TERMV = termVal(2,-1,0,0,0,attacker); return 1; }  // 流局
+          phase = 0;                                    // 流れた → 攻め手が伏せ直し
+        }
+        return 0;
+      }
+      const mm = seatTypeMask[actor*8+t] & occ;         // その駒種の最下位スロット = legacy indexOf
+      const b = mm & (-mm), g = 31 - Math.clz32(b);
+      U[u+6]=g;
+      occ ^= b; cnt[actor] -= 1<<(4*t); hlen[actor]--;
+      if (t===0) ouV++;
+      if (kind===0){                                    // bury
+        if (t===0) buriedKing[actor]=1;
+        openKind[actor]=1; openKoma[actor]=t;
+        phase = 1;
+        return 0;
+      }
+      if (kind===1){                                    // attack
+        const dbl = (openKind[actor]===1 && openKoma[actor]===t) ? 1 : 0;   // 同駒2倍
+        if (t===0) kingPub=1;
+        openKind[actor]=0; openKoma[actor]=-1;          // 行が閉じる(またはdef:nullの新行)
+        if (hlen[actor]===0){ phase=3; TERMV = termVal(0,actor,PTS[t]*(dbl?2:1),dbl,t,-1); return 1; }
+        attacker = actor; pending = t; respIdx = 0; actor = (actor+1)&3; phase = 2;
+        return 0;
+      }
+      if (t===0) kingPub=1;                             // receive
+      openKind[actor]=2; openKoma[actor]=t;
+      if (hlen[actor]===0){ phase=3; TERMV = termVal(1,actor,PTS[pending],0,pending,-1); return 1; }  // 受け上がり
+      pending = -1; phase = 1;
+      return 0;
+    }
+    function undo(depth){
+      const u = depth*10, kind=U[u], ac=U[u+1];
+      phase=U[u+2]; attacker=U[u+3]; pending=U[u+4]; respIdx=U[u+5];
+      const g=U[u+6];
+      if (g>=0){ const b=(1<<g)>>>0; occ|=b; const t=slotType[g]; cnt[ac]+=1<<(4*t); hlen[ac]++; }
+      openKind[ac]=U[u+7]>>4; openKoma[ac]=(U[u+7]&15)===15?-1:(U[u+7]&15);
+      const f=U[u+8]; ouV=f&15; kingPub=(f>>4)&1; buriedKing[ac]=(f>>5)&1;
+      actor=ac;
+    }
+
+    function search(depth, povTeam){
+      NODES++;
+      if (--budget <= 0){ failed=true; return 0; }      // legacy: --budget.n<=0 → null
+      const mk = metaKey();
+      const p = memoFind(mk);
+      if (p>=0) return mV[p];
+      const maximizing = ((actor&1)===povTeam);         // SEATS index の偶奇 = NS/EW
+      let best = maximizing ? -Infinity : Infinity;
+      const n = genActions(depth), base = depth*10;
+      for (let i=0;i<n;i++){
+        const a = ACTBUF[base+i];
+        const term = apply(a, depth);
+        const v = term ? TERMV : search(depth+1, povTeam);
+        undo(depth);
+        if (failed) return 0;
+        if (maximizing){ if (v>best) best=v; } else { if (v<best) best=v; }
+      }
+      memoStore(mk, best);
+      return best;
+    }
+
+    /* legacy ddRootValues と同契約。undefined = 不変条件外につき legacy へ委譲されたい */
+    function rootValues(st, seatStr, ef, actions, nodeCap){
+      if (!packable(st)) return undefined;
+      evalFn = ef; termCache = new Map();
+      pack(st);
+      budget = nodeCap || 300000; failed=false;
+      gen++; if (gen===0){ mG.fill(0); gen=1; } entries = 0;
+      const povTeam = SEATS.indexOf(seatStr)&1;
+      const out = new Map();
+      for (const a0 of actions){
+        const a = a0.type==="pass"    ? (2<<3)
+                : a0.type==="bury"    ? (0<<3)|TIDX[a0.koma]
+                : a0.type==="attack"  ? (1<<3)|TIDX[a0.koma]
+                :                       (3<<3)|TIDX[a0.koma];
+        const term = apply(a, 0);
+        const v = term ? TERMV : search(1, povTeam);
+        undo(0);
+        if (failed) return null;                        // 予算超過 → legacy と同じく null
+        out.set(a0.koma !== undefined ? a0.koma : null, v);
+      }
+      return out;
+    }
+
+    return {rootValues: rootValues, nodes: function () { return NODES; }, resetNodes: function () { NODES = 0; }};
+  })();
+  let PACKED_DD = 0;
+  const PACKED_DD_DIAG = {calls: 0, packed: 0, fallback: 0, budgetNull: 0, shadow: 0, mismatch: 0};
+  function setPackedDd(n) { PACKED_DD = n | 0; return PACKED_DD; }
+  function packedDdDiag() { return Object.assign({mode: PACKED_DD}, PACKED_DD_DIAG); }
+  function packedDdSameValues(a, b) {
+    if (a === null || b === null) return a === b;
+    if (a.size !== b.size) return false;
+    for (const [k, v] of a) {
+      if (!b.has(k)) return false;
+      const w = b.get(k);
+      if (!(v === w || (Number.isNaN(v) && Number.isNaN(w)))) return false;   // bit一致を要求
+    }
+    return true;
+  }
   function ddRootValues(st, seat, evalFn, actions, nodeCap) {
+    if (!PACKED_DD) return ddRootValuesLegacy(st, seat, evalFn, actions, nodeCap);
+    PACKED_DD_DIAG.calls++;
+    let r;
+    try { r = PKDD.rootValues(st, seat, evalFn, actions, nodeCap); }
+    catch (e) { r = undefined; }                      // 不変条件違反・想定外は必ずlegacyへ後退
+    if (r === undefined) { PACKED_DD_DIAG.fallback++; return ddRootValuesLegacy(st, seat, evalFn, actions, nodeCap); }
+    if (PACKED_DD === 1) { PACKED_DD_DIAG.packed++; if (r === null) PACKED_DD_DIAG.budgetNull++; return r; }
+    // PACKED_DD===2: シャドー比較。値のみを突き合わせ、返すのは常にlegacy値。
+    // (ノード数一致は phase17/run_nodecount_diff.js が計測用ビルドで検証する)
+    const legacy = ddRootValuesLegacy(st, seat, evalFn, actions, nodeCap);
+    PACKED_DD_DIAG.shadow++;
+    if (!packedDdSameValues(legacy, r)) PACKED_DD_DIAG.mismatch++;
+    return legacy;
+  }
+  function ddRootValuesLegacy(st, seat, evalFn, actions, nodeCap) {
     const budget = {n: nodeCap || 300000};
     // 大探索(促成/振り返り: nodeCap>=1e6)はコンパクトmemoで<300MB。標準(小探索)は高速Mapを再利用
     // (コンパクトの占有fillクリアが小探索では割高で標準テンポを損なうため。しきい値で経路分離)。
@@ -15288,7 +16049,8 @@ const G_B = (() => {
           certainCore, aiVoteAsPartner, dealOnce, goshiCheck,
           estimatePartnerShi, shouldShiAttack, partnerShiSignalAt,
           setShiTeam, setShiTeamTh, setShiTeamThGoshi, setShiTeamDefault,
-          playOneGame, selfTest};
+          playOneGame, selfTest,
+          setPackedDd, packedDdDiag};
 })();
 </script>
 
@@ -17563,6 +18325,46 @@ T1AD.init(T1W);
  * UI層 v2 — ごいたオンライン風の打ち場 / 受け直接クリック /
  * 思考時間計測 / 意図つき棋譜 / 振り返り再現 / 巻き戻し再プレイ
  * ================================================================ */
+/* PHASE9_ENGINE_REGISTRY_START
+ * UIはengine実装の生成方法を知らず、variant IDと公開methodだけに依存する。
+ * G/G_B本体はPhase 9ではbyte不変。次段のcreateGoitaEngine/Worker化でこの境界を差し替える。 */
+const GOITA_ENGINE_REGISTRY = (() => {
+  const ids = Object.freeze(["standard", "honest"]);
+  const engines = Object.freeze({standard: G, honest: G_B});
+  function get(id) {
+    if (!Object.prototype.hasOwnProperty.call(engines, id))
+      throw new Error(`Unknown goita engine: ${id}`);
+    return engines[id];
+  }
+  function ownMethod(engine, id, method) {
+    const own = Object.prototype.hasOwnProperty.call(engine, method), fn = own && engine[method];
+    if (typeof fn !== "function") throw new Error(`Unknown goita engine method: ${id}.${method}`);
+    return fn;
+  }
+  function invoke(id, method, ...args) {
+    const engine = get(id), fn = ownMethod(engine, id, method);
+    return Reflect.apply(fn, engine, args);
+  }
+  function invokeAll(method, ...args) {
+    // 先に全methodの存在を検証し、typo時の片側だけcommitを防ぐ。
+    const calls = ids.map(id => {
+      const engine = get(id), fn = ownMethod(engine, id, method);
+      return {engine, fn};
+    });
+    return calls.map(({engine, fn}) => Reflect.apply(fn, engine, args));
+  }
+  return Object.freeze({ids, get, invoke, invokeAll});
+})();
+/* PHASE9_ENGINE_REGISTRY_END */
+/* build v197: Packed DD kernel の起動時トグル。#pkdd=0|1|2 (既定0 = v196完全等価)。
+   実機(iPhone Safari / Android Chrome)での性能ゲート計測に使う。本番既定値は
+   計画書 Stage 3 の全ゲート通過まで 0 のまま変更しない。 */
+(() => {
+  try {
+    const m = /[#&]pkdd=([012])/.exec(location.hash || "");
+    if (m) GOITA_ENGINE_REGISTRY.invokeAll("setPackedDd", +m[1]);
+  } catch (e) { /* トグル不可でも対局は継続 */ }
+})();
 if (typeof document !== "undefined") (() => {
   const $ = id => document.getElementById(id);
   /* ================================================================
@@ -17707,6 +18509,97 @@ if (typeof document !== "undefined") (() => {
   }
 
   const perfTelemetry = {decision: [], render: []};
+  /* PHASE10_RENDER_DIFF_START
+   * DOM差分描画の実作業量。保持するのは固定個数の飽和counterだけで、局面・手駒・
+   * 署名文字列は診断APIへ公開しない。 */
+  const renderWorkTelemetry = {
+    cardBuilds: 0, cardSkips: 0, stageBuilds: 0, stageSkips: 0,
+    countBuilds: 0, countSkips: 0, declBuilds: 0, declSkips: 0,
+  };
+  function recordRenderWork(section, skipped) {
+    const key = section + (skipped ? "Skips" : "Builds");
+    if (Object.prototype.hasOwnProperty.call(renderWorkTelemetry, key) &&
+        renderWorkTelemetry[key] < Number.MAX_SAFE_INTEGER) renderWorkTelemetry[key]++;
+  }
+  function renderWorkSummary() {
+    const one = section => {
+      const builds = renderWorkTelemetry[section + "Builds"];
+      const skips = renderWorkTelemetry[section + "Skips"];
+      const total = builds + skips;
+      return {builds, skips, total, skipRate: total ? skips / total : 0};
+    };
+    return {card: one("card"), stage: one("stage"), count: one("count"), decl: one("decl")};
+  }
+  /* PHASE11_DATA_STORAGE_START
+   * 保存値そのものは保持/公開せず、固定counterと最大32キーのUTF-16概算byteだけを観測する。
+   * localStorage非対応・quota超過でも例外をUIへ伝播させず、呼出し側がbooleanで縮退を選べる。 */
+  const storageTelemetry = {
+    reads: 0, writes: 0, removes: 0, failures: 0, lastErrorName: null,
+    careerRequestedGames: 0, careerStoredGames: null, careerAttempts: 0,
+  };
+  const storageKeyBytes = new Map();
+  const STORAGE_KEY_METRIC_LIMIT = 32;
+  function bumpStorageMetric(key) {
+    if (storageTelemetry[key] < Number.MAX_SAFE_INTEGER) storageTelemetry[key]++;
+  }
+  function noteStorageBytes(key, value) {
+    if (!storageKeyBytes.has(key) && storageKeyBytes.size >= STORAGE_KEY_METRIC_LIMIT) return;
+    storageKeyBytes.set(String(key), String(value).length * 2); // localStorageのUTF-16概算
+  }
+  function noteStorageFailure(err) {
+    bumpStorageMetric("failures");
+    storageTelemetry.lastErrorName = err && err.name ? String(err.name) : "Error";
+  }
+  const DATA_STORAGE = Object.freeze({
+    getItem(key) {
+      bumpStorageMetric("reads");
+      try {
+        const value = localStorage.getItem(key);
+        if (value != null) noteStorageBytes(key, value);
+        return value;
+      } catch (err) { noteStorageFailure(err); return null; }
+    },
+    setItem(key, value) {
+      bumpStorageMetric("writes");
+      try {
+        const text = String(value);
+        localStorage.setItem(key, text);
+        noteStorageBytes(key, text);
+        storageTelemetry.lastErrorName = null;
+        return true;
+      } catch (err) { noteStorageFailure(err); return false; }
+    },
+    removeItem(key) {
+      bumpStorageMetric("removes");
+      try {
+        localStorage.removeItem(key);
+        storageKeyBytes.delete(String(key));
+        storageTelemetry.lastErrorName = null;
+        return true;
+      } catch (err) { noteStorageFailure(err); return false; }
+    },
+    lastErrorName() { return storageTelemetry.lastErrorName; },
+  });
+  function storageFailureIsQuota() {
+    return /quota/i.test(DATA_STORAGE.lastErrorName() || "");
+  }
+  function recordCareerStorageResult(requested, stored, attempts) {
+    storageTelemetry.careerRequestedGames = requested;
+    storageTelemetry.careerStoredGames = stored;
+    storageTelemetry.careerAttempts = attempts;
+  }
+  function storageSummary() {
+    const byKey = {};
+    let estimatedUtf16Bytes = 0;
+    storageKeyBytes.forEach((bytes, key) => { byKey[key] = bytes; estimatedUtf16Bytes += bytes; });
+    return {
+      reads: storageTelemetry.reads, writes: storageTelemetry.writes,
+      removes: storageTelemetry.removes, failures: storageTelemetry.failures,
+      lastErrorName: storageTelemetry.lastErrorName, estimatedUtf16Bytes, byKey,
+      career: {requestedGames: storageTelemetry.careerRequestedGames,
+        storedGames: storageTelemetry.careerStoredGames, attempts: storageTelemetry.careerAttempts},
+    };
+  }
   const perfNow = () => (typeof performance !== "undefined" && performance.now)
     ? performance.now() : Date.now();
   function recordPerf(kind, elapsed) {
@@ -17723,11 +18616,17 @@ if (typeof document !== "undefined") (() => {
       return {n: s.length, p50: q(.5), p95: q(.95), max: s[s.length - 1]};
     };
     return {decision: one(perfTelemetry.decision), render: one(perfTelemetry.render),
-      pendingTasks: appTasks.pending};
+      pendingTasks: appTasks.pending, renderWork: renderWorkSummary()};
   }
   try {
     Object.defineProperty(globalThis, "GOITA_DIAGNOSTICS", {
-      value: Object.freeze({perfSummary}), configurable: true
+      value: Object.freeze({
+        perfSummary,
+        storageSummary,
+        a11yAudit: root => A11Y_AUDIT.measure(root || document),
+        packedDd: () => GOITA_ENGINE_REGISTRY.invokeAll("packedDdDiag"),
+        setPackedDd: n => GOITA_ENGINE_REGISTRY.invokeAll("setPackedDd", n)
+      }), configurable: true
     });
   } catch (e) { /* diagnostics公開不可でも対局は継続 */ }
   /* PHASE2_TASK_SCOPE_END */
@@ -17739,7 +18638,7 @@ if (typeof document !== "undefined") (() => {
   const CFG_STORAGE_KEY = "goita_cfg_v1";
   function loadCfgFromStorage() {
     try {
-      const raw = localStorage.getItem(CFG_STORAGE_KEY);
+      const raw = DATA_STORAGE.getItem(CFG_STORAGE_KEY);
       if (!raw) return;
       const saved = JSON.parse(raw);
       if (!saved || typeof saved !== "object") return;
@@ -17751,7 +18650,7 @@ if (typeof document !== "undefined") (() => {
     } catch (e) { /* 破損データ・非対応環境(プライベートブラウズ等)は既定値のまま */ }
   }
   function saveCfgToStorage() {
-    try { localStorage.setItem(CFG_STORAGE_KEY, JSON.stringify(app.cfg)); } catch (e) { /* 保存不可でも対局は継続 */ }
+    DATA_STORAGE.setItem(CFG_STORAGE_KEY, JSON.stringify(app.cfg)); // 保存不可でも対局は継続
   }
   /* ================================================================
    * A-1(v89b): 対局途中の自動保存・復帰 (PLAN_v89_uiux.md)
@@ -17822,14 +18721,14 @@ if (typeof document !== "undefined") (() => {
   const GRAD_STORAGE_KEY = "goita_grad_v1";
   function gradLoad() {
     try {
-      const raw = localStorage.getItem(GRAD_STORAGE_KEY);
+      const raw = DATA_STORAGE.getItem(GRAD_STORAGE_KEY);
       const d = raw ? JSON.parse(raw) : null;
       if (!d || typeof d !== "object") return {v: 1, trial: null, cooldown: {}, graduated: {}};
       return {v: 1, trial: d.trial || null, cooldown: (d.cooldown && typeof d.cooldown === "object") ? d.cooldown : {},
               graduated: (d.graduated && typeof d.graduated === "object") ? d.graduated : {}};
     } catch (e) { return {v: 1, trial: null, cooldown: {}, graduated: {}}; }
   }
-  function gradSave(g) { try { localStorage.setItem(GRAD_STORAGE_KEY, JSON.stringify(g)); } catch (e) {} }
+  function gradSave(g) { DATA_STORAGE.setItem(GRAD_STORAGE_KEY, JSON.stringify(g)); }
   // concept!=null: conceptMastery(該当概念)。concept==null: careerの一致率。
   // どちらもサンプル不足はnull(判定不能)を返す。
   // I-2(review-fix): hinted局を除外しない(openCareer()の近況表示用effとは意図的に別ロジック)。
@@ -17946,15 +18845,15 @@ if (typeof document !== "undefined") (() => {
         gameNo: app.gameNo, matchNo: app.matchNo,
       };
       if (phase === "live" && app.rec) data.rec = app.rec;   // 局の途中: initialHandsごと保存(配り直し悪用は不可という仕様)
-      localStorage.setItem(MATCH_STORAGE_KEY, JSON.stringify(data));
+      DATA_STORAGE.setItem(MATCH_STORAGE_KEY, JSON.stringify(data));
     } catch (e) { /* 保存不可でも対局は継続(容量超過・プライベートブラウズ等は黙殺) */ }
   }
   function deleteMatchProgress() {
-    try { localStorage.removeItem(MATCH_STORAGE_KEY); } catch (e) {}
+    DATA_STORAGE.removeItem(MATCH_STORAGE_KEY);
   }
   function loadMatchProgress() {
     try {
-      const raw = localStorage.getItem(MATCH_STORAGE_KEY);
+      const raw = DATA_STORAGE.getItem(MATCH_STORAGE_KEY);
       if (!raw) return null;
       const d = JSON.parse(raw);
       if (!d || typeof d !== "object" || d.v !== 1 || !d.humanSeat || !d.tiers || !d.scores) { deleteMatchProgress(); return null; }
@@ -17994,7 +18893,7 @@ if (typeof document !== "undefined") (() => {
       app.stopped = false; app.matchOver = false; app.review = null;
       app.kifuLines = []; app.lastRec = null; app.coachHistory = [];
       app._tourWinRecorded = false;   // A-5(v91a): 復帰したマッチもtourWinRecordの一回性ガードをリセット
-      G_B.setCoopSignal(G.SEATS.some(s => app.tiers[s] === "coop"));
+      GOITA_ENGINE_REGISTRY.invoke("honest", "setCoopSignal", G.SEATS.some(s => app.tiers[s] === "coop"));
       $("setup-screen").style.display = "none";
       $("main-screen").classList.add("show");
       $("handarea").classList.toggle("show", !!app.humanSeat);
@@ -18084,29 +18983,46 @@ if (typeof document !== "undefined") (() => {
       result: r.result || null, sc: r.sc || null,   // T-0(v90a): 足場スタンプ(無ければnull)
       cfv: r.cfv || null,   // v92b(M-10): 評価器バージョンタグ(旧レコードはnull=cfvなしのまま)
       moves: r.moves.map(m => ({seat: m.seat, action: m.action, human: m.human,
-        thinkMs: m.thinkMs, why: m.why, cf: m.cf || null, drillResult: m.drillResult || null}))};
+       thinkMs: m.thinkMs, why: m.why, cf: m.cf || null, drillResult: m.drillResult || null}))};
+  }
+  function persistCareerData(baseData, games) {
+    const requested = games.length;
+    let keep = games, attempts = 0;
+    while (true) {
+      attempts++;
+      let text;
+      try { text = JSON.stringify({...baseData, allGames: keep}); }
+      catch (e) { recordCareerStorageResult(requested, null, attempts); return false; }
+      if (DATA_STORAGE.setItem(CAREER_STORAGE_KEY, text)) {
+        recordCareerStorageResult(requested, keep.length, attempts);
+        return true;
+      }
+      // SecurityError等は容量を減らしても治らない。quota系だけ最新側を半分残して再試行する。
+      if (!storageFailureIsQuota() || keep.length === 0) {
+        recordCareerStorageResult(requested, null, attempts);
+        return false;
+      }
+      keep = keep.slice(Math.ceil(keep.length / 2));
+    }
   }
   function saveCareerToStorage() {
+    const trimmedCareer = app.career.length > CAREER_MAX_GAMES
+      ? app.career.slice(app.career.length - CAREER_MAX_GAMES) : app.career;
+    const baseData = {version: 1, savedAt: new Date().toISOString(),
+      career: trimmedCareer, puzzleStats: app.puzzleStats, convTrust: app.convTrust,
+      tblTrust: app.tblTrust, oppCounts: app.oppCounts};
     try {
       const allGames = [...app.matchRecs, ...app.importedRecs].map(slimRecForStorage);
       const trimmedGames = allGames.length > CAREER_MAX_GAMES ? allGames.slice(allGames.length - CAREER_MAX_GAMES) : allGames;
-      const trimmedCareer = app.career.length > CAREER_MAX_GAMES ? app.career.slice(app.career.length - CAREER_MAX_GAMES) : app.career;
-      const data = {version: 1, savedAt: new Date().toISOString(),
-        career: trimmedCareer, puzzleStats: app.puzzleStats, convTrust: app.convTrust, tblTrust: app.tblTrust,
-        oppCounts: app.oppCounts, allGames: trimmedGames};
-      localStorage.setItem(CAREER_STORAGE_KEY, JSON.stringify(data));
+      persistCareerData(baseData, trimmedGames);
     } catch (e) {
-      // 容量超過等: 全局面付きの保存を諦め、軽量な要約(career等)のみ保存を試みる(それも失敗すれば黙って諦める)
-      try {
-        localStorage.setItem(CAREER_STORAGE_KEY, JSON.stringify({version: 1, savedAt: new Date().toISOString(),
-          career: app.career, puzzleStats: app.puzzleStats, convTrust: app.convTrust, tblTrust: app.tblTrust,
-          oppCounts: app.oppCounts, allGames: []}));
-      } catch (e2) { /* それでも失敗する環境では自動保存を諦め、対局自体は継続する */ }
+      // 破損rec等でslim化できない場合も要約だけは保存を試す。
+      persistCareerData(baseData, []);
     }
   }
   function loadCareerFromStorage() {
     try {
-      const raw = localStorage.getItem(CAREER_STORAGE_KEY);
+      const raw = DATA_STORAGE.getItem(CAREER_STORAGE_KEY);
       if (!raw) return;
       const d = JSON.parse(raw);
       if (!d || typeof d !== "object" || d.version !== 1) return;
@@ -18176,7 +19092,7 @@ if (typeof document !== "undefined") (() => {
   function srsNewId() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
   function srsLoad() {
     try {
-      const raw = localStorage.getItem(SRS_STORAGE_KEY);
+      const raw = DATA_STORAGE.getItem(SRS_STORAGE_KEY);
       if (!raw) return {v: 1, cards: []};
       const d = JSON.parse(raw);
       if (!d || typeof d !== "object" || d.v !== 1 || !Array.isArray(d.cards)) return {v: 1, cards: []};
@@ -18205,16 +19121,16 @@ if (typeof document !== "undefined") (() => {
     srsEnforceLimits(store);
     let s = store;
     for (let i = 0; i < 3; i++) {
-      try { localStorage.setItem(SRS_STORAGE_KEY, JSON.stringify(s)); return; }
-      catch (e) {
-        if (!s.cards.length) break;
-        const order = srsEvictionOrder(s.cards);
-        const keep = Math.ceil(s.cards.length / 2);
-        const dropSet = new Set(order.slice(0, s.cards.length - keep));
-        s = {v: 1, cards: s.cards.filter(c => !dropSet.has(c))};
-      }
+      let text = null;
+      try { text = JSON.stringify(s); } catch (e) { /* 下の既存半減fallbackへ */ }
+      if (text != null && DATA_STORAGE.setItem(SRS_STORAGE_KEY, text)) return;
+      if (!s.cards.length) break;
+      const order = srsEvictionOrder(s.cards);
+      const keep = Math.ceil(s.cards.length / 2);
+      const dropSet = new Set(order.slice(0, s.cards.length - keep));
+      s = {v: 1, cards: s.cards.filter(c => !dropSet.has(c))};
     }
-    try { localStorage.removeItem(SRS_STORAGE_KEY); } catch (e) {}
+    DATA_STORAGE.removeItem(SRS_STORAGE_KEY);
   }
   function srsGrade(card, ok) {
     if (ok) card.ease = Math.min(SRS_STEPS.length - 1, (card.ease || 0) + 1);
@@ -18323,7 +19239,7 @@ if (typeof document !== "undefined") (() => {
   const PAST_DUE_DAYS = 14;
   function pastLoad() {
     try {
-      const raw = localStorage.getItem(PAST_STORAGE_KEY);
+      const raw = DATA_STORAGE.getItem(PAST_STORAGE_KEY);
       if (!raw) return {v: 1, pins: []};
       const d = JSON.parse(raw);
       if (!d || typeof d !== "object" || d.v !== 1 || !Array.isArray(d.pins)) return {v: 1, pins: []};
@@ -18331,7 +19247,7 @@ if (typeof document !== "undefined") (() => {
     } catch (e) { return {v: 1, pins: []}; }
   }
   function pastSave(store) {
-    try { localStorage.setItem(PAST_STORAGE_KEY, JSON.stringify(store)); } catch (e) { /* 黙って諦める(対局を妨げない) */ }
+    DATA_STORAGE.setItem(PAST_STORAGE_KEY, JSON.stringify(store)); // 失敗しても対局を妨げない
   }
   // 局終了時に呼ぶ。その局に悪手(misses)が無ければ何もしない。月4局・上限24局(半年分)。
   function pastMaybeAdd(rec) {
@@ -18416,7 +19332,7 @@ if (typeof document !== "undefined") (() => {
     status("過去の自分との比較");
   }
   const isHuman = s => s === app.humanSeat;
-  G.setOuSignal(app.cfg.ouSignal); G_B.setOuSignal(app.cfg.ouSignal);
+  GOITA_ENGINE_REGISTRY.invokeAll("setOuSignal", app.cfg.ouSignal);
   const tierOpts = seat => {
     const t = app.tiers[seat];
     const o = {mc: false, solver: app.cfg.solver, mcDets: 24, mcSeed: app.gameNo + 1};
@@ -18433,6 +19349,56 @@ if (typeof document !== "undefined") (() => {
   /* ================================================================
    * 描画 — app.review があれば再現状態を、なければ実局面を描く
    * ================================================================ */
+  // Phase 10: 4席だけの固定長cache。署名は「その席で画面に見えるもの」に限定する。
+  // 相手の未公開手駒は枚数だけ、未公開の伏せ駒は「伏」として正規化し、真値を保持しない。
+  const _cardRenderSignatures = Object.create(null);
+  function cardGhostKoma(s, st) {
+    if (!st || app.review || !isHuman(s) || st.actor !== app.humanSeat ||
+        st.phase !== "attack" || !app.cfg.assistHi) return "";
+    try {
+      const rec = getRec(st, s);
+      return rec && rec.type === "attack" && rec.koma ? rec.koma : "";
+    } catch (e) { return ""; }
+  }
+  function cardRenderSignature(s, st, reveal, ghostKoma) {
+    const human = isHuman(s);
+    const ally = app.humanSeat ? G.team(s) === G.team(app.humanSeat) : G.team(s) === "NS";
+    if (!st) return JSON.stringify(["empty", s, seatDisp(s), ally, human, app.tiers[s] || ""]);
+    const hand = st.hands[s] || [];
+    const showsCardHand = !human || !!app.review;
+    // 非公開AI手駒は内容を絶対に含めない。人間の手駒内容は推奨ゴーストの変化検知に必要。
+    const handVisible = showsCardHand
+      ? (reveal ? hand.slice().sort(byPts).join("") : "backs:" + hand.length)
+      : "human:" + hand.slice().sort(byPts).join("");
+    const liveAtk = st.pendingAttack && st.attacker === s && st.phase !== "over";
+    const winCol = st.phase === "over" && app._flipReveal && app.lastWin && !app.lastWin.draw &&
+      app.lastWin.winner === s;
+    const river = (st.board[s] || []).map((cell, i) => {
+      let def = "";
+      if (cell.def) {
+        if (cell.def.type === "bury") def = "b:" + ((reveal || human) ? cell.def.koma : "伏");
+        else def = "r:" + cell.def.koma;
+      }
+      const atk = cell.atk ? "a:" + cell.atk : "";
+      const now = !!(cell.atk && liveAtk && i === st.board[s].length - 1);
+      const pend = !cell.atk && st.phase !== "over" && st.actor === s;
+      const dk = s + ":d:" + i, ak = s + ":a:" + i;
+      const seq = app.cfg.riverseq && app._riverSeq
+        ? String(app._riverSeq[dk] == null ? "" : app._riverSeq[dk]) + "," +
+          String(app._riverSeq[ak] == null ? "" : app._riverSeq[ak]) : "";
+      return [def, atk, now, pend, seq].join(",");
+    }).join(";");
+    return JSON.stringify([
+      s, seatDisp(s), ally, human, app.tiers[s] || "", st.parent === s,
+      hand.length, handVisible, river,
+      !app.review && st.actor === s && st.phase !== "over",
+      !app.review && !!st.pendingAttack && st.attacker === s,
+      !app.review && st.phase !== "over" && hand.length === 2,
+      reveal, !!app.review, !!app._flipReveal, !!app._dealAnimPending,
+      app._flashKey && app._flashKey.indexOf(s + ":") === 0 ? app._flashKey : "",
+      !!winCol, !!app.cfg.riverseq, !!app.cfg.assistHi, ghostKoma || "",
+    ]);
+  }
   function komaEl(k, cls) {
     const el = document.createElement("span");
     el.className = "koma " + (cls || "");
@@ -19011,6 +19977,14 @@ if (typeof document !== "undefined") (() => {
     return app.st;
   }
   function renderCard(s, st, reveal) {
+    // 推奨ゴーストは1回だけ算出し、cache判定と実DOMの双方で同じ値を使う。
+    const ghostKoma = cardGhostKoma(s, st);
+    const renderSignature = cardRenderSignature(s, st, reveal, ghostKoma);
+    if (_cardRenderSignatures[s] === renderSignature) {
+      recordRenderWork("card", true);
+      return;
+    }
+    recordRenderWork("card", false);
     const el = cardOf[s];
     const ally = app.humanSeat ? G.team(s) === G.team(app.humanSeat) : G.team(s) === "NS";
     el.classList.toggle("ally", ally);
@@ -19033,7 +20007,7 @@ if (typeof document !== "undefined") (() => {
       el.setAttribute("role", "group");
       el.setAttribute("aria-label", lbl.join(" "));
     }
-    if (!st) return;
+    if (!st) { _cardRenderSignatures[s] = renderSignature; return; }
     if (!isHuman(s) || app.review) {
       const row = document.createElement("div");
       row.className = "aihand";
@@ -19082,15 +20056,10 @@ if (typeof document !== "undefined") (() => {
         const _pend = st.phase !== "over" && st.actor === s;
         bot.classList.add(_pend ? "pend" : "empty");
         // P3 B5: 自分の攻め番、推奨攻め駒を置かれる予定位置に半透明で先出し（打つ前に結果を想像）
-        if (_pend && !app.review && isHuman(s) && st.actor === app.humanSeat && st.phase === "attack" && app.cfg.assistHi) {
-          try {
-            const _rc = getRec(st, s);
-            if (_rc && _rc.type === "attack" && _rc.koma) {
-              const _g = komaEl(_rc.koma, "mini fkoma fghost");
-              _g.setAttribute("aria-hidden", "true");
-              bot.appendChild(_g); bot.classList.remove("empty");
-            }
-          } catch (e) {}
+        if (_pend && ghostKoma) {
+          const _g = komaEl(ghostKoma, "mini fkoma fghost");
+          _g.setAttribute("aria-hidden", "true");
+          bot.appendChild(_g); bot.classList.remove("empty");
         }
       }
       recvRow.appendChild(top);
@@ -19102,6 +20071,8 @@ if (typeof document !== "undefined") (() => {
     el.classList.toggle("turn", !app.review && st.actor === s && st.phase !== "over");
     el.classList.toggle("attacking", !app.review && !!st.pendingAttack && st.attacker === s);
     el.classList.toggle("reach", !app.review && st.phase !== "over" && st.hands[s].length === 2);   // B3: 残2=上がり直前の席オーラ
+    // DOM構築が最後まで成功した時だけcommit。途中例外を「描画済み」と誤認しない。
+    _cardRenderSignatures[s] = renderSignature;
   }
   // F-2(v90.2): 席名をseatDisp()に一本化(自分/相方/下家/上家)。旧来の相対suffix（相方/敵）は
   // 新名称そのものが関係を表すため重複となり廃止。ally/foe色とCUD形状マークは不変。
@@ -19110,35 +20081,41 @@ if (typeof document !== "undefined") (() => {
     const ally = me ? G.team(s) === G.team(me) : G.team(s) === "NS";
     return `<span class="stag ${ally ? "ally" : "foe"}">${seatDisp(s)}</span>`;
   }
+  let _stageRenderSignature = null;
   function renderStage(st) {
     // 天鳳風・河中心: 中央の攻め駒“複製”表示は廃止（各家の河の .now 強調へ一本化）。
     // 中央は控えめな手番テキストのみ。詳しい案内は #statusline が担う。
     const lab = $("att-label"), area = $("att-area"), idle = $("stage-idle");
-    area.innerHTML = ""; area.classList.remove("live");
-    lab.innerHTML = ""; idle.innerHTML = ""; idle.classList.remove("you");
-    if (!st) return;
-    if (app.review) {
+    let html = "", you = false;
+    if (st && app.review) {
       const mv = app.reviewRec.moves[app.review.idx];
-      idle.innerHTML = mv
+      html = mv
         ? `再現中 — 第${app.review.idx + 1}手 ${seatTag(mv.seat)}の${ACT_JA[mv.action.type]}`
         : `再現中 — 第${app.review.idx + 1}手`;
-      return;
-    }
-    if (st.pendingAttack) {
+    } else if (st && st.pendingAttack) {
       const resp = st.actor;
       const passed = (st.respQueue && st.respIdx > 0) ? st.respQueue.slice(0, st.respIdx) : [];
       const passTxt = passed.length
         ? ` <span class="passed">${passed.map(p => seatDisp(p)).join("・")}なし</span>` : "";
-      idle.innerHTML = `${seatTag(st.attacker)}の攻め → ${seatTag(resp)}が受け${passTxt}`;
-      idle.classList.toggle("you", resp === app.humanSeat);
-    } else if (st.phase === "over" && app.lastWin) {
-      idle.innerHTML = `${seatTag(app.lastWin.winner)}の上がり`;
-    } else if (st.phase !== "over") {
-      idle.innerHTML = st.phase === "bury"
+      html = `${seatTag(st.attacker)}の攻め → ${seatTag(resp)}が受け${passTxt}`;
+      you = resp === app.humanSeat;
+    } else if (st && st.phase === "over" && app.lastWin) {
+      html = `${seatTag(app.lastWin.winner)}の上がり`;
+    } else if (st && st.phase !== "over") {
+      html = st.phase === "bury"
         ? `${seatTag(st.actor)}が伏せています`
         : `${seatTag(st.actor)}の攻め番`;
-      idle.classList.toggle("you", st.actor === app.humanSeat);
+      you = st.actor === app.humanSeat;
     }
+    const signature = JSON.stringify([html, you]);
+    if (_stageRenderSignature === signature) {
+      recordRenderWork("stage", true);
+      return;
+    }
+    recordRenderWork("stage", false);
+    area.innerHTML = ""; area.classList.remove("live");
+    lab.innerHTML = ""; idle.innerHTML = html; idle.classList.toggle("you", you);
+    _stageRenderSignature = signature;
   }
   /* ================================================================
    * U-1(方向3-U1・fugu計画・2026-08-09): AIの読み(pEnemyReceives/pHold)の可視化。
@@ -19632,7 +20609,8 @@ if (typeof document !== "undefined") (() => {
     const el = $(alert ? "sr-alert" : "sr-live"); if (!el || !text) return;
     el.textContent = ""; requestAnimationFrame(() => { el.textContent = text; });
   }
-  function status(t) { $("status-text").textContent = t; announce(t); }
+  // Phase 14: #statusline自体がrole=statusであるため、同文を#sr-liveへ複製しない。
+  function status(t) { $("status-text").textContent = t; }
   // ⑤ 現局面サマリ: 段階式(1回目簡潔/連続押しで詳細)。SRはsr-live、視覚はトースト。
   function boardSummaryText(detail) {
     const st = app.st;
@@ -19681,7 +20659,8 @@ if (typeof document !== "undefined") (() => {
   function setMyTurn(on) {
     const sl = $("statusline"); if (sl) sl.classList.toggle("myturn", !!on);
     const ha = $("handarea"); if (ha) ha.classList.toggle("myturn", !!on);
-    if (on && !app._wasMyTurn) { haptic("turn"); announce("あなたの番です", true); }
+    // 詳細な手番文は直後のstatus()へ一本化。ここでは触覚だけを担当し二重実況を避ける。
+    if (on && !app._wasMyTurn) haptic("turn");
     app._wasMyTurn = !!on;
   }
   // パネル折りたたみ: 既存の先頭ヘッダーをトグル化(なければ挿入)。状態はapp.collapseに保持。
@@ -20137,22 +21116,29 @@ if (typeof document !== "undefined") (() => {
       out.push({jk:"shi_attack", text:"し攻め進行中。し を続けて継続できる。"});
     return out;
   }
+  let _declRenderSignature = null;
   function renderPartnerDecl(st) {
     const el = $("declbox"); if (!el) return;
     const on = app.cfg.decl !== false && app.humanSeat && st && st.phase !== "over";
-    if (!on) { el.classList.remove("show"); el.innerHTML = ""; return; }
-    const ds = partnerDeclarations(st, app.humanSeat);
-    if (!ds.length) { el.classList.remove("show"); el.innerHTML = ""; return; }
-    el.innerHTML = '<div class="decl-head">相方からの合図</div>' +
-      ds.map(function(d){
+    const ds = on ? partnerDeclarations(st, app.humanSeat) : [];
+    const html = ds.length ? '<div class="decl-head">相方からの合図</div>' +
+      ds.map(function(d) {
         var nm = JOSEKI[d.jk] ? JOSEKI[d.jk].name : "";
         return '<div class="decl-row"><span class="decl-rel">相方</span>' +
                '<span class="decl-txt">' + d.text +
                (nm ? '（<button class="jk-chip" data-jk="'+d.jk+'">'+nm+'</button>）' : '') +
                '</span></div>';
       }).join("") +
-      '<div class="decl-foot">相方が符丁で伝えた“宣言”です（敵の確率推定とは別物）。人間相手では流派が異なることがあります。</div>';
-    el.classList.add("show");
+      '<div class="decl-foot">相方が符丁で伝えた“宣言”です（敵の確率推定とは別物）。人間相手では流派が異なることがあります。</div>' : "";
+    const signature = JSON.stringify([!!html, html]);
+    if (_declRenderSignature === signature) {
+      recordRenderWork("decl", true);
+      return;
+    }
+    recordRenderWork("decl", false);
+    el.innerHTML = html;
+    el.classList.toggle("show", !!html);
+    _declRenderSignature = signature;
   }
   function renderBelief(st) {
     const el = $("beliefbox");
@@ -20391,6 +21377,22 @@ if (typeof document !== "undefined") (() => {
       el.style.transform = `translate3d(${x}px,${y}px,0)`;
     }
   }
+  let _countRenderSignature = null;
+  function renderCountBar() {
+    let html = "";
+    if (app.humanSeat && app.st && app.cfg.counts && !app.review && app.st.phase !== "over") {
+      const c = G.countsFor(app.st, app.humanSeat);
+      html = `<span class="cb-t">未見</span>` +
+        COUNT_ORDER.map(k => `<span class="cb-i${c[k] ? "" : " z"}${(k === "王" || k === "香" || k === "し") ? " key" : ""}">${k}${c[k] || 0}</span>`).join("");
+    }
+    if (_countRenderSignature === html) {
+      recordRenderWork("count", true);
+      return;
+    }
+    recordRenderWork("count", false);
+    $("count-bar").innerHTML = html;
+    _countRenderSignature = html;
+  }
   function renderAll() {
     const _renderT0 = perfNow();
     _flipCapture();
@@ -20404,21 +21406,19 @@ if (typeof document !== "undefined") (() => {
     renderStage(st);
     renderScores();
     updateLiveBar();
-    if (app.humanSeat && app.st && app.cfg.counts && !app.review && app.st.phase !== "over") {
-      const c = G.countsFor(app.st, app.humanSeat);
-      $("count-bar").innerHTML = `<span class="cb-t">未見</span>` +
-        COUNT_ORDER.map(k => `<span class="cb-i${c[k] ? "" : " z"}${(k === "王" || k === "香" || k === "し") ? " key" : ""}">${k}${c[k] || 0}</span>`).join("");
-    } else $("count-bar").innerHTML = "";
+    renderCountBar();
     renderPartnerDecl(st);
     renderBelief(st);
     renderReading(st);
     renderAdvice(st);
     updateSheet(st);
+    renderTurnFocus();
     _flipPlay();
     app._flashKey = null;   // D5: 王受けフラッシュは1描画で消費
     updateTurnToken();   // v90: 番札の位置更新(renderAll末尾のみから呼ぶ)
     recordPerf("render", perfNow() - _renderT0);
   }
+  /* PHASE10_RENDER_DIFF_END */
   // ===== 駒移動アニメ (FLIP) =====================================================
   // 全再描画方式のまま、河の駒に付与した data-key で「論理的に同じ駒」を旧→新で対応づけ、
   // 位置差を transform で補間する。回転は内側 .fkoma、移動は外側 .fkoma-pos に分離してあるため
@@ -20796,6 +21796,45 @@ if (typeof document !== "undefined") (() => {
     const sig = (app.beliefKey || "") + "|" + (app.readKey || "") + "|" + (app.adviceKey || "");
     if (sig !== app._sheetSig) { app._sheetSig = sig; if (sig.replace(/\|/g, "")) Sheet.markFresh(); }
   }
+  /* PHASE14_MOBILE_A11Y_JS_START
+   * 狭い画面の視覚情報だけを3項目へ圧縮する。AI推奨・確率を混ぜず、aria-hiddenのため
+   * 読み上げは詳細な#statuslineへ一本化する。 */
+  function turnFocusModel(st, humanSeat, review, stopped, autoPass) {
+    if (!st || review || stopped) return null;
+    if (st.phase === "over") return {turn: "局終了", pending: "上がり", action: "結果を確認", active: "action"};
+    const mine = !!humanSeat && st.actor === humanSeat;
+    const turn = mine ? "あなた" : seatDisp(st.actor);
+    let pending = "まだなし";
+    if (st.pendingAttack) pending = seatDisp(st.attacker) + "「" + st.pendingAttack + "」";
+    else if (st.phase === "bury") pending = "伏せ中";
+    else if (st.phase === "attack") pending = "攻め前";
+    let action = humanSeat ? "待つ" : "観戦中";
+    if (mine && st.phase === "bury") action = "手駒から伏せる";
+    else if (mine && st.phase === "attack") action = "手駒から攻める";
+    else if (mine && st.phase === "respond") {
+      let legal = [];
+      try { legal = G.legalReceives((st.hands && st.hands[humanSeat]) || [], st.pendingAttack) || []; } catch (e) {}
+      if (!legal.length) action = autoPass ? "自動でなし" : "「なし」を押す";
+      else action = "同じ駒" + (legal.includes("王") ? "か王" : "") + "／なし";
+    }
+    return {turn, pending, action, active: mine ? "action" : (st.pendingAttack ? "pending" : "turn")};
+  }
+  function renderTurnFocus() {
+    const host = $("turn-focus"); if (!host) return;
+    const model = turnFocusModel(app.st, app.humanSeat, app.review, app.stopped, app.cfg && app.cfg.autoPass);
+    if (!model) { host.hidden = true; return; }
+    if (app.st && app.st.phase === "over") {
+      const next = document.querySelector("#actionbar .btn.primary, #actionbar .btn.rec, #actionbar .btn");
+      if (next && next.textContent.trim()) model.action = next.textContent.trim();
+    }
+    host.hidden = false;
+    for (const key of ["turn", "pending", "action"]) {
+      const value = $("tf-" + key), step = $("tf-" + key + "-step");
+      if (value && value.textContent !== model[key]) value.textContent = model[key];
+      if (step) step.dataset.active = String(model.active === key);
+    }
+  }
+  /* PHASE14_MOBILE_A11Y_JS_END */
   function actionbar(html, buttons) {
     const m = $("actionbar");
     m.innerHTML = html ? `<span>${html}</span>` : "";
@@ -20806,6 +21845,7 @@ if (typeof document !== "undefined") (() => {
       el.addEventListener("click", b.fn);
       m.appendChild(el);
     });
+    renderTurnFocus();
   }
   function log(text, em, cls) {
     const d = document.createElement("div");
@@ -20842,6 +21882,7 @@ if (typeof document !== "undefined") (() => {
     modeBanner(app.bannerBase + (s ? `<span class="verdict">${s}</span>` : ""));
   }
   let _modalPrevFocus = null;
+  let _modalInerted = [];
   // B-4(v91b): モーダルを閉じる直前(Esc/背景クリック/「閉じる」ボタン等どの経路でも共通)に呼ぶ
   // コールバック。開いた側がmodal()呼び出し後に設定する(定石復習の未採点離脱の検知に使用)。
   // グレーディング等「正常終了」の経路は自分でnullへ戻してから閉じることで、二重発火を避ける。
@@ -20850,6 +21891,38 @@ if (typeof document !== "undefined") (() => {
     return [...root.querySelectorAll('a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])')]
       .filter(el => el.offsetParent !== null || el === document.activeElement);
   }
+  /* Phase 15: :has()に依存せず、checkbox/radioを直接含むlabelへ44px用classを付ける。
+     modalの動的HTMLにも同じ補強を適用する。 */
+  function enhanceTouchLabels(root) {
+    if (!root || !root.querySelectorAll) return 0;
+    let count = 0;
+    root.querySelectorAll("label").forEach(label => {
+      let choice = false;
+      for (const child of label.children) {
+        if (child.matches && child.matches('input[type="checkbox"],input[type="radio"]')) {
+          choice = true; break;
+        }
+      }
+      label.classList.toggle("touch-choice", choice);
+      if (choice) count++;
+    });
+    return count;
+  }
+  function setModalBackgroundInert(active) {
+    if (!active) {
+      _modalInerted.forEach(el => el.removeAttribute("inert"));
+      _modalInerted = [];
+      return;
+    }
+    if (_modalInerted.length) return;
+    const overlay = $("ov-modal");
+    [...document.body.children].forEach(el => {
+      if (el === overlay || el.tagName === "SCRIPT" || el.tagName === "STYLE" || el.hasAttribute("inert")) return;
+      el.setAttribute("inert", "");
+      _modalInerted.push(el);
+    });
+  }
+  enhanceTouchLabels(document);
   // P4 B9: パターン図鑑（軽量）— ペア/でか順/王/五し/手役/同駒2倍を1画面で図解
   //   H2(v78): 同駒受けは基本ルールであり「型」ではないため図鑑から除外した。
   function openPatterns(opts) {
@@ -20986,7 +22059,9 @@ if (typeof document !== "undefined") (() => {
     _modalPrevFocus = document.activeElement;
     _modalOnClose = null;   // B-4(v91b): 新しいモーダルを開くたびにリセット(前のモーダルのコールバックを引き継がない)
     $("modal-body").innerHTML = html;
+    enhanceTouchLabels($("modal-body"));
     $("ov-modal").classList.add("show");
+    setModalBackgroundInert(true);
     const mb = $("modal-body");
     mb.setAttribute("role", "dialog");
     mb.setAttribute("aria-modal", "true");
@@ -20999,18 +22074,183 @@ if (typeof document !== "undefined") (() => {
       if (!h2.id) h2.id = "modal-auto-title";
       mb.setAttribute("aria-labelledby", h2.id);
     }
-    // 開いた直後に最初の操作要素へフォーカス(なければモーダル自体)
-    requestAnimationFrame(() => { const f = _focusables(mb); (f[0] || mb).focus(); });
+    // 開いた直後に最初の操作要素へフォーカス(なければモーダル自体)。診断自身を除く
+    // 動的画面は、閉じた後でも確認できるよう表示中のcomputed geometryを自動採取する。
+    requestAnimationFrame(() => {
+      const f = _focusables(mb); (f[0] || mb).focus();
+      if (!mb.querySelector("#a11y-export")) {
+        try { app._lastModalA11yAudit = A11Y_AUDIT.measure(mb); } catch (e) { /* 初期化前/非対応でも継続 */ }
+      }
+    });
     return mb;
   }
   function closeModal() {
     const onClose = _modalOnClose; _modalOnClose = null;   // B-4(v91b): 実際に閉じる前にコールバックを退避(再入防止)
     $("ov-modal").classList.remove("show");
     $("modal-body").innerHTML = "";
+    setModalBackgroundInert(false);
     if (_modalPrevFocus && _modalPrevFocus.focus) { try { _modalPrevFocus.focus(); } catch (e) {} }
     _modalPrevFocus = null;
     if (onClose) { try { onClose(); } catch (e) {} }
   }
+  /* PHASE15_DEVICE_AUDIT_JS_START
+   * 表示中の操作対象を端末自身のcomputed geometryで測る。実機の読み上げ成否は推測せず、
+   * 利用者が通常/重要通知を聴取して手動記録したJSONだけを証跡とする。 */
+  function touchTargetVerdict(width, height, limit) {
+    const required = Number.isFinite(limit) ? limit : 44;
+    const w = Number(width) || 0, h = Number(height) || 0, tolerance = 0.5;
+    return {pass: w + tolerance >= required && h + tolerance >= required,
+      width: w, height: h, limit: required};
+  }
+  const A11Y_AUDIT = Object.freeze({
+    selector: 'button,a[href],select,input:not([type="hidden"]),textarea,summary,[role="button"],[tabindex]:not([tabindex="-1"]),label.btn,.rv-item,#rv-graph svg',
+    verdict: touchTargetVerdict,
+    measure(root) {
+      const scope = root && root.querySelectorAll ? root : document;
+      let coarsePointer = false;
+      try { coarsePointer = !!(globalThis.matchMedia && matchMedia("(pointer:coarse)").matches); } catch (e) {}
+      const visibleRect = el => {
+        if (!el || !el.getBoundingClientRect) return null;
+        const style = getComputedStyle(el);
+        if (style.display === "none" || style.visibility === "hidden" || style.pointerEvents === "none") return null;
+        const rect = el.getBoundingClientRect();
+        if (!rect || rect.width <= 0 || rect.height <= 0 || !el.getClientRects().length) return null;
+        return rect;
+      };
+      const associatedLabel = el => {
+        if (!el || !el.tagName) return null;
+        let labels = el.labels ? [...el.labels] : [];
+        if (!labels.length && el.id)
+          labels = [...document.querySelectorAll("label")].filter(label => label.htmlFor === el.id);
+        return labels.find(label => visibleRect(label)) || null;
+      };
+      const choiceLabel = el => el.matches && el.matches('input[type="checkbox"],input[type="radio"]') ? associatedLabel(el) : null;
+      const hitRect = (el, target) => {
+        const rect = visibleRect(target); if (!rect) return null;
+        let left = rect.left, top = rect.top, width = rect.width, height = rect.height;
+        if (target === el && el.classList && el.classList.contains("koma")) {
+          try {
+            const pseudo = getComputedStyle(el, "::before");
+            const inset = side => { const n = parseFloat(pseudo[side]); return Number.isFinite(n) ? Math.min(0, n) : 0; };
+            const l = inset("left"), r = inset("right"), t = inset("top"), b = inset("bottom");
+            left += l; top += t; width -= l + r; height -= t + b;
+          } catch (e) { /* pseudo style非対応では見た目rectを安全側に採用 */ }
+        }
+        return {left, top, width, height};
+      };
+      const accessibleLabel = el => {
+        const aria = (el.getAttribute && el.getAttribute("aria-label") || "").trim();
+        if (aria) return aria.slice(0, 80);
+        const labelledBy = (el.getAttribute && el.getAttribute("aria-labelledby") || "").trim();
+        if (labelledBy) {
+          const text = labelledBy.split(/\s+/).map(id => document.getElementById(id)).filter(Boolean)
+            .map(node => node.textContent || "").join(" ").trim();
+          if (text) return text.slice(0, 80);
+        }
+        const label = associatedLabel(el);
+        const text = ((label && label.textContent) || el.textContent ||
+          (el.getAttribute && (el.getAttribute("placeholder") || el.getAttribute("name") || el.getAttribute("title"))) || "")
+          .trim().replace(/\s+/g, " ");
+        return (text || el.id || el.tagName.toLowerCase()).slice(0, 80);
+      };
+      const seen = new Set(), rows = [];
+      scope.querySelectorAll(this.selector).forEach(el => {
+        if (el.disabled || el.getAttribute("aria-disabled") === "true") return;
+        const target = choiceLabel(el) || el;
+        if (seen.has(target)) return;
+        const rect = hitRect(el, target); if (!rect) return;
+        seen.add(target);
+        const verdict = touchTargetVerdict(rect.width, rect.height, 44);
+        const widthOk = rect.width + 0.5 >= 44, heightOk = rect.height + 0.5 >= 44;
+        rows.push({tag: el.tagName.toLowerCase(), id: el.id || "", label: accessibleLabel(el),
+          width: Math.round(rect.width * 10) / 10, height: Math.round(rect.height * 10) / 10,
+          pass: verdict.pass, reason: verdict.pass ? "" : (!widthOk && !heightOk ? "both" : (!widthOk ? "width" : "height"))});
+      });
+      const failures = rows.filter(row => !row.pass);
+      const labelled = scope.getAttribute && scope.getAttribute("aria-labelledby");
+      const labelledNode = labelled && document.getElementById(labelled.split(/\s+/)[0]);
+      return {schema: "goita-a11y-target-audit-v1", generatedAt: new Date().toISOString(),
+        screen: scope === document ? "document" : ((scope.getAttribute && scope.getAttribute("aria-label")) ||
+          (labelledNode && labelledNode.textContent || "").trim() || scope.id || scope.tagName.toLowerCase()),
+        coarsePointer, viewport: {width: globalThis.innerWidth || 0, height: globalThis.innerHeight || 0,
+          dpr: globalThis.devicePixelRatio || 1}, total: rows.length, passed: rows.length - failures.length,
+        failed: failures.length, status: !coarsePointer ? "NOT_APPLICABLE" : (rows.length ? (failures.length ? "FAIL" : "PASS") : "NOT_RUN"),
+        failures: failures.map(({tag, id, label, width, height, reason}) => ({tag, id, label, width, height, reason}))};
+    }
+  });
+  function openA11yDeviceAudit(snapshot) {
+    const report = snapshot || A11Y_AUDIT.measure(document);
+    const previousModalReport = app._lastModalA11yAudit || null;
+    const statusText = report.status === "PASS" ? "44px PASS" : report.status === "FAIL" ? "44px未満あり" :
+      report.status === "NOT_RUN" ? "測定対象なし" : "細かいポインタのため対象外";
+    const statusClass = report.status === "PASS" ? "pass" : report.status === "FAIL" ? "fail" : "na";
+    const failureHtml = report.failures.length ?
+      `<ul class="a11y-audit-list">${report.failures.slice(0, 20).map(row =>
+        `<li><span>${escapeHtml(row.label)}${row.id ? ` <small>#${escapeHtml(row.id)}</small>` : ""}</span>` +
+          `<b>${row.width}×${row.height}px</b></li>`).join("")}</ul>` :
+      `<p class="muted">表示中の測定対象に44px未満はありません。</p>`;
+    const previousModalHtml = previousModalReport ? `<details><summary>前回のダイアログ「${escapeHtml(previousModalReport.screen)}」</summary>
+      <p class="muted">測定 ${previousModalReport.total}件／44px未満 ${previousModalReport.failed}件／判定 ${escapeHtml(previousModalReport.status)}</p>
+      ${previousModalReport.failures.length ? `<ul class="a11y-audit-list">${previousModalReport.failures.slice(0, 20).map(row =>
+        `<li><span>${escapeHtml(row.label)}</span><b>${row.width}×${row.height}px</b></li>`).join("")}</ul>` : `<p class="muted">44px未満はありません。</p>`}
+      </details>` : "";
+    const m = modal(`<h2 class="serif">表示・読み上げの実機診断</h2>
+      <p><span class="a11y-audit-status ${statusClass}">${statusText}</span></p>
+      <div class="a11y-audit-summary"><div><b>${report.total}</b><span>測定</span></div><div><b>${report.passed}</b><span>44px以上</span></div><div><b>${report.failed}</b><span>44px未満</span></div></div>
+      <p class="muted">「${escapeHtml(report.screen)}」で現在表示中の操作対象を実測しました。44px判定は粗いポインタ端末で有効です。別画面は移動後に再実行してください。</p>
+      ${failureHtml}
+      ${previousModalHtml}
+      <fieldset class="a11y-sr-test"><legend>1. 通常通知（VoiceOver / TalkBack）</legend>
+        <p>読み上げを有効にし、テストを押して一回だけ聞こえるか確認します。</p>
+        <button class="btn" id="a11y-sr-polite">通常通知を一回流す</button>
+        <div class="a11y-sr-actions"><button class="btn small" data-sr-kind="polite" data-sr-result="once" aria-pressed="false">一回聞こえた</button><button class="btn small" data-sr-kind="polite" data-sr-result="bad" aria-pressed="false">重複・無音</button></div>
+      </fieldset>
+      <fieldset class="a11y-sr-test"><legend>2. 重要通知（VoiceOver / TalkBack）</legend>
+        <p>重要通知も同様に一回だけ聞こえるか確認します。</p>
+        <button class="btn" id="a11y-sr-alert">重要通知を一回流す</button>
+        <div class="a11y-sr-actions"><button class="btn small" data-sr-kind="alert" data-sr-result="once" aria-pressed="false">一回聞こえた</button><button class="btn small" data-sr-kind="alert" data-sr-result="bad" aria-pressed="false">重複・無音</button></div>
+      </fieldset>
+      <div id="a11y-test-live" class="sr-only" aria-live="polite" aria-atomic="true"></div>
+      <div id="a11y-test-alert" class="sr-only" role="alert" aria-live="assertive" aria-atomic="true"></div>
+      <p id="a11y-sr-record" class="muted">読み上げ結果は未記録です。</p>
+      <p class="muted">JSONは端末へ保存するだけで、通信・自動保存はしません。</p>
+      <div class="row"><button class="btn primary" id="a11y-export">診断結果JSONを保存</button><button class="btn" id="a11y-close">閉じる</button></div>`);
+    const sr = {polite: null, alert: null}, srTimers = {polite: null, alert: null};
+    const clearSrTimers = () => Object.keys(srTimers).forEach(kind => {
+      if (srTimers[kind]) clearTimeout(srTimers[kind]); srTimers[kind] = null;
+    });
+    const fire = (kind, id, text) => {
+      const region = m.querySelector("#" + id); if (!region) return;
+      if (srTimers[kind]) clearTimeout(srTimers[kind]);
+      region.textContent = ""; srTimers[kind] = setTimeout(() => {
+        srTimers[kind] = null; if (region.isConnected) region.textContent = text;
+      }, 40);
+    };
+    m.querySelector("#a11y-sr-polite").onclick = () => fire("polite", "a11y-test-live", "通常通知の読み上げテストです。一回だけ聞こえることを確認してください。");
+    m.querySelector("#a11y-sr-alert").onclick = () => fire("alert", "a11y-test-alert", "重要通知の読み上げテストです。一回だけ聞こえることを確認してください。");
+    m.querySelectorAll("[data-sr-kind]").forEach(button => button.onclick = () => {
+      const kind = button.dataset.srKind, result = button.dataset.srResult; sr[kind] = result;
+      m.querySelectorAll(`[data-sr-kind="${kind}"]`).forEach(peer => peer.setAttribute("aria-pressed", peer === button ? "true" : "false"));
+      const label = value => value === "once" ? "一回" : value === "bad" ? "重複・無音" : "未記録";
+      m.querySelector("#a11y-sr-record").textContent = `手動記録: 通常=${label(sr.polite)}／重要=${label(sr.alert)}`;
+    });
+    m.querySelector("#a11y-export").onclick = () => {
+      const srStatus = sr.polite === "once" && sr.alert === "once" ? "MANUAL_PASS" :
+        (sr.polite && sr.alert ? "MANUAL_FAIL" : "INCOMPLETE");
+      const payload = {schema: "goita-device-a11y-evidence-v1", version: "v197", generatedAt: new Date().toISOString(),
+        geometry: report, lastDialogGeometry: previousModalReport, screenReader: {status: srStatus, polite: sr.polite, alert: sr.alert},
+        device: {userAgent: navigator.userAgent || "", platform: navigator.platform || "", language: navigator.language || ""}};
+      const url = URL.createObjectURL(new Blob([JSON.stringify(payload, null, 2) + "\n"], {type: "application/json"}));
+      const a = document.createElement("a"); a.href = url; a.download = `goita-a11y-v197-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 0);
+    };
+    m.querySelector("#a11y-close").onclick = closeModal;
+    _modalOnClose = clearSrTimers;
+    return m;
+  }
+  $("btn-a11y-audit-setup").addEventListener("click", () => openA11yDeviceAudit(A11Y_AUDIT.measure($("setup-screen"))));
+  $("btn-a11y-audit").addEventListener("click", () => openA11yDeviceAudit(A11Y_AUDIT.measure($("main-screen"))));
+  /* PHASE15_DEVICE_AUDIT_JS_END */
   /* ================================================================
    * 研究モード (human_eval_design.md §4) — A/B盲検・固定seed・予測課題・ログ・強制選択
    * 本番ロジックは無改変。エンジン: G="A"(現行), G_B="B"(app_honest/符丁honesty強制)。
@@ -21019,9 +22259,10 @@ if (typeof document !== "undefined") (() => {
   // F1: 席ごとのエンジン切替（盲検: 版名は出さない）
   function engineFor(seat) {
     const R = app.research;
-    if (R && R.active && seat === R.seatTested && R.condition === "B") return G_B;
-    if (app.tiers[seat] === "coop") return G_B;   // dead since v145 (coop UI removed): app.tiersに"coop"が入る経路が消滅したため到達不能・無害。対人協調＝正直符丁エンジン(B)
-    return G;
+    if (R && R.active && seat === R.seatTested && R.condition === "B")
+      return GOITA_ENGINE_REGISTRY.get("honest");
+    if (app.tiers[seat] === "coop") return GOITA_ENGINE_REGISTRY.get("honest");   // dead since v145 (coop UI removed): app.tiersに"coop"が入る経路が消滅したため到達不能・無害。対人協調＝正直符丁エンジン(B)
+    return GOITA_ENGINE_REGISTRY.get("standard");
   }
   // F3: §3A/§4 符丁検出。st は手番前(=手札に当該駒が残る)。actor=相方AI(seatTested)前提。
   function detectSignal(st, seat, a) {
@@ -21116,7 +22357,7 @@ if (typeof document !== "undefined") (() => {
       const seedBase = +$("rs-seed").value | 0;
       app.humanSeat = "S";
       app.tiers = {N: "strong", W: "strong", S: "strong", E: "strong"};
-      G_B.setCoopSignal(false);   // 研究モードはB=honestのみ、coop符丁は無効
+      GOITA_ENGINE_REGISTRY.invoke("honest", "setCoopSignal", false);   // 研究モードはB=honestのみ、coop符丁は無効
       app.scores = {NS: 0, EW: 0};
       // 固定seed列: special/redeal/5し相談を除外して deals 件確保（両条件で同一列を再生）
       const seeds = [], parents = [];
@@ -21643,8 +22884,8 @@ if (typeof document !== "undefined") (() => {
     wakeLockAcquire();   // A-2(v89b): 対局・観戦中の画面消灯を防ぐ
     clearTimeout(app._scoreT); cancelAnimationFrame(app._scoreRAF);   // B-2(v89c): 前局のカウントアップ取り残し防止
     try {
-      if (!app.cfg.sound && app.humanSeat && !localStorage.getItem("goita_sound_hint")) {
-        localStorage.setItem("goita_sound_hint", "1");
+      if (!app.cfg.sound && app.humanSeat && !DATA_STORAGE.getItem("goita_sound_hint")) {
+        DATA_STORAGE.setItem("goita_sound_hint", "1");
         setTimeout(() => { try { toast("効果音をONにできます（調整→効果音）"); } catch (e) {} }, 1200);
       }
     } catch (e) {}
@@ -22403,8 +23644,7 @@ if (typeof document !== "undefined") (() => {
   }
   function setKyoRetentionBoth(seat) {
     const v = kyoRetentionVal();
-    G.setKyoRetention(seat, v);
-    if (typeof G_B !== "undefined" && G_B.setKyoRetention) G_B.setKyoRetention(seat, v);
+    GOITA_ENGINE_REGISTRY.invokeAll("setKyoRetention", seat, v);
   }
   // 提案B(PLAN_信頼値学習系統ブラッシュアップ_Fable5.md §3-B): 観戦モードでhumanSeatがnullへ
   // 遷移する際、エンジン(G/G_B)に残留した人間席の学習状態(OPP_PROFILE/OU_TRUST/CONV_TRUST/TBL_TRUST)を
@@ -22424,18 +23664,14 @@ if (typeof document !== "undefined") (() => {
   // setKyoRetention呼び出しは実質的に無意味かつ有害であり削除した(保険にすらなっていなかった)。
   function clearHumanLearningBoth(seat) {
     setOppProfileBoth(seat, null);
-    G.setOuTrust(seat, null);
-    if (typeof G_B !== "undefined" && G_B.setOuTrust) G_B.setOuTrust(seat, null);
-    G.setConvTrust(seat, null);
-    if (typeof G_B !== "undefined" && G_B.setConvTrust) G_B.setConvTrust(seat, null);
-    G.setTblTrust(seat, null);
-    if (typeof G_B !== "undefined" && G_B.setTblTrust) G_B.setTblTrust(seat, null);
+    GOITA_ENGINE_REGISTRY.invokeAll("setOuTrust", seat, null);
+    GOITA_ENGINE_REGISTRY.invokeAll("setConvTrust", seat, null);
+    GOITA_ENGINE_REGISTRY.invokeAll("setTblTrust", seat, null);
   }
   // M-5(v92a): setTblTrustBothと同型。coop(G_B)の相方AIも人間プロフィールを見て打てるようミラーする
   // (従来G_Bへの反映が無く、対人協調ティアの相方AIが素の既定値のまま打っていた)。
   function setOppProfileBoth(seat, prof) {
-    G.setOppProfile(seat, prof);
-    if (typeof G_B !== "undefined" && G_B.setOppProfile) G_B.setOppProfile(seat, prof);
+    GOITA_ENGINE_REGISTRY.invokeAll("setOppProfile", seat, prof);
   }
   function tblTrustVal() {
     // ⑥表整合性の逐次事後 P(エンジン的|hit,miss): p_e=0.603 / p_d=0.446 ((b)文脈分離表で再較正 2026-07-03), 事前1:1
@@ -22445,8 +23681,7 @@ if (typeof document !== "undefined") (() => {
   }
   function setTblTrustBoth(seat) {
     const v = tblTrustVal();
-    G.setTblTrust(seat, v);
-    if (typeof G_B !== "undefined" && G_B.setTblTrust) G_B.setTblTrust(seat, v);
+    GOITA_ENGINE_REGISTRY.invokeAll("setTblTrust", seat, v);
   }
   function auditTblConformity(rec) {
     // ⑥表整合性監査: 人間の駒選択(初/2/3攻め・受1/受2)が自己対戦尤度表と整合するかを局終了時に遡及集計
@@ -22640,8 +23875,7 @@ if (typeof document !== "undefined") (() => {
   }
   function setOuTrustBoth(seat) {
     const v = convTrustVal();
-    G.setOuTrust(seat, v);
-    if (typeof G_B !== "undefined" && G_B.setOuTrust) G_B.setOuTrust(seat, v);
+    GOITA_ENGINE_REGISTRY.invokeAll("setOuTrust", seat, v);
   }
   function convTrustVal() {
     return (1 + app.convTrust.ok) / (2 + app.convTrust.n);   // Laplace事後
@@ -22665,15 +23899,20 @@ if (typeof document !== "undefined") (() => {
     }
     setOuTrustBoth(app.humanSeat);
   }
-  // T5(v71): 「今日の一手」— 直前の局で最も逸失点の大きかった⚠(読み切り逃し)を1件選ぶ
+  // Phase 13: 「今回の課題」— 終局結果を使わず、実戦時Solverの証明点が最大の逃しを1件選ぶ。
+  function solverProofScore(mv) {
+    if (!mv || !mv.cf || mv.cf.src !== "solver") return 0;
+    const m = String(mv.cf.why || "").match(/(\d+)点/);
+    return m ? Number(m[1]) : 0;
+  }
   function todaysKeyMove(rec) {
     if (!rec || !rec.misses || !rec.misses.length) return null;
-    let best = null, bestLoss = -1;
+    let best = null, bestProof = -1;
     for (const i of rec.misses) {
       const mv = rec.moves[i];
-      const loss = lossOf(rec, mv);
-      const lv = loss ? loss.loss : 0;
-      if (lv > bestLoss) { bestLoss = lv; best = {i, mv, loss}; }
+      if (!mv || !mv.human || !mv.cf || mv.cf.agree || mv.cf.src !== "solver") continue;
+      const proof = solverProofScore(mv);
+      if (proof > bestProof) { bestProof = proof; best = {i, mv, proof}; }
     }
     return best;
   }
@@ -22682,9 +23921,9 @@ if (typeof document !== "undefined") (() => {
     const km = todaysKeyMove(rec);
     if (!km) return null;
     const mv = km.mv;
-    const lossTxt = km.loss ? `（保証${km.loss.guaranteed}点 → 実際${km.loss.actual >= 0 ? "+" : ""}${km.loss.actual}点・逸失≈${km.loss.loss}点）` : "";
-    const html = `<span class="tkm">今日の一手 — #${km.i + 1}手目「${ACT_JA[mv.action.type]}${mv.action.koma ? "「" + mv.action.koma + "」" : ""}」よりAIなら「${ACT_JA[mv.cf.type]}${mv.cf.koma ? "「" + mv.cf.koma + "」" : ""}」${lossTxt}</span>`;
-    const btn = {label: "今日の一手を解き直す", fn: () => {
+    const proofTxt = km.proof > 0 ? `（実戦情報で${km.proof}点の上がり筋）` : "";
+    const html = `<span class="tkm">今回の課題 — #${km.i + 1}手目「${ACT_JA[mv.action.type]}${mv.action.koma ? "「" + mv.action.koma + "」" : ""}」よりAIなら「${ACT_JA[mv.cf.type]}${mv.cf.koma ? "「" + mv.cf.koma + "」" : ""}」${proofTxt}</span>`;
+    const btn = {label: "60秒で解き直す", fn: () => {
       startPractice(rec, km.i,
         {srcMv: mv, move: {type: mv.cf.type, koma: mv.cf.koma}, why: mv.cf.why, judged: false},
         `今日の一手: 第${rec.matchNo}勝負・第${rec.gameNo}局 #${km.i + 1} を解き直し`);
@@ -23261,7 +24500,8 @@ if (typeof document !== "undefined") (() => {
           ? `<circle cx="${px.toFixed(1)}" cy="7" r="${(r + 2.6).toFixed(1)}" fill="none" stroke="${col}" stroke-width="1" opacity="0.75"/>` : "";
         const tourRing = isTourNow
           ? `<circle class="gx-tourring" cx="${px.toFixed(1)}" cy="7" r="${(r + 4.4).toFixed(1)}" fill="none" stroke="var(--kinari)" stroke-width="1.4"/>` : "";
-        svg += `<g class="gx-pin${isTourNow ? " tour-now" : ""}" data-i="${pin.i}">` +
+        const pinLabel = `第${pin.i + 1}手 ${isMiss ? "読み切り逃し" : "学習対象"}${drop > 0 ? `、勝率${drop}%低下` : ""}。Enterキーで解き直し`;
+        svg += `<g class="gx-pin${isTourNow ? " tour-now" : ""}" data-i="${pin.i}" role="button" tabindex="0" aria-label="${pinLabel}">` +
           `<line x1="${px.toFixed(1)}" y1="${py.toFixed(1)}" x2="${px.toFixed(1)}" y2="7" stroke="${col}" stroke-width="0.8"/>` +
           ring + tourRing +
           `<circle cx="${px.toFixed(1)}" cy="7" r="${r.toFixed(1)}" fill="${col}"/>` +
@@ -23955,8 +25195,70 @@ if (typeof document !== "undefined") (() => {
       showSharedView(snap);
     }
   }
+  /* PHASE13_LEARNING_A11Y_START
+   * 振り返りの入口を「一局一課題」へ整理する。候補は終局時に確定した実戦情報コーチの
+   * Solver証明ミス(rec.misses)だけに限定し、事後の全公開評価は一切参照しない。 */
+  function reviewLessonPick(rec) {
+    if (!rec || !Array.isArray(rec.moves) || !Array.isArray(rec.misses)) return null;
+    let best = null;
+    for (const raw of rec.misses) {
+      const i = Number(raw);
+      if (!Number.isInteger(i) || i < 0 || i >= rec.moves.length) continue;
+      const mv = rec.moves[i];
+      if (!mv || !mv.human || !mv.cf || mv.cf.agree || mv.cf.src !== "solver" || !mv.cf.type) continue;
+      const score = solverProofScore(mv);
+      if (!best || score > best.proof || (score === best.proof && i < best.i))
+        best = {rec, i, mv, proof: score};
+    }
+    return best;
+  }
+  function reviewLessonMoveText(action) {
+    if (!action) return "―";
+    return (ACT_JA[action.type] || action.type || "着手") + (action.koma ? "「" + action.koma + "」" : "");
+  }
+  function reviewLessonConcept(mv) {
+    const key = mv && mv.cf ? josekiFromWhy(mv.cf.why || "") : null;
+    return key && JOSEKI[key] ? JOSEKI[key].name : "読み切り";
+  }
+  function renderReviewLesson(rec) {
+    const host = $("rv-lesson"), title = $("rv-lesson-title"), body = $("rv-lesson-body");
+    const actions = $("rv-lesson-actions");
+    if (!host || !title || !body || !actions) return;
+    host.hidden = false;
+    const lesson = reviewLessonPick(rec);
+    app._reviewLesson = lesson;
+    if (!lesson) {
+      title.textContent = "今回の振り返り";
+      body.innerHTML = '<p><span class="rvlf">事実：</span>実戦情報コーチが確定できる読み切りの逃しはありませんでした。</p>' +
+        '<p><span class="rvlf">次の狙い：</span>必要なら全手一覧や全公開レンズで、別の打ち方も確認できます。</p>';
+      actions.hidden = true;
+      return;
+    }
+    const mv = lesson.mv;
+    const chosen = escapeHtml(reviewLessonMoveText(mv.action));
+    const alternative = escapeHtml(reviewLessonMoveText(mv.cf));
+    const why = escapeHtml(mv.cf.why || "この手順なら上がりまでの道筋を保てます");
+    title.textContent = "今回の課題：" + reviewLessonConcept(mv);
+    body.innerHTML =
+      '<p><span class="rvlf">事実：</span>第' + (lesson.i + 1) + '手で「' + chosen + '」を選びました。</p>' +
+      '<p><span class="rvlf">推定：</span>その時点で知り得た情報では、AIは「' + alternative + '」を示しました。' +
+        (lesson.proof > 0 ? 'この時点で' + lesson.proof + '点の上がり筋を証明しています。' : '') + '</p>' +
+      '<p><span class="rvlf">狙い：</span>' + why + '</p>' +
+      '<p><span class="rvlf">代替手：</span>同じ局面から「' + alternative + '」を選び、上がりまでを確かめます。</p>';
+    actions.hidden = false;
+  }
+  function reviewLessonRedo() {
+    const lesson = app._reviewLesson;
+    if (!lesson || !lesson.mv || !lesson.mv.cf) return;
+    const mv = lesson.mv;
+    startPractice(lesson.rec, lesson.i,
+      {srcMv: mv, move: {type: mv.cf.type, koma: mv.cf.koma}, why: mv.cf.why, judged: false},
+      "今回の課題: 第" + (lesson.rec.matchNo || "?") + "勝負・第" + lesson.rec.gameNo + "局 #" + (lesson.i + 1));
+  }
   function openReviewOn(rec, idx) {
     if (!rec || !rec.moves.length) return;
+    const enteringReview = !app.review;
+    if (enteringReview) app._reviewPrevFocus = document.activeElement || null;
     // Q2(v177): 40点以上上がり等の特別演出(#wincut・キリコ)はhold中(完了ボタン待ち)、
     // 唯一のクローズ経路は#wc-doneクリック(_close())。終局直後のアクションバーには
     // 「振り返り」ボタンも同時に出るため、演出のhold中に振り返りへ入ると_close()へ
@@ -23990,13 +25292,21 @@ if (typeof document !== "undefined") (() => {
       ? `一致${cs.agree}/${cs.h} 逃し${cs.miss}${cs.avgT != null ? " ⏱" + cs.avgT.toFixed(1) + "秒" : ""}` : "";
     $("review").classList.add("show");
     document.body.classList.add("reviewing");
+    renderReviewLesson(rec);
     renderReviewList();
     computeEquityCurve(rec);
     renderAll();
     status(`${rec.imported ? "（読込）" : ""}第${rec.matchNo || "?"}勝負・第${rec.gameNo}局の振り返り — 手をクリックで再現、▶で巻き戻して再プレイ`);
+    if (enteringReview) requestAnimationFrame(() => {
+      const target = $("rv-lesson") || $("rv-close");
+      if (target) { try { target.focus({preventScroll: true}); } catch (e) { target.focus(); } }
+    });
   }
   function openReview() { openReviewOn(app.lastRec); }
-  function closeReview() {
+  function closeReview(restoreFocus) {
+    const back = app._reviewPrevFocus;
+    app._reviewPrevFocus = null;
+    app._reviewLesson = null;
     app.review = null;
     // build v170: 視点切替・QR/URL読込で変わったhumanSeatを、振り返りに入る前の値へ戻す。
     if (app._humanSeatBeforeReview !== undefined) {
@@ -24007,7 +25317,15 @@ if (typeof document !== "undefined") (() => {
     tourStop();   // 悪手ツアー(v87): 振り返りを閉じたらツアーも終了
     $("review").classList.remove("show");
     document.body.classList.remove("reviewing");
+    if (restoreFocus) requestAnimationFrame(() => {
+      const target = back && back.isConnected ? back
+        : document.querySelector("#actionbar .btn.primary, #actionbar .btn, #btn-back");
+      if (target && typeof target.focus === "function") {
+        try { target.focus({preventScroll: true}); } catch (e) { target.focus(); }
+      }
+    });
   }
+  /* PHASE13_LEARNING_A11Y_END */
   function parAnalyze(i) {
     const mv = app.reviewRec.moves[i];
     const st = rebuildState(app.reviewRec, i);     // 手の直前 (全手情報=神視点)
@@ -24061,7 +25379,15 @@ if (typeof document !== "undefined") (() => {
   }
   function renderReviewList() {
     const list = $("rv-list");
-    { const sk = $("rv-seek"); if (sk && app.reviewRec && app.review) { const N = app.reviewRec.moves.length; sk.max = String(Math.max(0, N - 1)); if (+sk.value !== app.review.idx) sk.value = String(app.review.idx); const lb = $("rv-seek-lbl"); if (lb) lb.textContent = "第" + (app.review.idx + 1) + "手 / " + N; } }
+    { const sk = $("rv-seek"); if (sk && app.reviewRec && app.review) {
+        const N = app.reviewRec.moves.length, pos = app.review.idx;
+        sk.max = String(Math.max(0, N - 1));
+        if (+sk.value !== pos) sk.value = String(pos);
+        const lb = $("rv-seek-lbl"); if (lb) lb.textContent = "第" + (pos + 1) + "手 / " + N;
+        const mv = app.reviewRec.moves[pos];
+        sk.setAttribute("aria-valuetext", "第" + (pos + 1) + "手、" +
+          (mv ? seatDisp(mv.seat) + "の" + reviewLessonMoveText(mv.action) : "局面"));
+      } }
     const humanOnly = $("rv-human").checked;
     list.innerHTML = "";
     if ($("rv-partner") && $("rv-partner").checked) computePartnerView(app.reviewRec);
@@ -24229,6 +25555,13 @@ if (typeof document !== "undefined") (() => {
       app.review.idx = Math.max(0, Math.min(N - 1, Math.round(frac * N)));
       renderReviewList(); renderAll(); renderEquityGraph(app.reviewRec);
     }); }
+  { const gh = $("rv-graph"); if (gh) gh.addEventListener("keydown", ev => {
+      if (ev.key !== "Enter" && ev.key !== " " && ev.key !== "Spacebar") return;
+      const pin = ev.target.closest ? ev.target.closest(".gx-pin") : null;
+      if (!pin || pin.dataset.i === undefined) return;
+      ev.preventDefault();
+      resumeFromMove(+pin.dataset.i);
+    }); }
   $("rv-human").addEventListener("change", renderReviewList);
   $("rv-coach").addEventListener("change", renderReviewList);
   $("rv-partner").addEventListener("change", renderReviewList);
@@ -24240,8 +25573,8 @@ if (typeof document !== "undefined") (() => {
       openReviewOn(app.reviewRec, app.review ? app.review.idx : app.reviewRec.moves.length - 1);
     });
   }
-  $("rv-close").addEventListener("click", () => {
-    closeReview();
+  function closeReviewToGame() {
+    closeReview(true);
     renderAll();
     if (app.st && app.st.phase === "over" && !app.matchOver) {
       const over = app.scores.NS >= app.cfg.target || app.scores.EW >= app.cfg.target;
@@ -24249,6 +25582,20 @@ if (typeof document !== "undefined") (() => {
         ? [{label: "振り返り", fn: openReview}, {label: "結果を見る", primary: true, fn: showMatchEnd}]
         : [{label: "振り返り", fn: openReview}, {label: "次の局へ", primary: true, fn: startGame}]);
     }
+  }
+  $("rv-close").addEventListener("click", closeReviewToGame);
+  $("rv-lesson-redo").addEventListener("click", reviewLessonRedo);
+  $("rv-lesson-later").addEventListener("click", () => {
+    const host = $("rv-lesson"); if (host) host.hidden = true;
+    announce("今回の課題を閉じました。学習失敗には記録されません。");
+    const seek = $("rv-seek"); if (seek) seek.focus();
+  });
+  document.addEventListener("keydown", ev => {
+    if (ev.defaultPrevented || ev.key !== "Escape" || !app.review) return;
+    const ov = $("ov-modal");
+    if ((ov && ov.classList.contains("show")) || (typeof Sheet !== "undefined" && Sheet.isOpen)) return;
+    ev.preventDefault();
+    closeReviewToGame();
   });
   // 巻き戻し: 選んだ手の「直前」の局面に戻し、そこから対局を再開する
   function resumeFromMove(i) {
@@ -24470,11 +25817,11 @@ if (typeof document !== "undefined") (() => {
         const dropTxt = (p.deq != null && p.deq > 0) ? `勝率−${Math.round(p.deq * 100)}%` : "";
         const metrics = [lossTxt, dropTxt].filter(Boolean).join(" ・ ") || "―";
         const cur = (app.tour && app.tour.list && app.tour.list[app.tour.k] && app.tour.list[app.tour.k].i === p.i) ? " cur" : "";
-        return `<div class="rw-item${cur}" data-i="${p.i}">` +
+        return `<button type="button" class="rw-item${cur}" data-i="${p.i}" aria-label="第${p.i + 1}手を表示。${isMiss ? "読み切り逃し" : "学習対象"}、${metrics}">` +
           `<span class="rw-rank">${idx + 1}</span>` +
           `<span class="rw-glyph ${isMiss ? "miss" : "study"}">${isMiss ? "⚠" : "☆"}</span>` +
           `<span class="rw-no">第${p.i + 1}手</span>` +
-          `<span class="rw-metrics">${metrics}</span></div>`;
+          `<span class="rw-metrics">${metrics}</span></button>`;
       }).join("");
   }
   { const rw = $("rv-worst"); if (rw) rw.addEventListener("click", ev => {
@@ -24648,7 +25995,7 @@ if (typeof document !== "undefined") (() => {
     app.humanSeat = (!watch && sSel === "human") ? "S" : null;
     if (app.tiers.S === "human" && app.humanSeat === null) app.tiers.S = "strong";
     if (!app.humanSeat) clearHumanLearningBoth("S");   // 提案B: 観戦モード突入時にS席の残留学習状態をクリア
-    G_B.setCoopSignal(G.SEATS.some(function(s){ return app.tiers[s] === "coop"; }));   // dead since v145 (coop UI removed): app.tiersに"coop"が入らないため常にfalseで無害。対人協調AIの正直符丁(でか順)をB側で有効化
+    GOITA_ENGINE_REGISTRY.invoke("honest", "setCoopSignal", G.SEATS.some(function(s){ return app.tiers[s] === "coop"; }));   // dead since v145 (coop UI removed): app.tiersに"coop"が入らないため常にfalseで無害。対人協調AIの正直符丁(でか順)をB側で有効化
     saveCfgToStorage();   // O1: 対局開始時点のcfgを保存
   }
   // A-2(v91a): setup非表示・main表示・handarea表示(humanSeatに追随)をまとめたヘルパー。
@@ -25000,8 +26347,8 @@ if (typeof document !== "undefined") (() => {
       ],
     },
   };
-  function tutLoad() { try { return JSON.parse(localStorage.getItem("goita_tutorial_progress")) || {cleared: []}; } catch (e) { return {cleared: []}; } }
-  function tutSave(p) { try { localStorage.setItem("goita_tutorial_progress", JSON.stringify(p)); } catch (e) {} }
+  function tutLoad() { try { return JSON.parse(DATA_STORAGE.getItem("goita_tutorial_progress")) || {cleared: []}; } catch (e) { return {cleared: []}; } }
+  function tutSave(p) { DATA_STORAGE.setItem("goita_tutorial_progress", JSON.stringify(p)); }
   function tutPct(p) { return Math.round((p.cleared || []).filter(k => TUT_ORDER.includes(k)).length / TUT_ORDER.length * 100); }
   function tutNextKey(p) { return TUT_ORDER.find(k => !(p.cleared || []).includes(k)) || null; }
   function updateTutorialPanel() {
@@ -25608,14 +26955,14 @@ if (typeof document !== "undefined") (() => {
   const KEIKO_STORAGE_KEY = "goita_keiko_v1";
   function keikoLoad() {
     try {
-      const raw = localStorage.getItem(KEIKO_STORAGE_KEY);
+      const raw = DATA_STORAGE.getItem(KEIKO_STORAGE_KEY);
       const d = raw ? JSON.parse(raw) : null;
       return (d && typeof d === "object") ? d : {};
     } catch (e) { return {}; }
   }
   function keikoDismissedToday() { return keikoLoad().dismissedOn === today(); }
   function keikoDismissToday() {
-    try { localStorage.setItem(KEIKO_STORAGE_KEY, JSON.stringify({dismissedOn: today()})); } catch (e) {}
+    DATA_STORAGE.setItem(KEIKO_STORAGE_KEY, JSON.stringify({dismissedOn: today()}));
     const panel = $("keiko-panel"); if (panel) panel.style.display = "none";
   }
   // S-3(v90c): 期日超過のSRSカードを稽古札の優先度1へ。件数は事実として表示してよいが「残り」枠の
@@ -26035,7 +27382,7 @@ if (typeof document !== "undefined") (() => {
   const TOURWIN_STORAGE_KEY = "goita_tourwin_v1";
   function tourWinLoad() {
     try {
-      const raw = localStorage.getItem(TOURWIN_STORAGE_KEY);
+      const raw = DATA_STORAGE.getItem(TOURWIN_STORAGE_KEY);
       if (!raw) return {v: 1, wins: 0, losses: 0};
       const d = JSON.parse(raw);
       if (!d || typeof d !== "object" || d.v !== 1) return {v: 1, wins: 0, losses: 0};
@@ -26046,7 +27393,7 @@ if (typeof document !== "undefined") (() => {
     try {
       const d = tourWinLoad();
       if (youWin) d.wins++; else d.losses++;
-      localStorage.setItem(TOURWIN_STORAGE_KEY, JSON.stringify(d));
+      DATA_STORAGE.setItem(TOURWIN_STORAGE_KEY, JSON.stringify(d));
     } catch (e) { /* 黙って諦める(対局を妨げない) */ }
   }
   function readinessChecklistHtml() {
@@ -26601,7 +27948,7 @@ if (typeof document !== "undefined") (() => {
     m.querySelector("#s-close").onclick = () => {
       app.cfg.mc = m.querySelector("#s-mc").checked;
       app.cfg.ouSignal = m.querySelector("#s-ousig").checked;
-      G.setOuSignal(app.cfg.ouSignal); G_B.setOuSignal(app.cfg.ouSignal);
+      GOITA_ENGINE_REGISTRY.invokeAll("setOuSignal", app.cfg.ouSignal);
       app.cfg.solver = m.querySelector("#s-solver").checked;
       app.cfg.explain = m.querySelector("#s-explain").checked;
       app.cfg.hints = m.querySelector("#s-hints").checked;

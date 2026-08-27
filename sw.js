@@ -643,7 +643,7 @@
 //   構成(mc:true+matchEq+dd等)では受けMCゲートに阻まれてv187ガードが到達しなかった問題への
 //   対応。新規トグルFLOWBACK_PREMC。詳細はindex.htmlのbuildコメントおよび
 //   IMPLEMENTATION_REPORT_相方上がり通し上位化_build_v188_Sonnet5.md参照。
-const CACHE_NAME = "goita-v190";
+const CACHE_NAME = "goita-v197";
 
 const CRITICAL_URLS = [
   "./",
