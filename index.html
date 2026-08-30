@@ -60,6 +60,20 @@
        切り戻し: 実行中は GOITA_DIAGNOSTICS.setPackedBc(0)(または
        GOITA_ENGINE_REGISTRY.invokeAll("setPackedBc", 0)・URL #pkbc=0)、
        恒久的にはコード2箇所の既定値を 0 へ手動で戻す。 -->
+  <!-- build: v208「更新内容の表示(右上の版数バッジをボタン化)」base=v207。app層のみ。
+       起票: Sonar「バージョンアップしたら右上のv198の部分を更新しているが、そこをクリックすると
+             前のバージョンとの変更部分を簡潔かつ分かりやすい説明が出るようにして」。
+       前提の是正: 右上のバッジは **更新されていなかった**。v198 で入れた静的テキスト
+             `<span class="setup-version">v198</span>` のまま v199〜v207 の9ビルドで放置されており、
+             利用者からは「更新されている」ように見えていたが実際には固定文字列だった。
+       変更: (1) span → button 化し、押すと「更新内容」モーダルを開く。
+             (2) 変更履歴を APP_CHANGELOG 配列(app層)に持たせ、**バッジの版数はその先頭要素から
+                 起動時に上書き**する。以後は配列に1件足せば版数表示も自動で追随するため、
+                 今回のような取り残しが構造的に起きない。
+             (3) 文面は遊ぶ人向けの平易な日本語。内部だけの版は「打ち筋は変わりません」と明記する。
+       範囲: エンジン(G/G_B)は1文字も変更していない。app層のCSS/HTML/JSのみ。
+       検証: IMPLEMENTATION_REPORT_v208_更新内容表示_Opus5.md 参照。
+       CACHE_NAME: goita-v207 → goita-v208. -->
   <!-- build: v207「振り返り画面のレイアウト崩れ修正」base=v206。CSS のみ(JS・エンジンは無改変)。
        報告: 「振り返りの文字が読みにくい」「60秒で解き直すボタンが動いてない」(Sonar・実機スクショ2枚)。
        真因1(重なり): #review / #rv-list はどちらも flex column で、子は既定 flex-shrink:1。
@@ -2945,9 +2959,33 @@ button:focus:not(:focus-visible){outline:none}
 #setup-screen .title-block{display:flex;align-items:flex-end;gap:14px;padding:0 4px}
 #setup-screen h1{font-size:2.4rem;letter-spacing:.5em;font-weight:700;color:var(--kinari);line-height:1}
 #setup-screen .title-sub{font-size:.68rem;color:var(--gin-d);line-height:1.8;padding-bottom:4px}
-.setup-version{position:absolute;top:0;right:4px;z-index:2;padding:3px 8px;border:1px solid var(--hair2);
+/* build v208: バージョン表示をボタン化(押すと更新内容)。font/color は button 既定を上書きする。 */
+.setup-version{position:absolute;top:0;right:4px;z-index:2;padding:3px 10px;border:1px solid var(--hair2);
   border-radius:999px;background:var(--ink1);color:var(--gin);font-size:.65rem;font-weight:600;
-  letter-spacing:.08em;line-height:1.4;white-space:nowrap}
+  letter-spacing:.08em;line-height:1.4;white-space:nowrap;font-family:inherit;cursor:pointer;
+  display:inline-flex;align-items:center;gap:5px;transition:border-color .15s,color .15s}
+.setup-version:hover{border-color:var(--kin);color:var(--kinari)}
+.setup-version .sv-i{font-size:.8rem;line-height:1;color:var(--kin)}
+/* build v208: 更新内容モーダル */
+/* .modal 自身が max-height:88dvh/overflow-y:auto でスクロールする。ここで入れ子の
+   スクロール面を作ると、最後の項目が途中で切れて「壊れている」ように見えるので作らない
+   (v207 で #rv-list に対して直したのと同じ考え方)。 */
+#chglog{display:flex;flex-direction:column;gap:10px;margin:2px 0 4px}
+#chglog .cl-e{display:flex;flex-direction:column;gap:4px;padding:9px 10px;border-radius:9px;
+  border:1px solid var(--hair2);background:rgba(20,28,30,.42)}
+#chglog .cl-e.now{border-color:var(--kin);background:rgba(64,52,24,.3)}
+#chglog .cl-h{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+#chglog .cl-v{color:var(--kinari);font-weight:700;letter-spacing:.06em;font-size:.82rem}
+#chglog .cl-tag{font-size:.58rem;padding:1px 7px;border-radius:999px;border:1px solid currentColor;
+  color:var(--gin-d);white-space:nowrap}
+#chglog .cl-tag.fix{color:var(--shu)}
+#chglog .cl-tag.fast{color:var(--aoi)}
+#chglog .cl-tag.read{color:var(--kin)}
+#chglog .cl-t{font-size:.78rem;color:var(--fg)}
+#chglog .cl-p{margin:0;padding-left:1.05em;font-size:.72rem;color:var(--gin);line-height:1.7}
+#chglog .cl-p li{margin:1px 0}
+#chglog-old summary{font-size:.72rem;color:var(--gin-d);cursor:pointer;padding:6px 2px;letter-spacing:.06em}
+#chglog-old[open] summary{color:var(--kinari)}
 .title-link{align-self:flex-start;padding:5px 4px;margin:-6px 0 0;background:transparent;border:none;
   color:var(--kin);font-size:.72rem;letter-spacing:.04em;text-decoration:underline;text-underline-offset:3px;
   text-decoration-color:rgba(194,163,93,.4)}
@@ -4364,7 +4402,9 @@ body.noto #wincut.show .wc-label{animation:wcFude .62s cubic-bezier(.2,.9,.3,1.2
 
 <!-- ================= 設定画面 ================= -->
 <div id="setup-screen">
-  <span class="setup-version" aria-label="ごいたブラウザゲーム バージョン198">v198</span>
+  <!-- build v208: 版数表示は APP_CHANGELOG[0] から起動時に上書きされる(JS が動かない場合の保険としてここにも同じ版数を書いておく)。 -->
+  <button type="button" class="setup-version" id="btn-version"
+          aria-label="バージョン v208 — 更新内容を見る" title="更新内容を見る"><span id="btn-version-num">v208</span><span class="sv-i" aria-hidden="true">ⓘ</span></button>
   <div class="title-block">
     <h1 class="serif">ごいた</h1>
     <div class="title-sub">能登・宇出津に伝わる竹駒の伝承遊戯</div>
@@ -30256,6 +30296,73 @@ if (typeof document !== "undefined") (() => {
       <div class="row"><button class="btn primary" id="pz-close">閉じる</button></div>`);
     m.querySelectorAll("[data-band]").forEach(b => b.onclick = () => runPuzzleGen(b.dataset.band));
     m.querySelector("#pz-close").onclick = closeModal;
+  }
+  /* ================================================================
+   * build v208: 更新内容(右上のバージョン表示をタップ)
+   *
+   * ★新しいビルドを出すときは、必ずこの配列の先頭に1件足すこと。★
+   *   画面右上の版数表示は APP_CHANGELOG[0].v から自動生成される。ここを足し忘れると
+   *   版数表示も止まる(実際 v199〜v207 は更新漏れで「v198」のままだった)。
+   * 文面の方針: 遊ぶ人に向けた平易な言葉で、1項目1行。内部だけの変更は
+   *   「打ち筋は変わりません」と明記する(何も変わらない版に期待させない)。
+   * tag: fix=不具合修正 / fast=速くなった / read=読みが良くなった / (無印)=内部のみ
+   * ================================================================ */
+  const APP_CHANGELOG = [
+    {v: "v208", d: "2026-08-30", tag: "", tagJa: "使い勝手", t: "更新内容を読めるようにしました", p: [
+      "右上のバージョン表示を押すと、この「更新内容」が開くようになりました。",
+      "版数表示が v198 のまま止まっていたのを直し、常に実際の版数が出るようにしました。"]},
+    {v: "v207", d: "2026-08-30", tag: "fix", tagJa: "不具合修正", t: "振り返り画面が読めなかったのを修正", p: [
+      "スマホなどのタッチ画面で、手の一覧の説明文にボタンが重なって読めなくなっていたのを直しました。",
+      "形勢グラフがほとんど潰れて見えなかったのを直しました(パソコンでも同じ症状でした)。",
+      "課題が無い局にも出ていた、押しても反応しない「60秒で解き直す」を出さないようにしました。"]},
+    {v: "v206", d: "2026-08-30", tag: "", tagJa: "内部のみ", t: "AIの計算を「間」の中で済ませる仕組み(既定オフ)", p: [
+      "待ち時間の裏で先に読ませる仕組みを用意しました。既定はオフで、打ち筋も間合いも変わりません。"]},
+    {v: "v205", d: "2026-08-30", tag: "", tagJa: "内部のみ", t: "深い読みを速くする土台(既定オフ)", p: [
+      "読み切り計算の高速化を単体で17.9倍まで確認しました。既定はオフで、打ち筋は変わりません。"]},
+    {v: "v204", d: "2026-08-29", tag: "", tagJa: "内部のみ", t: "ソース内の注記の是正のみ", p: [
+      "コメントだけの修正です。動作は v203 と完全に同じです。"]},
+    {v: "v203", d: "2026-08-29", tag: "fast", tagJa: "速くなった", t: "相手の手を推測する計算を高速化", p: [
+      "実測で約2〜4%短縮しました。AIが選ぶ手は1手も変わりません。"]},
+    {v: "v202", d: "2026-08-28", tag: "read", tagJa: "読みが良くなった", t: "相手の持ち駒の推測を微調整", p: [
+      "場の情報から相手の持ち駒を推測する重みを控えめに補正しました。予測の当たり具合がわずかに改善しています。",
+      "強さが落ちていないことは2,000対戦の比較で確認済みです。"]},
+    {v: "v201", d: "2026-08-28", tag: "", tagJa: "内部のみ", t: "上の補正の仕組みを追加(既定オフ)", p: [
+      "この版では有効になっていないため、打ち筋は変わりません。"]},
+    {v: "v200", d: "2026-08-27", tag: "fast", tagJa: "速くなった", t: "盤面データの内部表現を高速化", p: [
+      "実対局で14〜18%短縮しました。AIが選ぶ手は変わりません。"]},
+    {v: "v199", d: "2026-08-27", tag: "", tagJa: "内部のみ", t: "上の高速化の仕組みを追加(既定オフ)", p: [
+      "この版では有効になっていないため、打ち筋は変わりません。"]},
+  ];
+  function chglogEntryHtml(e, now) {
+    return `<div class="cl-e${now ? " now" : ""}">` +
+      `<div class="cl-h"><span class="cl-v">${escapeHtml(e.v)}</span>` +
+      `<span class="cl-tag ${escapeHtml(e.tag)}">${escapeHtml(e.tagJa)}</span>` +
+      `<span class="cl-t">${escapeHtml(e.t)}</span></div>` +
+      `<ul class="cl-p">${e.p.map(x => `<li>${escapeHtml(x)}</li>`).join("")}</ul></div>`;
+  }
+  function openChangelog() {
+    const cur = APP_CHANGELOG[0], rest = APP_CHANGELOG.slice(1);
+    const m = modal(
+      `<h2 class="serif">更新内容</h2>` +
+      `<p class="note">いま使っているのは <b>${escapeHtml(cur.v)}</b> です。前の版から変わったところをまとめています。</p>` +
+      `<div id="chglog">` + chglogEntryHtml(cur, true) +
+      (rest.length
+        ? `<details id="chglog-old"><summary>これまでの更新（${rest.length}件）</summary>` +
+          rest.map(e => chglogEntryHtml(e, false)).join("") + `</details>`
+        : "") +
+      `</div>` +
+      `<p class="note">v198 以前の更新履歴は、このファイルの先頭にある build コメントに残しています。</p>` +
+      `<div class="row"><button class="btn primary" id="cl-close">閉じる</button></div>`);
+    m.querySelector("#cl-close").onclick = closeModal;
+  }
+  {
+    const bv = $("btn-version");
+    if (bv) {
+      const num = $("btn-version-num"), v = APP_CHANGELOG[0].v;
+      if (num) num.textContent = v;
+      bv.setAttribute("aria-label", `バージョン ${v} — 更新内容を見る`);
+      bv.addEventListener("click", openChangelog);
+    }
   }
   $("btn-puzzle").addEventListener("click", () => openPuzzle());
   { const bp = document.getElementById("btn-patterns"); if (bp) bp.addEventListener("click", () => openPatterns()); }
