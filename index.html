@@ -4,6 +4,204 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>ごいた — 能登の伝承遊戯</title>
+  <!-- build: v204「コメント同期(PACKED_WORLD/EV/BC既定値注釈の是正)」base=v203。
+       (goita-dev-loop・Executor=Opus5[Fable5がAPIレート制限中のため代打])
+       根拠: REVIEW_REPORT_PACKED_BC既定ON化_build_v203_Opus5.md の Nice-to-have 1・2。
+       v200(PACKED_WORLD/EV既定ON)・v203(PACKED_BC既定ON)で陳腐化したまま未返済だった
+       コメント同期債務をSonarへエスカレーションし、Sonarがコメント同期専用コミットの
+       実施を裁定した。
+       性質: コメントのみの変更。非コメント行(実行されるコード)は1文字も変更していない。
+       したがって着手列SHA-256・RNGストリーム別消費・性能とも v203 と完全同一であり、
+       差分は本ヘッダ追加による行番号シフト(+28行)と下記13行のコメント文言のみ。
+       対象13行(G/G_B の2エンジンコピー分を含む):
+        (1) PACKED_WORLD 宣言部ヘッダ 2行×2 — 「0=legacy(既定)」「既定値0で出荷。既定ON化は
+            別コミット・別判断とする」→ 1=packed(既定)・v200で既定ON化済み、へ是正。
+        (2) PACKED_EV 宣言部ヘッダ 1行×2 — 「0=legacy(既定)」→ 1=packed(既定・v200)。
+        (3) PACKED_BC 宣言部ヘッダ 1行×2 — 「0=legacy(既定)」→ 1=packed(既定・v203)。
+        (4) beliefMC の __oIdx 前計算 1行×2 — 「既定(PACKED_BC=0)では配列を作らずカウンタも
+            触らない(NULL等価: 割当・挙動とも不変)」は単なる既定値表記ではなく実行時挙動の
+            誤記述であった(新既定 bc=1 では毎決定この配列生成とカウンタ更新が実際に発生する)。
+            現状の挙動を正確に記述し直した(v203レビュー Nice-to-have 2 の優先項目)。
+        (5) 起動時ハッシュトグル #pkw / #pkev / #pkbc の各1行 — 「既定0 = legacy」→
+            「既定1 = packed」(#pkdd の v198 既定ON化後の表記に揃えた)。
+       スコープ外(意図的に据え置き): v199 / v199+3B-1 / 3B-2 等の過去ビルドヘッダ内の
+       「既定OFF」「既定0=legacy」記述は、そのビルド時点の事実を記録した履歴であり、
+       後続ヘッダ(v200/v202/v203)が既定値変更を明示しているため書き換えない。同じく
+       PACKED_BC 宣言部の「PACKED_EV は v200 で既定ONのため…2段階規律を優先」は
+       トグルを独立新設した当時の判断理由の記録であり現在も正しいため据え置く。
+       検証: snapshots/index_pre_v204.html との diff が本ヘッダ追加と上記13行のみで
+       非コメント行の差分ゼロ(機械確認)、selfTest/exhaustive監査 全PASS、
+       Playwright実機スモークPASS、200局着手列SHA-256が v203 と完全一致。 -->
+  <!-- build: v203「PACKED_BC 既定ON(bc=1)」base=v202+3B-2。
+       計画: PLAN_Phase3B以降_サンプラーPacked化と既定ON化判断_Fable5.md §2.11
+       「性能ゲートと既定ON昇格(Phase 3B統合判断)」の C12(昇格コミット)
+       (goita-dev-loop・Executor=Opus5[Fable5がAPIレート制限中のため代打]・
+       既定ON化はSonar裁定。v196〜v198(PACKED_DD)・v200(PACKED_WORLD/EV)・
+       v202(FA_TEMPER)と同じ「実装(OFF)→検証→既定ON化(別ビルド)」2段階方式)。
+       変更: PACKED_BC の既定値を 0(legacy)→1(packed)にする(G/G_B の各1箇所・
+       計2箇所・各1文字。他のコード・コメントは1文字も変更していない)。
+       根拠(主): §2.11 C9「着手列/RNG消費一致=決定等価」。bc=0 と bc=1 で 200局の
+       着手列SHA-256 と RNGストリーム別消費が1ビットも変わらない(PACKED_EV∈{0,1,2}・
+       FA_TEMPER∈{0.5,1} の全アーム)。プレイ内容を一切変えない内部実装の切替であるため、
+       通常のwinrate A/Bゲートを C9 が代替する(等価性は構成的: 各(席,駒種)累積器は
+       独立floatで、c>0 のときだけ加算する限り駒種列挙順が加算列を変えない)。
+       根拠(副): 3B-2レビュー(REVIEW_REPORT_Phase3B第2部_3B2beliefMC集計語化_Opus5.md)の
+       A/A対照つき paired ABBA 実速度測定で G +2.2±0.95pp / G_B +3.6±0.97pp の
+       統計的に有意な改善(「マージ推奨」)。C8(判断p95)劣化の兆候なし、
+       C10(GC計装)総時間PASS、C11(Chromium)pooledで速度改善確認
+       (シード別厳密判定は環境ノイズにより判定不能)。
+       実機確認について: iPhone Safari / Android Chrome 等の実機3系統での確認は
+       本コミット時点で未実施。実機テストを待たずに昇格することはSonarの明示的判断による
+       (§2.11 の実機ゲートを、C9 の決定等価=プレイ内容不変を根拠に省略する裁定)。
+       検証: 新既定(セッター無呼出)200局の着手列SHAが v202+3B-2 の PACKED_BC=0 と
+       完全一致(G 22db9a47… / G_B c0e4766a…・RNGストリーム別消費も一致)、
+       setPackedBc(0) 切り戻しでも同一SHA、packedBcDiag().mode が既定で1、
+       mode1 の packed/reuse 実発火と fbShape=0、既存回帰全PASS、Playwright #pkbc。
+       切り戻し: 実行中は GOITA_DIAGNOSTICS.setPackedBc(0)(または
+       GOITA_ENGINE_REGISTRY.invokeAll("setPackedBc", 0)・URL #pkbc=0)、
+       恒久的にはコード2箇所の既定値を 0 へ手動で戻す。 -->
+  <!-- build: 3B-2「PACKED_BC beliefMC集計語化(既定0=legacy)」base=v202。
+       計画: PLAN_Phase3B以降_サンプラーPacked化と既定ON化判断_Fable5.md §2.4 3B-2
+       (goita-dev-loop・Executor=Fable5[Sonar明示指示])。
+       変更: beliefMC Kループ末尾の集計(counter(sampled[p]) の {} 割当+for-in)を、
+       PACKED_BC=1 でカウント語のニブル直読に置換(3B-1が同一サンプルでpack済みの
+       _BMC_PW を再利用、pack が無い決定は cwOf で構築)。トグルは PACKED_EV とは独立の
+       新設 — PACKED_EV は v200 で既定ONのため、計画§2.7の相乗り案のままだと本段が
+       段別検証を経ずに既定ONになる。既定 PACKED_BC=0(legacy)で出荷し、挙動は v202 と
+       全経路ビット同一(NULL等価)。等価性根拠: 各(席,駒種)累積器は独立floatで、
+       c>0 のときのみ加算する限り駒種列挙順は加算列(d順)を変えない。
+       事前in-situ計測(計画§2.13-4の撤回ゲート・二重実行法+分解推定の2推定器):
+       対象ブロック=総時間の約1.0%(G 0.7〜1.0% / G_B 0.97〜1.0%。撤回条件「<1%」の
+       境界値のため実装続行、正味削減見込み約0.6%はマクロノイズ床未満 —
+       既定ON採用の判断は3B完了時の統合判断(§2.11)とSonar裁定に付す)。
+       検証: NULL等価(v202スナップショット vs PACKED_BC=0、200局SHA+RNGストリーム、
+       PACKED_EV∈{0,1,2}×FA_TEMPER=0.5既定・G/G_B)、決定等価(bc 0vs1vs2 SHA一致)、
+       pHold/exp/ess 全チェックポイント Object.is 一致(許容誤差0)、shadow mismatchC=0、
+       fbShape注入、gb_sync(setPackedBc/packedBcDiag連結)、既存回帰、Playwright #pkbc。
+       切り戻し: 既定のまま(PACKED_BC=0)で不変。実行中は #pkbc=0 /
+       GOITA_DIAGNOSTICS.setPackedBc(0)。コードは既定値1行(G/G_B各1箇所)。 -->
+  <!-- build: v202「FA_TEMPER 既定ON(α=0.5)」base=v201。
+       計画: PHASE0B診断_faFactorテンパリング_Fable5.md +
+       PLAN_faFactorテンパリング_α0.5実装_Fable5.md の Phase 3(既定ON化)
+       (goita-dev-loop・Executor=Fable5[Sonar明示指示]・既定ON化はSonar裁定。
+       v199/3B-1→v200・v196〜v198 と同じ「実装(OFF)→A/B検証→既定ON化(別ビルド)」
+       2段階方式の最終段)。
+       変更: FA_TEMPER の既定値を 1(OFF)→0.5 にする(G/G_B の各1箇所・計2箇所。
+       他のコード・コメントは1文字も変更していない)。
+       根拠: Phase 0-B 診断で E2E Brier 0.1418→0.1378(ペア差 −4.1×10⁻³・
+       CI [−4.72,−3.52]×10⁻³・全5シード符号一致)。v201 での A/B 勝率非劣性検証
+       (フル無条件化 mixed-engine head-to-head・duplicate鏡映+CRN)2,000ペア PASS:
+       ペア勝率 49.925%±0.066%pt・CI下限 49.795%(基準 ≥49.0%)・
+       得点差 −0.035pt CI [−0.220,+0.150]。レビューで独立再集計・200ペアの
+       byte同一再実行・追加300ペアのアウトオブサンプル走行でも確認済み
+       (合算2,800ペアでも非劣性維持)。便益は勝率向上ではない(勝率への正味効果は
+       実測ゼロ・勝者交代7/2,000ペア): 信念精度の改善(E2E Brier −4.1×10⁻³・
+       相方セルBrier 0.14058→0.13670)+ess健全化(中央値20.3→32・
+       退化率20.1%→3.8%)。
+       検証: 新既定(セッター無呼出)200局の着手列SHAが v201+setFaTemper(0.5)
+       明示指定と完全一致(G/G_B・RNGストリーム別消費も一致=α=0.5がfa適用点で
+       実際に効いている)、setFaTemper(1) 切り戻しで v200 基準SHA
+       (G 18d41e14…/G_B 23afc90b…=faFactorテンパリング不在状態)と完全一致
+       (切り戻し手段の生存)、既定値フレッシュロード確認、既存回帰全PASS、
+       Playwrightスモーク。
+       切り戻し: 実行中は GOITA_DIAGNOSTICS と同スコープの
+       GOITA_ENGINE_REGISTRY.invokeAll("setFaTemper", 1)(全エンジン一括)、
+       恒久的にはコード2箇所の既定値を 1 へ手動で戻す。 -->
+  <!-- build: v201「faFactor証拠テンパリング FA_TEMPER(既定1=OFF)」base=v200。
+       計画: PLAN_faFactorテンパリング_α0.5実装_Fable5.md(goita-dev-loop・
+       Executor=Fable5[Sonar明示指示])。診断: PHASE0B診断_faFactorテンパリング_Fable5.md
+       (GO・トラックA・α*=0.5・K=96。E2E Brier −4.1×10⁻³・全5シード符号一致・
+       CI [−4.72,−3.52]×10⁻³)。
+       変更: FA_TEMPER トグル新設(実数α直接保持・恒等元1=OFF・BELIEF_SHARPEN書法)。
+       beliefMC(ledgerRefine)の初攻め表証拠 f を f^α に圧縮する挿入点は
+       G/G_B × {_bmcPackedW(packed経路), beliefMC legacy(フォールバック/切り戻し/シャドー)}
+       の計4点(v200でPACKED_EVが既定ONになったため片方のみでは本番失効かshadow誤検出)。
+       sampleWorldW側・faFactor/faFactorC内部(tblFactorAt/knLam共有)はスコープ外。
+       setterはfalsyを1に写す(α=0=fa全捨ては実測有意悪化のため格納不能)。
+       既定ON化(α=0.5)は本ビルドのスコープ外: Phase 2 A/B勝率非劣性
+       (較正上書きの妥当性確認・mixed-engine head-to-head)通過+Sonar承認が条件。
+       検証: 既定(α=1)で v200 と着手列SHA完全一致(NULL等価・PACKED_EV∈{0,1,2}の3系統・
+       G/G_B両方)、α=0.5で挙動変化の存在確認、PACKED_EV=2+α=0.5でshadow Object.is
+       ビット一致維持、gb_sync(packedWorldSrc完全一致・setFaTemper連結済み)、
+       既存回帰・Playwrightスモーク。
+       切り戻し: 既定のまま(FA_TEMPER=1)で挙動不変。実行中は
+       GOITA_DIAGNOSTICS 経由 setFaTemper(1)。 -->
+  <!-- build: v200「PACKED_WORLD / PACKED_EV 既定ON」base=v199+3B-1。
+       計画: PLAN_Phase3B以降_サンプラーPacked化と既定ON化判断_Fable5.md §1.5/§2.11
+       (goita-dev-loop・Executor=Fable5[Sonar明示指示]・既定ON化はSonar裁定)。
+       変更: PACKED_WORLD の既定値を 0→1、PACKED_EV の既定値を 0→1 にする
+       (G/G_B の各2箇所・計4箇所・1文字ずつ。v198のPACKED_DD既定ON化と同じ最小差分方式。
+       他のコード・コメントは1文字も変更していない)。
+       根拠: 3B-0(PACKED_WORLD)は着手列SHA bit-for-bit恒等(決定への影響ゼロ)+DD準備コスト
+       13〜19%削減+マクロ統計的中立(0±2%・有意差検出不能)という基盤整備としてレビュー承認済み。
+       3B-1(PACKED_EV)は全シード14.1〜18.1%の実対局短縮(独立レビューの再実行で本物と確認)
+       としてレビュー承認済み。3B-0単体ではG_B側に pooled paired -0.57±0.24% のわずかな
+       負傾向が記録されているが、両ONの合算実測(下記)では負傾向は現れず3B-1の短縮が
+       支配するため許容範囲と判断。
+       検証: 既定値のフレッシュロード確認(pw=1/pev=1/pkdd=1・両エンジン)、既定状態200局の
+       着手列SHAが明示legacy(0,0)と完全一致(G 18d41e14…/G_B 23afc90b…=3B-0/3B-1検証時の
+       基準値と同値・RNGストリーム別消費も一致=決定への影響ゼロのまま)、両ON vs 両OFFの
+       合算マクロ8マッチ×4シードpaired: G 全シード+14.6〜17.5%短縮(pooled +16.0±0.9%)/
+       G_B +16.1〜18.2%短縮(pooled +17.0±0.7%)・判断p95も全シード改善・fb系0・pwStale=0、
+       既存回帰(gb_sync/roundtrip/pw_moveseq/ev_moveseq/pw_shadow/PackedDD回帰/fallback/
+       exhaustive/selfTest監査0)全PASS、Playwright実機で既定起動が mode=1/1・packed稼働・
+       #pkw=0&pkev=0 起動で mode=0/0(両DIAG calls=0=legacy完全復帰・切り戻し手段の生存)
+       を確認。
+       切り戻し: #pkw=0 / #pkev=0(起動時)、GOITA_DIAGNOSTICS.setPackedWorld(0)/
+       setPackedEv(0)(実行中)、またはコード4箇所の既定値を0へ戻す。 -->
+  <!-- build: v199+3B-1「Packed証拠評価 PACKED_EV(既定OFF)」base=v199+3B-0。
+       計画: PLAN_Phase3B以降_サンプラーPacked化と既定ON化判断_Fable5.md 第2部 §2.4 3B-1
+       (goita-dev-loop・Planner=Fable5・Executor=Fable5[Sonar明示指示]・レビュー前)。
+       変更: sampleWorldW / beliefMC の証拠重みループが読むサンプル手駒配列
+       (includes/filter/concat/counter/オブジェクトカウンタ)を PackedWorld のカウント語
+       (4bitニブル×8種)で置き換える。RNGを消費するサンプラー核(draw経路)は1文字も不変。
+       family別プリミティブ(passViolatesC/passFactorC/faFactorC系/lacksContinuationC等)のみ
+       共有し、重みループの family適用順=乗算順は呼び出し元ごとに逐語保存(wはビット同一)。
+       当選世界へ __pw/__pwGen を非enumerable添付し、ddRootValuesWorld は gen一致時のみ
+       packWorld 再実行を省略(不一致は再pack+pwStale計上)。
+       PACKED_EV: 0=legacy(既定・完全NULL等価) / 1=packed / 2=シャドー比較(wのObject.is
+       ビット一致を毎try検査)。起動時 #pkev=0|1|2。理由別フォールバック(fbShape/fbErr)。
+       検証: 網羅差分10^6件×2エンジン不一致0、NULL等価(3B-0ビルドと200局SHA一致×
+       PACKED_WORLD 0/1両アーム)、決定等価(0vs1vs2 SHA一致・RNGストリーム別消費一致)、
+       shadow cmpN=46.3〜46.7万/アーム mismatchW=0、重み評価ブロック実測80〜82%削減
+       (採用ゲートC2>=40%達成)、実対局8マッチ×4シード全シード14.1〜18.1%短縮・判断p95改善、
+       既存回帰(gb_sync/roundtrip/moveseq/shadow/PackedDD回帰/selfTest/実局完走×3モード)全PASS。 -->
+  <!-- build: v199「PackedWorld Phase3A/3C 最小縦切り(既定OFF)」base=v198。
+       計画: PLAN_v199_PackedWorld_Phase3A3C最小縦切り_Fable5.md
+       (goita-dev-loop・Planner=Fable5・Executor=Sonnet5・Reviewer=Fable5)。
+       変更: DD呼び出し5箇所×2エンジン(buryMC/attackMC本体+ATK_DD_ADAPT/mcDecideReceive本体+
+       DD_ADAPT)が行っていた「文字列サンプル世界→cloneStateForRollout(JSオブジェクト状態構築)
+       →PKDD.pack(再走査)」の往復を、PackedWorld(手駒・伏せ駒を4bitニブル×8スロットの整数語で
+       表現)+決定ごとに1回のRootCtx→PKDDレジスタ直接ロードに置き換える最小縦切り。
+       sampleWorld/W/C自体は1文字も変更していない(RNG消費順の等価性は構成的に自明)。
+       PACKED_WORLD: 0=legacy(既定) / 1=packed / 2=シャドー比較(値+レジスタ全語)。
+       PKDD.rootValues の actionsループ本体は rootValuesCore として逐語的に切り出しただけで、
+       探索・置換表・undo等のカーネル本体は1文字も変更していない。
+       検証: PACKED_WORLD=0で原本・改修版のSHA-256着手列が200局完全一致(NULL等価)、
+       PACKED_WORLD=0 vs 1 で200局着手列SHA完全一致・RNG消費回数一致(決定等価)、
+       shadow比較280局でレジスタ全語+値の不一致0(cmpN 5,128〜5,400)、sampleWorld/W/C由来の
+       サンプル世界41,328件でpack→unpack往復完全一致、G/G_B新規コード完全同期(packedWorldSrc
+       文字列一致)、PACKED_DD=0/1/2の既存回帰(rootValuesCore切り出し後も着手列SHA一致・
+       shadow mismatch=0)を確認済み。レビューでMust-fix 1件(診断カウンタfbErrの帰属分離)
+       を指摘・修正・再レビュー承認済み(REVIEW_REPORT2_PackedWorld_Phase3A3C_v199_承認_Fable5.md)。
+       既定ON化は計画のとおり別コミット・別判断(性能ゲート実測はPhase 3B以降で実施)。
+       起動時 #pkw=0|1|2 で切替可能(実機計測用)。切り戻し: PACKED_WORLD=0(既定)のまま。 -->
+  <!-- build: v198「Packed DD kernel 既定ON (Stage 4)」base=v197。
+       計画: PLAN_v196_PackedDD_Opus5.md Stage 4 (goita-dev-loop・Planner=Opus5・Executor=Sonnet5)。
+       変更: (a) PACKED_DD の既定値を 0→1 にする(G/G_B の2箇所・1文字ずつ)。
+       (b) レビュー N-0: packable() に「respond なのに attacker/pendingAttack が欠けた不正局面」の
+       ガードを追加。attacker=-1 のまま探索へ入ると hlen[-1] が undefined になり無限再帰する。
+       ディスパッチャの catch が拾うので正味の挙動は v196 と同じだが、スタックを使い切る前に
+       legacy へ委譲する。packable() が false を増やしても値は変わらない(legacy が答を出す)。
+       (c) レビュー N-1: 終局値キャッシュが evalFn の純粋性を前提にしている旨を明記。
+       (d) レビュー N-3: 探索深さ枠512の根拠を明記(上限50・実測最大31)。
+       (b)〜(d) はコメントとガードの追加のみで、探索の値・ノード数・探索順は不変。
+       前提: Stage 3 の実機ゲートを iPhone Safari と Android Chrome の双方で通過
+       (全シードで 合計5%以上短縮 かつ 判断p95 の悪化3%未満。実測 最悪シード 合計-26.4%/p95-18.1%)。
+       検証: PACKED_DD=0/1 の着手列SHA-256一致、DDコーパス5,500局面で値bit一致かつ探索ノード数一致、
+       ランダム局面差分、ルール境界フィクスチャ20件、N-0 のガード条件が実対局コーパスで
+       一度も成立しないこと(=既定ONでも packed 経路が減らないこと)を確認済み。
+       切り戻し: PACKED_DD=0 で v196 相当の legacy DD へ即時復帰(#pkdd=0 でも可)。 -->
   <!-- build: v197「Packed DD kernel (32bitスロット・ビットボード)」base=v196。
        計画: PLAN_v196_PackedDD_Opus5.md (goita-dev-loop・Planner=Opus5・Executor=Sonnet5)。
        変更: 完全情報DD探索の内部表現のみを置換する。各席の手駒は最大8枚(32枚÷4席)ゆえ
@@ -4077,7 +4275,7 @@ body.noto #wincut.show .wc-label{animation:wcFude .62s cubic-bezier(.2,.9,.3,1.2
 
 <!-- ================= 設定画面 ================= -->
 <div id="setup-screen">
-  <span class="setup-version" aria-label="ごいたブラウザゲーム バージョン197">v197</span>
+  <span class="setup-version" aria-label="ごいたブラウザゲーム バージョン198">v198</span>
   <div class="title-block">
     <h1 class="serif">ごいた</h1>
     <div class="title-sub">能登・宇出津に伝わる竹駒の伝承遊戯</div>
@@ -4444,6 +4642,12 @@ const G = (() => {
   let KYO_BONUS = 0;
   let BELIEF_SHARPEN = 1;
   function setBeliefSharpen(g) { BELIEF_SHARPEN = g || 1; }
+  // Phase0B(2026-08): faFactor証拠テンパリング指数α。beliefMC(ledgerRefine)の重みでのみ
+  // f→f^α に圧縮(sampleWorldW側・faFactor内部(tblFactorAt/knLam共有)は対象外)。
+  // 1=OFF(従来どおりf^1・NULL等価)。診断採用候補α=0.5(既定ON化はPhase2 A/B非劣性が条件)。
+  // setterはfalsyを1に写す: α=0(fa全捨て)は実測で有意悪化のため格納不能とする。
+  let FA_TEMPER = 0.5;
+  function setFaTemper(a) { FA_TEMPER = a || 1; return FA_TEMPER; }
   // 伏せの馬処分の修正: 0=従来(馬1枚でも伏せる) / 1=馬ペアは崩さない / 2=特別規則撤廃(一般処分へ)
   // 地上真実プローブで馬ペア処分が代替勝率46%・+12.76ptと突出した漏れ → ペア保護を検証 (2026-06)
   let BURY_UMA_FIX = 0;
@@ -4646,6 +4850,12 @@ const G = (() => {
     }
     return arr;
   }
+  /* build 3B-0(RNG計装フック・PLAN_Phase3B §2.6): 既定は素の mulberry32。呼び出し側が渡す
+   * 第2引数(ストリームタグ文字列)はJS仕様上 mulberry32 には無視され、生成されるクロージャは
+   * 従来と完全同一(NULL等価)。検証ハーネスだけが setRngFactory で計装ファクトリへ差し替え、
+   * サンプラー系RNGのストリーム別消費回数・テープを取得する。本番経路での差し替えは禁止。 */
+  let RNG_MK = mulberry32;
+  function setRngFactory(f) { RNG_MK = (typeof f === "function") ? f : mulberry32; }
   const fullDeck = () => {
     const d = [];
     for (const k in KOMA_COUNT) for (let i = 0; i < KOMA_COUNT[k]; i++) d.push(k);
@@ -7495,9 +7705,9 @@ const G = (() => {
    * _ddMemo/_ddMemoPool)は1行も変更せず、ddRootValues を ddRootValuesLegacy へ改名して
    * 薄いディスパッチャを被せるだけに留める(PACKED_DD=0 で v196 と完全NULL等価)。
    *
-   * PACKED_DD: 0=legacy(既定・v196完全等価) / 1=packed / 2=シャドー比較(値のみ)
-   * 既定値0の変更は、計画書 Stage 3 の実機ゲート(iPhone Safari / Android Chrome)
-   * 通過まで行わない。起動時 #pkdd=0|1|2 で切替可能(実機計測用)。
+   * PACKED_DD: 0=legacy(v196完全等価・切り戻し用) / 1=packed(既定) / 2=シャドー比較(値のみ)
+   * 既定値は build v198 で 0→1 に変更済み(Stage 3 実機ゲート通過・
+   * REVIEW_REPORT_PackedDD_既定ON_build_v198 承認)。起動時 #pkdd=0|1|2 で切替可能。
    * ================================================================ */
   const PKDD = (function () {
     /* ================================================================
@@ -7544,6 +7754,9 @@ const G = (() => {
     let ouV=0;                                   // ddKey用: 履歴中の王出現数
     let kingPub=0;                               // 王攻め解禁(b): 場に攻め/受けで出た王
 
+    // 深さ枠512の根拠 (レビュー N-3): 1手は必ず「駒を1枚減らす」か「パス」であり、
+    // パスは3回で必ず解決して伏せ(=駒減)へ戻る。総駒数の上限は ddParAnalyze の20枚なので
+    // 深さ <= 20 + 3*10 = 50。実測最大は通常DD 21・パー分析 31 で、16倍以上の余裕がある。
     const U      = new Int32Array(512*10);       // undoレコード (深さ×10語)
     const ACTBUF = new Int32Array(512*10);       // 着手バッファ (深さ×10語)
 
@@ -7573,6 +7786,12 @@ const G = (() => {
 
     /* 不変条件チェック: 満たさない局面は packed を使わず legacy へ委譲する */
     function packable(st){
+      // respond なのに攻め手/攻め駒が欠けた不正局面。attacker=-1 のまま探索へ入ると
+      // hlen[-1] が undefined になり手駒が減らず無限再帰(RangeError)になる。
+      // ディスパッチャの catch が拾って legacy へ落ちるので正味の挙動は v196 と同じだが、
+      // スタックを使い切る前に委譲したほうが速く静かに失敗する (レビュー N-0)。
+      // packable() が false を増やしても値は変わらない(legacy が答を出す)ので安全側の変更である。
+      if (st.phase === "respond" && (!st.attacker || st.pendingAttack == null)) return false;
       for (let s=0;s<4;s++){
         const nm = SEATS[s];
         if (st.hands[nm].length > 8) return false;                 // 理論上発生しないが弾く
@@ -7642,7 +7861,12 @@ const G = (() => {
       if (++entries > (MCAP*0.7)) grow();
     }
 
-    /* 終局値キャッシュ: 鍵に koma を含める(評価関数差し替え時に静かに壊れるため) */
+    /* 終局値キャッシュ: 鍵に koma を含める(評価関数差し替え時に静かに壊れるため)。
+     * 【不変条件】evalFn は純粋関数でなければならない (レビュー N-1)。
+     * legacy は終局ノードを訪れるたびに evalFn を呼ぶが、packed は rootValues 1回あたり
+     * 相異なる終局シグネチャの数だけしか呼ばない(実測で 12,004,639 回 対 数十回のオーダー)。
+     * evalFn に副作用(DIAG カウンタ等)を入れると packed だけ静かにずれる。
+     * 現行の makeEvalFn / meqEval / matchEquity / ddParAnalyze のインライン評価はすべて純粋。 */
     function termVal(kind, winner, pts, dbl, komaT, nextParent){
       const ck = (komaT<<27)|(kind<<20)|((winner+1)<<16)|(pts<<6)|((nextParent+1)<<2)|(dbl?1:0);
       const hit = termCache.get(ck); if (hit !== undefined) return hit;
@@ -7756,14 +7980,14 @@ const G = (() => {
       return best;
     }
 
-    /* legacy ddRootValues と同契約。undefined = 不変条件外につき legacy へ委譲されたい */
-    function rootValues(st, seatStr, ef, actions, nodeCap){
-      if (!packable(st)) return undefined;
-      evalFn = ef; termCache = new Map();
-      pack(st);
+    /* build v199(PackedWorld Phase3A/3C・計画: PLAN_v199_PackedWorld_Phase3A3C最小縦切り_Fable5.md):
+     * rootValues() の「actionsループ本体」を rootValuesCore() として逐語的に切り出した。
+     * ロジックは1文字も変えていない(pack済みレジスタから読むだけの箇所を関数境界にしただけ)。
+     * rootValues() = packable+pack+core (legacy経路・無改変の契約)
+     * rootValuesPacked() = packRootCtx済みctx+PackedWorldからレジスタ直接ロード+core (Phase3C経路) */
+    function rootValuesCore(povTeam, actions, nodeCap){
       budget = nodeCap || 300000; failed=false;
       gen++; if (gen===0){ mG.fill(0); gen=1; } entries = 0;
-      const povTeam = SEATS.indexOf(seatStr)&1;
       const out = new Map();
       for (const a0 of actions){
         const a = a0.type==="pass"    ? (2<<3)
@@ -7778,10 +8002,129 @@ const G = (() => {
       }
       return out;
     }
-
-    return {rootValues: rootValues, nodes: function () { return NODES; }, resetNodes: function () { NODES = 0; }};
+    /* legacy ddRootValues と同契約。undefined = 不変条件外につき legacy へ委譲されたい */
+    function rootValues(st, seatStr, ef, actions, nodeCap){
+      if (!packable(st)) return undefined;
+      evalFn = ef; termCache = new Map();
+      pack(st);
+      const povTeam = SEATS.indexOf(seatStr)&1;
+      return rootValuesCore(povTeam, actions, nodeCap);
+    }
+    /* packRootCtx: 決定(decision)ごとに1回だけ計算すればよい、sampled worldに依存しない部分
+     * (board最終行由来のopenKind/openKoma・historyから採取するouV/kingPub/buriedKing・
+     * actor/phase/attacker/pending/respIdx・自席手駒)をまとめて確定する。
+     * 【重要な等価性の根拠】legacy 経路は cloneStateForRollout(DETERMINIZATION_V2=false・第2分岐)
+     * が作った sim を pack() するが、その分岐は st.board を無条件コピーする一方、st.history は
+     * 「h.act==='bury' && h.seat!==mySeat」のエントリだけ koma:null にマスクする。ここでも同じ
+     * マスク規則で st.history を直接走査することで、simをpackした場合と同値になる。
+     * 【不変条件】DETERMINIZATION_V2 が true の場合はこの関数を呼ばないこと(意味論が異なる)。
+     * packable() の静的条件(respond不正局面・自席手駒>8・いずれかの席の未確定伏せ)はここで検査
+     * するが、「自席以外の手駒>8」は sampled world 依存なので rootValuesPacked 側の責務とする。 */
+    function packRootCtx(st, mySeatStr){
+      if (st.phase === "respond" && (!st.attacker || st.pendingAttack == null)) return undefined;
+      if (st.hands[mySeatStr].length > 8) return undefined;
+      const ctxOpenKind = new Int8Array(4), ctxOpenKoma = new Int8Array(4), ctxBuriedKing = new Int8Array(4);
+      for (let s=0;s<4;s++){
+        const nm = SEATS[s];
+        const rows = st.board[nm];
+        const last = rows.length ? rows[rows.length-1] : null;
+        if (last && last.atk === null && last.def && last.def.koma == null) return undefined;
+        if (last && last.atk === null && last.def){ ctxOpenKind[s] = last.def.type[0]==="b"?1:2; ctxOpenKoma[s]=TIDX[last.def.koma]; }
+        else { ctxOpenKind[s]=0; ctxOpenKoma[s]=-1; }
+      }
+      let ctxOuV=0, ctxKingPub=0;
+      for (const h of st.history){
+        if (h.act === "bury" && h.seat !== mySeatStr) continue;   // legacy cloneStateForRollout と同一マスク規則
+        if (h.koma === "王"){
+          ctxOuV++;
+          if (h.act==="attack"||h.act==="receive") ctxKingPub=1;
+          else if (h.act==="bury") ctxBuriedKing[SEATS.indexOf(h.seat)]=1;
+        }
+      }
+      const myHand = st.hands[mySeatStr];
+      let myCnt=0, myOrder=0;
+      for (let i=0;i<myHand.length;i++){
+        const t = TIDX[myHand[i]];
+        myCnt += 1<<(4*t);
+        myOrder |= t << (4*i);
+      }
+      for (let i=myHand.length;i<8;i++) myOrder |= 0xF << (4*i);
+      return {
+        mySeat: SEATS.indexOf(mySeatStr),
+        actor: SEATS.indexOf(st.actor), phase: PHASE_I[st.phase],
+        attacker: st.attacker ? SEATS.indexOf(st.attacker) : -1,
+        pending: st.pendingAttack ? TIDX[st.pendingAttack] : -1,
+        respIdx: st.respIdx|0,
+        openKind: ctxOpenKind, openKoma: ctxOpenKoma, buriedKing: ctxBuriedKing,
+        ouV: ctxOuV, kingPub: ctxKingPub,
+        myCnt: myCnt>>>0, myOrder: myOrder>>>0, myLen: myHand.length,
+        histLen: st.history.length
+      };
+    }
+    /* rootValuesPacked: packRootCtx済みctxと PackedWorld(pw; 自席以外の3席分の手駒)から
+     * レジスタを直接ロードし rootValuesCore へ渡す。戻り値契約は rootValues と同一。
+     * build 3B-0(PLAN_Phase3B §1.3-0): レジスタロード部を内部関数 loadWorld(ctx, pw) として
+     * 逐語的に切り出した(_benchLoadPacked と共有するため。ロジックは1文字も変えていない)。
+     * loadWorld は不変条件外で undefined、成功で true を返す。 */
+    function loadWorld(ctx, pw){
+      if (!ctx || !pw) return undefined;
+      for (let s=0;s<4;s++){ if (s!==ctx.mySeat && pw.handLen[s] > 8) return undefined; }
+      slotType.fill(-1); seatTypeMask.fill(0);
+      occ = 0; cnt.fill(0); hlen.fill(0);
+      for (let s=0;s<4;s++){
+        const isMe = (s === ctx.mySeat);
+        const order = isMe ? ctx.myOrder : pw.handOrder[s];
+        const cntWord = isMe ? ctx.myCnt : pw.handCnt[s];
+        const len = isMe ? ctx.myLen : pw.handLen[s];
+        for (let i=0;i<len;i++){
+          const t = (order >>> (4*i)) & 0xF;
+          const g = s*8+i;
+          slotType[g]=t; occ |= (1<<g)>>>0;
+          seatTypeMask[s*8+t] |= (1<<g)>>>0;
+        }
+        cnt[s] = cntWord>>>0;
+        hlen[s]=len;
+        openKind[s]=ctx.openKind[s]; openKoma[s]=ctx.openKoma[s]; buriedKing[s]=ctx.buriedKing[s];
+      }
+      ouV = ctx.ouV; kingPub = ctx.kingPub;
+      actor = ctx.actor; phase = ctx.phase; attacker = ctx.attacker; pending = ctx.pending; respIdx = ctx.respIdx;
+      return true;
+    }
+    function rootValuesPacked(ctx, pw, ef, actions, nodeCap){
+      if (loadWorld(ctx, pw) === undefined) return undefined;
+      evalFn = ef; termCache = new Map();
+      const povTeam = ctx.mySeat & 1;
+      return rootValuesCore(povTeam, actions, nodeCap);
+    }
+    /* shadow検証・テスト専用: 現在ロード済みレジスタ全語のスナップショット */
+    function _dumpRegs(){
+      return {
+        occ, cnt: Array.from(cnt), hlen: Array.from(hlen),
+        slotType: Array.from(slotType), seatTypeMask: Array.from(seatTypeMask),
+        openKind: Array.from(openKind), openKoma: Array.from(openKoma), buriedKing: Array.from(buriedKing),
+        ouV, kingPub, actor, phase, attacker, pending, respIdx
+      };
+    }
+    /* ベンチ専用フック(3B-0・PLAN_Phase3B §1.3-0): 本番経路からは一切呼ばれない(不活性)。
+     * _benchPackLegacy(st): legacy準備(packable判定→pack)だけを実行しレジスタを返す(探索しない)。
+     * _benchLoadPacked(ctx, pw): rootValuesPacked のレジスタロード部(loadWorld)だけを実行する。
+     * 両者の返すレジスタは regsEqual で突き合わせ、計測と正しさ検証を一体化する。 */
+    function _benchPackLegacy(st){
+      if (!packable(st)) return undefined;
+      pack(st);
+      return _dumpRegs();
+    }
+    function _benchLoadPacked(ctx, pw){
+      if (loadWorld(ctx, pw) === undefined) return undefined;
+      return _dumpRegs();
+    }
+    return {rootValues: rootValues, rootValuesPacked: rootValuesPacked, packRootCtx: packRootCtx,
+            _dumpRegs: _dumpRegs,
+            _benchPackLegacy: _benchPackLegacy, _benchLoadPacked: _benchLoadPacked,
+            _coreSrc: rootValuesCore.toString(), _loadWorldSrc: loadWorld.toString(),
+            nodes: function () { return NODES; }, resetNodes: function () { NODES = 0; }};
   })();
-  let PACKED_DD = 0;
+  let PACKED_DD = 1;
   const PACKED_DD_DIAG = {calls: 0, packed: 0, fallback: 0, budgetNull: 0, shadow: 0, mismatch: 0};
   function setPackedDd(n) { PACKED_DD = n | 0; return PACKED_DD; }
   function packedDdDiag() { return Object.assign({mode: PACKED_DD}, PACKED_DD_DIAG); }
@@ -7827,6 +8170,696 @@ const G = (() => {
       out.set(a.koma !== undefined ? a.koma : null, v);
     }
     return out;
+  }
+  /* build v199(PackedWorld Phase3A/3C・計画: PLAN_v199_PackedWorld_Phase3A3C最小縦切り_Fable5.md):
+   * DD呼び出し箇所が行っている「文字列サンプル世界 → cloneStateForRollout(JSオブジェクト状態
+   * 構築) → PKDD.pack(再走査)」の往復を、PackedWorld(整数語) + 決定ごとに1回のRootCtx →
+   * PKDDレジスタ直接ロードに置き換える最小縦切り。sampleWorld/W/C 自体は1文字も変更しない
+   * (サンプラーを触らないためRNG消費順の等価性は構成的に自明)。
+   * PACKED_WORLD: 0=legacy(切り戻し用・完全NULL等価) / 1=packed(既定) / 2=シャドー比較(値+レジスタ)。
+   * v199は既定値0で出荷し、ゲート実測レポートを添えた別コミット v200 で既定値を1へ変更済み。 */
+  function makePackedWorld() {
+    return {
+      handCnt: new Uint32Array(4), handOrder: new Uint32Array(4), handLen: new Int32Array(4),
+      buriedCnt: new Uint32Array(4), buriedOrder: new Uint32Array(4), buriedLen: new Int32Array(4),
+      flags: 0, gen: 0
+    };
+  }
+  const PW = makePackedWorld();
+  /* sampled({N,W,S,E}文字列配列 + 非enumerable __worldV2)を PackedWorld(整数語)へ変換する。
+   * scratch規約: pw は次回呼び出しで上書きされる。消費側は同期的に使い切ること(保持禁止)。
+   * 形状不正(手駒>8枚・未知の駒種文字列)を検出したら null を返す(呼び出し元は legacy へ後退)。
+   * 8種有無ビットマスクではなく4bitニブルカウントを使うのは、同席重複(「し」等)を表すため。 */
+  function packWorld(sampled, pw, mySeatStr) {
+    for (let s = 0; s < 4; s++) {
+      const nm = SEATS[s];
+      const hand = sampled[nm];
+      // build 3B-0(繰越3防御・PLAN_Phase3B §2.5-3): mySeatStr 指定時は、自席以外の席の hand が
+      // 配列でなければ形状不正として null(呼び出し元は fbShape で legacy へ後退)。
+      // mySeatStr 省略時(検証ハーネスの全席指定呼び出し等)は従来どおりの寛容な扱い。
+      if (mySeatStr !== undefined && nm !== mySeatStr && !Array.isArray(hand)) return null;
+      // sampled は自席(mySeat)を含まない(sampleWorld/W/C は他3席分しか返さない)。
+      // 自席の要素は rootValuesPacked 側が ctx.my* から読むため、ここではゼロ埋めのまま放置してよい。
+      if (hand === undefined) { pw.handCnt[s] = 0; pw.handOrder[s] = 0xFFFFFFFF >>> 0; pw.handLen[s] = 0; continue; }
+      if (hand.length > 8) return null;
+      let cw = 0, ow = 0;
+      for (let i = 0; i < hand.length; i++) {
+        const t = _KOMA_IDX[hand[i]];
+        if (t === undefined) return null;
+        cw += 1 << (4 * t);
+        ow |= t << (4 * i);
+      }
+      for (let i = hand.length; i < 8; i++) ow |= 0xF << (4 * i);   // 空スロット番兵
+      pw.handCnt[s] = cw >>> 0; pw.handOrder[s] = ow >>> 0; pw.handLen[s] = hand.length;
+    }
+    const meta = (sampled.__worldV2 && sampled.__worldV2.buriedBySeat) ? sampled.__worldV2.buriedBySeat : null;
+    for (let s = 0; s < 4; s++) {
+      const nm = SEATS[s];
+      const list = meta ? meta[nm] : null;
+      if (!list) { pw.buriedCnt[s] = 0; pw.buriedOrder[s] = 0xFFFFFFFF >>> 0; pw.buriedLen[s] = 0; continue; }
+      if (list.length > 8) return null;
+      let cw = 0, ow = 0;
+      for (let i = 0; i < list.length; i++) {
+        const t = _KOMA_IDX[list[i]];
+        if (t === undefined) return null;
+        cw += 1 << (4 * t);
+        ow |= t << (4 * i);
+      }
+      for (let i = list.length; i < 8; i++) ow |= 0xF << (4 * i);
+      pw.buriedCnt[s] = cw >>> 0; pw.buriedOrder[s] = ow >>> 0; pw.buriedLen[s] = list.length;
+    }
+    // build 3B-0(繰越2・flags bit1・PLAN_Phase3B §2.5-2): bit1 = packWorld 単独で判定可能な
+    // 枚数整合(全席 handLen+buriedLen <= 8。TIDX全定義は上の null 返却で既に保証済み)。
+    // st 依存の完全整合(worldV2Complete相当)は packRootCtx.histLen + pw.gen の鮮度検査として
+    // ddRootValuesWorld 側で担保する(ABI文書: bit0=__worldV2有り / bit1=枚数整合)。
+    let b1 = 1;
+    for (let s = 0; s < 4; s++) if (pw.handLen[s] + pw.buriedLen[s] > 8) { b1 = 0; break; }
+    pw.flags = (meta ? 1 : 0) | (b1 ? 2 : 0);
+    pw.gen = (pw.gen + 1) | 0;
+    return pw;
+  }
+  /* 検証専用: PackedWorld → legacy形式({N,W,S,E}文字列配列 + __worldV2buried)への復元。
+   * 順序込みで復元する(run_pw_roundtrip.js 用)。本番経路では呼ばない。 */
+  function unpackWorld(pw) {
+    const out = {};
+    const buriedBySeat = {};
+    for (let s = 0; s < 4; s++) {
+      const nm = SEATS[s];
+      const hand = [];
+      for (let i = 0; i < pw.handLen[s]; i++) hand.push(KOMA_TYPES_ARR[(pw.handOrder[s] >>> (4 * i)) & 0xF]);
+      out[nm] = hand;
+      const buried = [];
+      for (let i = 0; i < pw.buriedLen[s]; i++) buried.push(KOMA_TYPES_ARR[(pw.buriedOrder[s] >>> (4 * i)) & 0xF]);
+      buriedBySeat[nm] = buried;
+    }
+    out.__worldV2buried = buriedBySeat;
+    return out;
+  }
+  let PACKED_WORLD = 1;
+  const PACKED_WORLD_DIAG = {calls: 0, packed: 0, fbPkddOff: 0, fbV2: 0, fbNoCtx: 0,
+                              fbShape: 0, fbKernelUndef: 0, fbErr: 0, fbStaleCtx: 0, budgetNull: 0, b1Off: 0, pwStale: 0,
+                              shadow: 0, mismatchReg: 0, mismatchVal: 0, cmpN: 0};
+  function setPackedWorld(n) { PACKED_WORLD = n | 0; return PACKED_WORLD; }
+  function packedWorldDiag() { return Object.assign({mode: PACKED_WORLD}, PACKED_WORLD_DIAG); }
+  /* G/G_B同期の機械確認用: 新設関数群のソースを連結して返す(run_gb_sync.js が文字列完全一致を要求)。 */
+  function packedWorldSrc() {
+    return [packWorld, unpackWorld, ddRootValuesWorld, setPackedWorld, packedWorldDiag, regsEqual,
+            PKDD.packRootCtx, PKDD.rootValuesPacked, PKDD._dumpRegs,
+            PKDD._benchPackLegacy, PKDD._benchLoadPacked, _pwPrepLegacy, setRngFactory,
+            // 3B-1(PACKED_EV): 新設関数は追加のたびに連結対象へ入れる(PLAN §2.5-1 規約)。
+            // 変更した既存2関数(sampleWorldW/beliefMC)も連結し、重みループ本体の鏡像性も機械確認する。
+            setPackedEv, packedEvDiag, cwOf, hasPairC, distinctC, lacksContinuationC, _cwAnyPair,
+            kyoRiskStrengthC, ouKeepPathC, ouKeepContC, passViolatesC, passFactorC,
+            faFactorC, saFactorC, taFactorC, rcFactorC, makePackedEvCache,
+            _evPwAt, __evAttachPw, _swwPackedW, _bmcPackedW, sampleWorldW, beliefMC,
+            // FA_TEMPER(v201): 新設setterを連結対象へ(規約: 新設関数は追加のたびに入れる)。
+            setFaTemper,
+            // 3B-2(PACKED_BC): 新設setter/診断を連結対象へ(beliefMC本体=集計ループは3B-1で連結済み)。
+            setPackedBc, packedBcDiag]
+      .map(f => f.toString())
+      .concat([PKDD._coreSrc, PKDD._loadWorldSrc])
+      .join('\n');
+  }
+  function regsEqual(a, b) {
+    if (a.occ !== b.occ || a.ouV !== b.ouV || a.kingPub !== b.kingPub || a.actor !== b.actor ||
+        a.phase !== b.phase || a.attacker !== b.attacker || a.pending !== b.pending || a.respIdx !== b.respIdx) return false;
+    for (let i = 0; i < 4; i++) if (a.cnt[i] !== b.cnt[i] || a.hlen[i] !== b.hlen[i] ||
+        a.openKind[i] !== b.openKind[i] || a.openKoma[i] !== b.openKoma[i] || a.buriedKing[i] !== b.buriedKing[i]) return false;
+    for (let i = 0; i < 32; i++) if (a.slotType[i] !== b.slotType[i] || a.seatTypeMask[i] !== b.seatTypeMask[i]) return false;
+    return true;
+  }
+  /* Phase3C最小縦切りディスパッチャ。既存呼び出し箇所の
+   *   const sim = cloneStateForRollout(st, seat, sampled);
+   *   const rv = ddRootValues(sim, seat, evalFn, actions, nodeCap);
+   * を置き換える。pwCtx は呼び出し元がループ前に1回 PKDD.packRootCtx(st, seat) で計算して渡す
+   * (同一決定内で st は不変なので、DD_ADAPT/ATK_DD_ADAPT の延長ループとも共有できる)。
+   * 例外は握りつぶさず理由別カウンタ計上のうえ legacy へ後退する(既存 PACKED_DD_DIAG 踏襲)。 */
+  function ddRootValuesWorld(st, seat, sampled, evalFn, actions, nodeCap, pwCtx) {
+    const legacyPath = () => {
+      const sim = cloneStateForRollout(st, seat, sampled);
+      return ddRootValues(sim, seat, evalFn, actions, nodeCap);
+    };
+    if (!PACKED_WORLD) return legacyPath();
+    if (PACKED_DD !== 1) { PACKED_WORLD_DIAG.fbPkddOff++; return legacyPath(); }
+    if (DETERMINIZATION_V2) { PACKED_WORLD_DIAG.fbV2++; return legacyPath(); }
+    if (pwCtx === undefined) { PACKED_WORLD_DIAG.fbNoCtx++; return legacyPath(); }
+    // build 3B-0(繰越2・鮮度検査): pwCtx は決定ごとに1回計算される契約。st.history が伸びた後の
+    // 古い ctx を検出したら正しさ優先で legacy へ後退する(現行呼び出し元では発火しない防御)。
+    if (pwCtx.histLen !== st.history.length) { PACKED_WORLD_DIAG.fbStaleCtx++; return legacyPath(); }
+    PACKED_WORLD_DIAG.calls++;
+    // build 3B-1(PACKED_EV): sampleWorldW が当選世界へ添付した __pw が新鮮(__pwGen===gen)なら
+    // packWorld 再実行を省略する(fbShape判定は添付時に済んでいる)。リング再利用で上書きされた
+    // 古い添付は黙って再packする(正しさ優先・pwStale計上 — PLAN §2.8-3)。
+    let pw;
+    if (sampled.__pw !== undefined && sampled.__pw !== null && sampled.__pwGen === sampled.__pw.gen) {
+      pw = sampled.__pw;
+    } else {
+      if (sampled.__pw !== undefined) PACKED_WORLD_DIAG.pwStale++;
+      pw = packWorld(sampled, PW, seat);
+    }
+    if (pw === null) { PACKED_WORLD_DIAG.fbShape++; return legacyPath(); }
+    if (PACKED_WORLD === 1) {
+      let r, threw = false;
+      try { r = PKDD.rootValuesPacked(pwCtx, pw, evalFn, actions, nodeCap); }
+      catch (e) { threw = true; }
+      if (threw) { PACKED_WORLD_DIAG.fbErr++; return legacyPath(); }
+      if (r === undefined) { PACKED_WORLD_DIAG.fbKernelUndef++; return legacyPath(); }
+      PACKED_WORLD_DIAG.packed++;
+      if (r === null) PACKED_WORLD_DIAG.budgetNull++;
+      return r;
+    }
+    // PACKED_WORLD===2: シャドー比較。packed経路(rootValuesPacked)とlegacy経路(pack(sim)経由の
+    // rootValues)の両方をPKDDカーネル自身で計算し、レジスタ全語+値を突き合わせる。
+    // 呼び出し元へ返すのは既存ディスパッチャ(ddRootValues)経由の値(挙動を一切変えない)。
+    let rP, regP, errP = false;
+    try { rP = PKDD.rootValuesPacked(pwCtx, pw, evalFn, actions, nodeCap); regP = PKDD._dumpRegs(); }
+    catch (e) { errP = true; }
+    const sim = cloneStateForRollout(st, seat, sampled);
+    let rQ, regQ, errQ = false;
+    try { rQ = PKDD.rootValues(sim, seat, evalFn, actions, nodeCap); regQ = PKDD._dumpRegs(); }
+    catch (e) { errQ = true; }
+    const rL = ddRootValues(sim, seat, evalFn, actions, nodeCap);
+    if (errP || errQ) { PACKED_WORLD_DIAG.fbErr++; return rL; }
+    if (rP === undefined || rQ === undefined) { PACKED_WORLD_DIAG.fbKernelUndef++; return rL; }
+    PACKED_WORLD_DIAG.shadow++; PACKED_WORLD_DIAG.cmpN++;
+    // build 3B-0(繰越2): shadow時のみ flags bit1(枚数整合)を検査する(正常な sampled では常に1)。
+    if (!(pw.flags & 2)) PACKED_WORLD_DIAG.b1Off++;
+    if (!regsEqual(regP, regQ)) PACKED_WORLD_DIAG.mismatchReg++;
+    if (!packedDdSameValues(rP, rQ)) PACKED_WORLD_DIAG.mismatchVal++;
+    return rL;
+  }
+  /* ベンチ専用(3B-0・PLAN_Phase3B §1.3-0): legacy準備コスト(cloneStateForRollout+packable+pack)
+   * の正確な定義。マイクロベンチ(run_pw_bench2.js)専用で、本番経路からは一切呼ばれない。 */
+  function _pwPrepLegacy(st, seat, sampled) {
+    const sim = cloneStateForRollout(st, seat, sampled);
+    return PKDD._benchPackLegacy(sim);
+  }
+  /* ===== Phase 3B-1(PACKED_EV): 証拠重み計算のPacked化 =====================================
+   * PLAN_Phase3B以降_サンプラーPacked化と既定ON化判断_Fable5.md §2.3/§2.4 3B-1。
+   * sampleWorldW / beliefMC の重みループが読むサンプル手駒配列(includes/filter/concat/counter)を
+   * PackedWorld のカウント語(cw = 4bitニブル×8種、TIDX=KOMA_TYPES_ARR順: 王0 飛1 角2 金3 銀4
+   * 馬5 香6 し7)で置き換える。RNGを消費するサンプラー核(draw経路)には1文字も触れない。
+   * 規律:
+   *  - family別プリミティブ(passViolatesC/faFactorC系/lacksContinuationC/hasPairC/distinctC等)
+   *    のみを共有し、重みループ(family適用順=乗算順)は呼び出し元ごとに逐語保存する
+   *    (sampleWorldW: ev→sig→kak→sp→kp→fa→sa→ta→rc→kyoBias→ks→kc /
+   *     beliefMC:     ev→sig→kak→sp→kp→kn→kyoBias→ks→kc→fa→sa→ta→rc — 順序が異なるため共有不可)。
+   *  - 係数はテーブル参照値/同一スカラー式そのものなので、適用順が保存されれば w はビット同一。
+   *  - PACKED_EV: 0=legacy(切り戻し用・完全NULL等価) / 1=packed(既定・v200で既定ON化) / 2=shadow(両実装で w を計算し
+   *    Object.is でビット一致を毎try比較。採用値はlegacy)。例外は握りつぶさず理由別カウンタ
+   *    計上のうえlegacyへ後退する(PACKED_WORLD/PACKED_DDと同じ規律)。
+   */
+  let PACKED_EV = 1;
+  const PACKED_EV_DIAG = {calls: 0, packed: 0, fbShape: 0, fbErr: 0,
+                          shadow: 0, mismatchW: 0, cmpN: 0};
+  function setPackedEv(n) { PACKED_EV = n | 0; return PACKED_EV; }
+  function packedEvDiag() { return Object.assign({mode: PACKED_EV}, PACKED_EV_DIAG); }
+  /* ===== Phase 3B-2(PACKED_BC): beliefMC 集計の語化 ==========================================
+   * PLAN_Phase3B以降_サンプラーPacked化と既定ON化判断_Fable5.md §2.4 3B-2。
+   * beliefMC の Kループ末尾の集計(counter(sampled[p]) の {} 割当 + for-in 列挙)を、
+   * カウント語(cw)のニブル直読へ置換する。3B-1(PACKED_EV)が同一サンプルで pack 済みの
+   * _BMC_PW(__pwT)があればそれを再利用(reuse)し、無い決定(証拠ゼロ・PACKED_EV=0等)では
+   * cwOf(sampled[p]) で語を都度構築する(cwBuild。いずれもオブジェクト割当ゼロ)。
+   * 等価性の根拠: 各 (席p, 駒種k) の累積器 acc[p].exp[k]/hold[k] は互いに独立な float であり、
+   * カウント c>0 のときだけ同値(w*c / w)を加算する限り、サンプル内の駒種列挙順は各累積器の
+   * 加算列(Kループの d 順)を変えない — PLAN §2.4-4 の「浮動小数加算順の罠」は 0 加算を
+   * 発生させないことで構成的に回避する(受け入れ基準は着手列SHAに加え pHold/exp/ess の
+   * 全チェックポイント Object.is 一致・許容誤差0)。
+   * PACKED_BC: 0=legacy(切り戻し用・完全NULL等価) / 1=packed(既定・v203で既定ON化) / 2=shadow(採用値はlegacy集計のまま、
+   * 8ニブル全駒種のカウントを counter() と毎サンプル突き合わせ)。トグルは PACKED_EV と独立に
+   * 新設する(PACKED_EV は v200 で既定ONのため、計画§2.7の「PACKED_EV(3B-1/2)」へ相乗りすると
+   * 本段が段別検証を経ないまま既定ONになる — 実装(OFF)→検証→既定ON判断の2段階規律を優先)。
+   * フォールバックは fbShape(未知駒 cwOf=-1・その席のみ legacy 集計へ後退)のみ:
+   * 集計ブロックは legacy が生き残れる throw を含まない(失敗面が legacy と同一)ため
+   * fbErr 経路は設けない(途中まで加算した acc への二重加算事故を作らないための設計判断)。 */
+  let PACKED_BC = 1;
+  const PACKED_BC_DIAG = {calls: 0, packed: 0, reuse: 0, cwBuild: 0, fbShape: 0,
+                          shadow: 0, mismatchC: 0, cmpN: 0};
+  function setPackedBc(n) { PACKED_BC = n | 0; return PACKED_BC; }
+  function packedBcDiag() { return Object.assign({mode: PACKED_BC}, PACKED_BC_DIAG); }
+  /* 文字列駒配列 → カウント語。未知駒は -1 (呼び出し元は決定全体をlegacyへ後退させる)。 */
+  function cwOf(arr) {
+    let w = 0;
+    for (let i = 0; i < arr.length; i++) {
+      const t = _KOMA_IDX[arr[i]];
+      if (t === undefined) return -1;
+      w += 1 << (4 * t);
+    }
+    return w >>> 0;
+  }
+  /* = sampledHasPair: PAIRABLE_KOMA(金銀馬香飛角 = TIDX1..6)のいずれかが2枚以上。 */
+  function hasPairC(w) {
+    for (let t = 1; t <= 6; t++) if (((w >>> (4 * t)) & 15) >= 2) return true;
+    return false;
+  }
+  /* = new Set(held).size: 非零ニブル数。 */
+  function distinctC(w) {
+    let n = 0;
+    for (let t = 0; t < 8; t++) if ((w >>> (4 * t)) & 15) n++;
+    return n;
+  }
+  /* = lacksContinuation: し以外(王含む)にペアが無く、かつ し<4。 */
+  function lacksContinuationC(w) {
+    for (let t = 0; t < 7; t++) if (((w >>> (4 * t)) & 15) >= 2) return false;
+    return ((w >>> 28) & 15) < 4;
+  }
+  /* P=[金,銀,馬,香,飛,角](TIDX1..6)のうち excl 以外にペアがあるか (excl=-1 で除外なし)。 */
+  function _cwAnyPair(w, excl) {
+    for (let t = 1; t <= 6; t++) { if (t === excl) continue; if (((w >>> (4 * t)) & 15) >= 2) return true; }
+    return false;
+  }
+  /* = kyoRiskStrength(c) (王/香/しを参照しないため、王減算前後どちらの語でも同値)。 */
+  function kyoRiskStrengthC(w) {
+    const cKin = (w >>> 12) & 15, cGin = (w >>> 16) & 15, cUma = (w >>> 20) & 15,
+          cHi = (w >>> 4) & 15, cKaku = (w >>> 8) & 15;
+    let pairs = 0;
+    if (cKin >= 2) pairs++; if (cGin >= 2) pairs++; if (cUma >= 2) pairs++;
+    if (cHi >= 2) pairs++; if (cKaku >= 2) pairs++;
+    if (!pairs) return 0;
+    const strong = (cHi >= 2 || cKaku >= 2) ||
+      (cKin >= 3 || cGin >= 3 || cUma >= 3) || pairs >= 2;
+    return strong ? 2 : 1;
+  }
+  /* = ouKeepPath(held, e)。pe = {at, aOu, aUncut} は makePackedEvCache のイベント別前計算。 */
+  function ouKeepPathC(w, pe) {
+    if (((w >>> (4 * pe.at)) & 15) >= 1) return false;   // 同駒受けは全巡・全席で厳格に扱う
+    if (pe.aOu || pe.aUncut) return false;               // 王攻め・香し攻めは王で切れない
+    return (w & 15) >= 1;
+  }
+  /* = ouKeepCont(held) (王を1枚除いた後に「し以外のペア」または「し4枚以上」)。 */
+  function ouKeepContC(w) {
+    if (((w & 15) - 1) >= 2) return true;
+    for (let t = 1; t <= 6; t++) if (((w >>> (4 * t)) & 15) >= 2) return true;
+    return ((w >>> 28) & 15) >= 4;
+  }
+  /* = passViolates(held, e) の語版。分岐構造を1対1で保存し、係数計算のみ語演算化(PLAN §2.8-1a)。 */
+  function passViolatesC(w, e, pe) {
+    if (PASS_MIRROR && PASS_OU_KEEP && e.round && ouKeepPathC(w, pe) &&
+        (e.byPartner ? (PASS_OU_KEEP === 1 || PASS_OU_KEEP === 3)
+                     : (e.round >= 2 && (PASS_OU_KEEP === 1 || PASS_OU_KEEP === 2))))
+      return false;
+    if (!PASS_MIRROR || e.byPartner || !e.round || e.round >= 2) {
+      // held.some(r => validReceive(r, attack)) ⟺ cnt(attack)≥1 ∨ (attack≠王 ∧ ¬UNCUTTABLE ∧ cnt(王)≥1)
+      if (((w >>> (4 * pe.at)) & 15) >= 1) return true;
+      return !pe.aOu && !pe.aUncut && (w & 15) >= 1;
+    }
+    const a = e.attack;
+    const ca = (w >>> (4 * pe.at)) & 15;
+    if (ca >= 1) {
+      // 上家様子見の鏡映: 有効時は1st応答の1巡目金銀馬同駒パスは定石どおり
+      if (KAMIZA_WAIT > 0 && e.firstResp &&
+          (KAMIZA_WAIT === 2 ? a === "銀" : (a === "金" || a === "銀" || a === "馬")))
+        return false;
+      if (a === "香" && SHI_KYO_FIX) {
+        // 1巡目香温存の鏡映: c["香"]-- 後に続き (し以外ペア or し4) がある時だけ受ける
+        const ky = ((w >>> 24) & 15) - 1;
+        let hasPair = ky >= 2;
+        if (!hasPair) for (let t = 0; t <= 5; t++) if (((w >>> (4 * t)) & 15) >= 2) { hasPair = true; break; }
+        return hasPair || ((w >>> 28) & 15) >= 4;
+      }
+      return true;                                   // 同駒受けは無条件 (香以外)
+    }
+    // 同駒なし: 王切りのみが受け手 (香・しは王切り不可)
+    if (pe.aOu || pe.aUncut || (w & 15) < 1) return false;
+    // 弱い手の1巡目王温存: c["王"]-- 後に続きがなければ切らない → パスは定石どおり
+    const ouDec = (w & 15) - 1;
+    let hasPair2 = ouDec >= 2;
+    if (!hasPair2) for (let t = 1; t <= 6; t++) if (((w >>> (4 * t)) & 15) >= 2) { hasPair2 = true; break; }
+    if (!hasPair2 && ((w >>> 28) & 15) < 4) return false;
+    // 香リスク王切りの鏡映: 有効時は該当条件の手は切るはず → パスは違反
+    if (OU_KYORISK > 0 && ((w >>> 24) & 15) === 0 && e.kyoVis !== undefined &&
+        4 - e.kyoVis >= 2 && kyoRiskStrengthC(w) >= (OU_KYORISK >= 2 ? 2 : 1))
+      return true;
+    if (a === "金" || a === "銀" || a === "馬") return false;   // 1巡目は無条件王温存
+    // 飛角: 手が狭く敵に残りがあれば王切り → パスは違反
+    const narrow = distinctC(w) <= 3;
+    const enemyRemaining = Math.max(0, KOMA_COUNT[a] - (e.vis || 0));
+    if (enemyRemaining >= 1) return narrow;
+    return narrow && ((w >>> 24) & 15) === 0;
+  }
+  /* = passFactor(held, e, fallback) の語版 (λ定数・分岐は legacy と同一。返り値は完全同一のfloat)。 */
+  function passFactorC(w, e, fallback, pe) {
+    if (!passViolatesC(w, e, pe)) return 1;
+    if (!PASS_OU_LAM && !PASS_OU_HUM) return evLambda(e, fallback);
+    if (e.round && ouKeepPathC(w, pe)) {
+      if (PASS_OU_HUM && ouKeepHumanSeat(e.seat)) {
+        if (e.byPartner) return OUK_HUM_P;
+        if (e.round >= 2) return OUK_HUM_E;
+      } else if (PASS_OU_LAM && !e.byPartner && e.round >= 2) {
+        if (PASS_OU_LAM === 1) return Math.max(OUK_FLOOR, OUK_E_AGG);
+        return Math.max(OUK_FLOOR, e.round >= 3 ? OUK_E3
+                        : (ouKeepContC(w) ? OUK_E2_CONT : OUK_E2_NOCONT));
+      }
+    }
+    return evLambda(e, fallback);
+  }
+  /* fa/sa/ta/rc 表因子の語版。表(FIRSTATK_TBL等)とクラス式は1文字も変えず、カウント読みのみ
+   * 語演算化する (較正済み値。返り値は完全同一のfloat — PLAN §2.3)。 */
+  function faFactorC(k0, w, ev) {
+    const row = ((ev && ev.kc) ? FIRSTATK_TBL[k0 + "A"] : FIRSTATK_TBL[k0]) || FIRSTATK_TBL[k0];
+    if (!row) return 1;
+    const ou = (w & 15) >= 1 ? 1 : 0;
+    let cls;
+    if (k0 === "王") {
+      const p2 = (w & 15) >= 2 ? 1 : 0;
+      const oth = _cwAnyPair(w, -1) ? 1 : 0;
+      cls = p2 * 2 + oth;
+    } else if (k0 === "飛" || k0 === "角") {
+      const t0 = _KOMA_IDX[k0];
+      const p2 = ((w >>> (4 * t0)) & 15) >= 2 ? 1 : 0;
+      const ky = Math.min((w >>> 24) & 15, 2);
+      const oth = _cwAnyPair(w, t0) ? 1 : 0;
+      cls = p2 * 6 + ky * 2 + oth;
+    } else if (k0 === "し") {
+      const s4 = ((w >>> 28) & 15) >= 4 ? 1 : 0;
+      const hp = _cwAnyPair(w, -1) ? 1 : 0;
+      cls = s4 * 4 + hp * 2 + ou;
+    } else {
+      const t0 = _KOMA_IDX[k0];
+      const p2 = ((w >>> (4 * t0)) & 15) >= 2 ? 1 : 0;
+      const oth = _cwAnyPair(w, t0) ? 1 : 0;
+      cls = p2 * 4 + ou * 2 + oth;
+    }
+    const f = row[cls];
+    return (f == null) ? 1 : f;
+  }
+  function saFactorC(k1, w, ev) {
+    const row = ((ev && ev.kc) ? SECONDATK_TBL[k1 + "A"] : SECONDATK_TBL[k1]) || SECONDATK_TBL[k1];
+    if (!row) return 1;
+    const ou = (w & 15) >= 1 ? 1 : 0;
+    let cls;
+    if (k1 === "王") {
+      const p2 = (w & 15) >= 2 ? 1 : 0;
+      const oth = _cwAnyPair(w, -1) ? 1 : 0;
+      cls = p2 * 2 + oth;
+    } else if (k1 === "飛" || k1 === "角") {
+      const t0 = _KOMA_IDX[k1];
+      const p2 = ((w >>> (4 * t0)) & 15) >= 2 ? 1 : 0;
+      const ky = Math.min((w >>> 24) & 15, 2);
+      const oth = _cwAnyPair(w, t0) ? 1 : 0;
+      cls = p2 * 6 + ky * 2 + oth;
+    } else if (k1 === "し") {
+      const s4 = ((w >>> 28) & 15) >= 4 ? 1 : 0;
+      const hp = _cwAnyPair(w, -1) ? 1 : 0;
+      cls = s4 * 4 + hp * 2 + ou;
+    } else {
+      const t0 = _KOMA_IDX[k1];
+      const p2 = ((w >>> (4 * t0)) & 15) >= 2 ? 1 : 0;
+      const oth = _cwAnyPair(w, t0) ? 1 : 0;
+      cls = p2 * 4 + ou * 2 + oth;
+    }
+    const f = row[cls];
+    return (f == null) ? 1 : f;
+  }
+  function taFactorC(k0, w) {
+    const row = THIRDATK_TBL[k0];
+    if (!row) return 1;
+    const ou = (w & 15) >= 1 ? 1 : 0;
+    let cls;
+    if (k0 === "王") {
+      const p2 = (w & 15) >= 2 ? 1 : 0;
+      const oth = _cwAnyPair(w, -1) ? 1 : 0;
+      cls = p2 * 2 + oth;
+    } else if (k0 === "飛" || k0 === "角") {
+      const t0 = _KOMA_IDX[k0];
+      const p2 = ((w >>> (4 * t0)) & 15) >= 2 ? 1 : 0;
+      const ky = Math.min((w >>> 24) & 15, 2);
+      const oth = _cwAnyPair(w, t0) ? 1 : 0;
+      cls = p2 * 6 + ky * 2 + oth;
+    } else if (k0 === "し") {
+      const s4 = ((w >>> 28) & 15) >= 4 ? 1 : 0;
+      const hp = _cwAnyPair(w, -1) ? 1 : 0;
+      cls = s4 * 4 + hp * 2 + ou;
+    } else {
+      const t0 = _KOMA_IDX[k0];
+      const p2 = ((w >>> (4 * t0)) & 15) >= 2 ? 1 : 0;
+      const oth = _cwAnyPair(w, t0) ? 1 : 0;
+      cls = p2 * 4 + ou * 2 + oth;
+    }
+    const f = row[cls];
+    return (f == null) ? 1 : f;
+  }
+  function rcFactorC(k0, w) {
+    const row = RECEIVE_TBL[k0];
+    if (!row) return 1;
+    const ou = (w & 15) >= 1 ? 1 : 0;
+    let cls;
+    if (k0 === "王") {
+      const p2 = (w & 15) >= 2 ? 1 : 0;
+      const oth = _cwAnyPair(w, -1) ? 1 : 0;
+      cls = p2 * 2 + oth;
+    } else if (k0 === "飛" || k0 === "角") {
+      const t0 = _KOMA_IDX[k0];
+      const p2 = ((w >>> (4 * t0)) & 15) >= 2 ? 1 : 0;
+      const ky = Math.min((w >>> 24) & 15, 2);
+      const oth = _cwAnyPair(w, t0) ? 1 : 0;
+      cls = p2 * 6 + ky * 2 + oth;
+    } else if (k0 === "し") {
+      const s4 = ((w >>> 28) & 15) >= 4 ? 1 : 0;
+      const hp = _cwAnyPair(w, -1) ? 1 : 0;
+      cls = s4 * 4 + hp * 2 + ou;
+    } else {
+      const t0 = _KOMA_IDX[k0];
+      const p2 = ((w >>> (4 * t0)) & 15) >= 2 ? 1 : 0;
+      const oth = _cwAnyPair(w, t0) ? 1 : 0;
+      cls = p2 * 4 + ou * 2 + oth;
+    }
+    const f = row[cls];
+    return (f == null) ? 1 : f;
+  }
+  /* kcのfk分岐が走査するペア候補 ["金","銀","馬","飛","角"] のTIDX(legacyの走査順を保存)。 */
+  const _KC_PAIR_T = [3, 4, 5, 1, 2];
+  /* 決定ごとに1回: 既存の証拠cache(makePassEvCacheの結果 / beliefMCの関数内前計算)から
+   * Packed付加情報(席index・駒TIDX・shownカウント語)を構築する。証拠抽出ロジックには触れない
+   * (PLAN §2.8-5)。構成できない要素があれば null (呼び出し元は決定全体をlegacy重みで評価)。 */
+  function makePackedEvCache(c) {
+    const seatsOf = list => {
+      const n = list.length, a = new Int32Array(n);
+      for (let j = 0; j < n; j++) { const i = SEATS.indexOf(list[j].seat); if (i < 0) return null; a[j] = i; }
+      return a;
+    };
+    const komasOf = list => {
+      const n = list.length, a = new Int32Array(n);
+      for (let j = 0; j < n; j++) { const t = _KOMA_IDX[list[j].koma]; if (t === undefined) return null; a[j] = t; }
+      return a;
+    };
+    const cwsOf = lists => {
+      const n = lists.length, a = new Uint32Array(n);
+      for (let j = 0; j < n; j++) { const w = cwOf(lists[j]); if (w < 0) return null; a[j] = w; }
+      return a;
+    };
+    const P = {};
+    if (c.ev && c.ev.length) {
+      const n = c.ev.length;
+      P.evSi = new Int32Array(n); P.evShW = new Uint32Array(n); P.evPe = new Array(n);
+      for (let j = 0; j < n; j++) {
+        const e = c.ev[j];
+        const i = SEATS.indexOf(e.seat), at = _KOMA_IDX[e.attack], sw = cwOf(c.shownAfter[j]);
+        if (i < 0 || at === undefined || sw < 0) return null;
+        P.evSi[j] = i; P.evShW[j] = sw;
+        P.evPe[j] = {at, aOu: e.attack === "王", aUncut: UNCUTTABLE.has(e.attack)};
+      }
+    }
+    if (c.sig && c.sig.length) { if ((P.sigSi = seatsOf(c.sig)) === null) return null; }
+    if (c.kak && c.kak.length) {
+      if ((P.kakSi = seatsOf(c.kak)) === null) return null;
+      if ((P.kakKt = komasOf(c.kak)) === null) return null;
+    }
+    if (c.sp && c.sp.length) { if ((P.spSi = seatsOf(c.sp)) === null) return null; }
+    if (c.kp && c.kp.length) {
+      if ((P.kpSi = seatsOf(c.kp)) === null) return null;
+      if ((P.kpKt = komasOf(c.kp)) === null) return null;
+    }
+    if (c.kn && c.kn.length) {
+      if ((P.knSi = seatsOf(c.kn)) === null) return null;
+      if ((P.knShW = cwsOf(c.kn.map(e => e.shown))) === null) return null;
+    }
+    if (c.ks && c.ks.length) { if ((P.ksSi = seatsOf(c.ks)) === null) return null; }
+    if (c.kc && c.kc.length) {
+      if ((P.kcSi = seatsOf(c.kc)) === null) return null;
+      if ((P.kcShW = cwsOf(c.kc.map(e => e.shown))) === null) return null;
+      const n = c.kc.length;
+      P.kcKt = new Int32Array(n);
+      for (let j = 0; j < n; j++) {
+        const e = c.kc[j];
+        if (e.t === "fk") { const t = _KOMA_IDX[e.koma]; if (t === undefined) return null; P.kcKt[j] = t; }
+        else P.kcKt[j] = -1;
+      }
+    }
+    if (c.fa && c.fa.length) {
+      if ((P.faSi = seatsOf(c.fa)) === null) return null;
+      if ((P.faShW = cwsOf(c.faShown)) === null) return null;
+    }
+    if (c.sa && c.sa.length) {
+      if ((P.saSi = seatsOf(c.sa)) === null) return null;
+      if ((P.saShW = cwsOf(c.saShown)) === null) return null;
+    }
+    if (c.ta && c.ta.length) {
+      if ((P.taSi = seatsOf(c.ta)) === null) return null;
+      if ((P.taShW = cwsOf(c.taShown)) === null) return null;
+    }
+    if (c.rc && c.rc.length) {
+      if ((P.rcSi = seatsOf(c.rc)) === null) return null;
+      if ((P.rcShW = cwsOf(c.rcShown)) === null) return null;
+    }
+    return P;
+  }
+  /* tryごとのpack先リング (sampleWorldW用)。scratch規約: 次のsampleWorldW呼び出しで上書きされる。
+   * 当選世界へ添付した pw の鮮度は __pwGen === pw.gen で検査する(PLAN §2.8-3)。 */
+  const _EV_PW_RING = [];
+  function _evPwAt(i) {
+    while (_EV_PW_RING.length <= i) _EV_PW_RING.push(makePackedWorld());
+    return _EV_PW_RING[i];
+  }
+  const _BMC_PW = makePackedWorld();   // beliefMC用 (消費が同期的なので1本でよい)
+  /* ルーレット当選世界へ pw を非enumerable添付する (PLAN §2.4 3B-1 手順3)。
+   * ddRootValuesWorld は __pwGen === __pw.gen のときだけ packWorld 再実行を省略する。 */
+  function __evAttachPw(s, pw) {
+    if (pw) {
+      Object.defineProperty(s, "__pw", {value: pw, configurable: true});
+      Object.defineProperty(s, "__pwGen", {value: pw.gen, configurable: true});
+    }
+    return s;
+  }
+  /* sampleWorldW の重みループの語版。family適用順・分岐形・乗算順を legacy と逐語的に一致させる
+   * (係数はテーブル/λ定数そのものなので w はビット同一 — PACKED_EV=2 shadowが毎tryこれを検査)。 */
+  function _swwPackedW(pw, pev, cache, lambda, viewSeat) {
+    const hc = pw.handCnt;
+    let w = 1;
+    for (let j = 0; j < cache.ev.length; j++) {
+      const ahw = (hc[pev.evSi[j]] + pev.evShW[j]) >>> 0;
+      { const __pf = passFactorC(ahw, cache.ev[j], lambda, pev.evPe[j]);
+        if (__pf !== 1) w *= dcy(cache.ev[j].seat, __pf); }
+    }
+    if (cache.sig)
+      for (let j = 0; j < cache.sig.length; j++)
+        if ((hc[pev.sigSi[j]] & 15) === 0) w *= dcy(cache.sig[j].seat, LAMBDA_SIG);
+    if (cache.kak)
+      for (let j = 0; j < cache.kak.length; j++)
+        if (((hc[pev.kakSi[j]] >>> (4 * pev.kakKt[j])) & 15) >= 1) w *= dcy(cache.kak[j].seat, LAMBDA_KAKARI);
+    if (cache.sp)
+      for (let j = 0; j < cache.sp.length; j++)
+        if (hasPairC(hc[pev.spSi[j]])) w *= dcy(cache.sp[j].seat, LAMBDA_SHIPAIR);
+    if (cache.kp)
+      for (let j = 0; j < cache.kp.length; j++)
+        if (((hc[pev.kpSi[j]] >>> (4 * pev.kpKt[j])) & 15) === 0) w *= dcy(cache.kp[j].seat, cache.kp[j].lam);
+    if (cache.fa)
+      for (let j = 0; j < cache.fa.length; j++) {
+        const ahw = (hc[pev.faSi[j]] + pev.faShW[j]) >>> 0;
+        w *= dcy(cache.fa[j].seat, dcyT(cache.fa[j].seat, faFactorC(cache.fa[j].koma, ahw, cache.fa[j])));
+      }
+    if (cache.sa)
+      for (let j = 0; j < cache.sa.length; j++) {
+        const ahw = (hc[pev.saSi[j]] + pev.saShW[j]) >>> 0;
+        w *= dcy(cache.sa[j].seat, dcyT(cache.sa[j].seat, saFactorC(cache.sa[j].koma, ahw, cache.sa[j])));
+      }
+    if (cache.ta)
+      for (let j = 0; j < cache.ta.length; j++) {
+        const ahw = (hc[pev.taSi[j]] + pev.taShW[j]) >>> 0;
+        w *= dcy(cache.ta[j].seat, dcyT(cache.ta[j].seat, taFactorC(cache.ta[j].koma, ahw)));
+      }
+    if (cache.rc)
+      for (let j = 0; j < cache.rc.length; j++) {
+        const ahw = (hc[pev.rcSi[j]] + pev.rcShW[j]) >>> 0;
+        w *= dcy(cache.rc[j].seat, dcyT(cache.rc[j].seat, rcFactorC(cache.rc[j].koma, ahw)));
+      }
+    for (let si = 0; si < 4; si++) {
+      const se = SEATS[si];
+      if (se === viewSeat) continue;                          // 自席はサンプル世界に含まれない
+      const kappa = kyoBiasOf(se);
+      if (kappa !== 1 && ((hc[si] >>> 24) & 15) >= 1) w *= kappa;   // 人間の香温存補正
+    }
+    if (cache.ks)
+      for (let j = 0; j < cache.ks.length; j++) {
+        const cw = hc[pev.ksSi[j]];
+        if (((cw >>> 8) & 15) === 0 &&
+            ((cw >>> 24) & 15) + cache.ks[j].kyoShown < 2) w *= dcy(cache.ks[j].seat, 0.05);
+      }
+    if (cache.kc)
+      for (let j = 0; j < cache.kc.length; j++) {
+        const e = cache.kc[j];
+        const cw = hc[pev.kcSi[j]];
+        if (e.t === "fk") {
+          if (((cw >>> (4 * pev.kcKt[j])) & 15) === 0) {
+            const ky = ((cw >>> 24) & 15) + e.kyoShown;
+            if (ky >= 2) w *= dcy(e.seat, e.lam2); else if (ky === 0) w *= dcy(e.seat, e.lam0);
+            const shW = pev.kcShW[j];
+            for (let x = 0; x < 5; x++) {
+              const t = _KC_PAIR_T[x];
+              if (t === pev.kcKt[j]) continue;
+              if (((cw >>> (4 * t)) & 15) + ((shW >>> (4 * t)) & 15) >= 2) { w *= dcy(e.seat, e.lamP); break; }
+            }
+          }
+        } else if (lacksContinuationC((cw + pev.kcShW[j]) >>> 0)) w *= dcy(e.seat, 0.12);
+      }
+    return w;
+  }
+  /* beliefMC の重みループの語版 (family適用順は beliefMC のKループと同一 — sampleWorldWと異なる)。 */
+  function _bmcPackedW(pw, pev, c, knLam, lambda, seat) {
+    const hc = pw.handCnt;
+    let w = 1;
+    for (let j = 0; j < c.ev.length; j++) {
+      const ahw = (hc[pev.evSi[j]] + pev.evShW[j]) >>> 0;
+      { const __pf = passFactorC(ahw, c.ev[j], lambda, pev.evPe[j]);
+        if (__pf !== 1) w *= dcy(c.ev[j].seat, __pf); }
+    }
+    for (let j = 0; j < c.sig.length; j++)
+      if ((hc[pev.sigSi[j]] & 15) === 0) w *= dcy(c.sig[j].seat, LAMBDA_SIG);
+    for (let j = 0; j < c.kak.length; j++)
+      if (((hc[pev.kakSi[j]] >>> (4 * pev.kakKt[j])) & 15) >= 1) w *= dcy(c.kak[j].seat, LAMBDA_KAKARI);
+    for (let j = 0; j < c.sp.length; j++)
+      if (hasPairC(hc[pev.spSi[j]])) w *= dcy(c.sp[j].seat, LAMBDA_SHIPAIR);
+    for (let j = 0; j < c.kp.length; j++)
+      if (((hc[pev.kpSi[j]] >>> (4 * pev.kpKt[j])) & 15) === 0) w *= dcy(c.kp[j].seat, c.kp[j].lam);
+    for (let j = 0; j < c.kn.length; j++) {
+      const ky = ((hc[pev.knSi[j]] >>> 24) & 15) + ((pev.knShW[j] >>> 24) & 15);
+      if (ky >= 2) w *= dcy(c.kn[j].seat, knLam[j]);
+    }
+    for (let si = 0; si < 4; si++) {
+      const se = SEATS[si];
+      if (se === seat) continue;                              // 自席はサンプル世界に含まれない
+      const kappa = kyoBiasOf(se);
+      if (kappa !== 1 && ((hc[si] >>> 24) & 15) >= 1) w *= kappa;
+    }
+    for (let j = 0; j < c.ks.length; j++) {
+      const cw = hc[pev.ksSi[j]];
+      if (((cw >>> 8) & 15) === 0 &&
+          ((cw >>> 24) & 15) + c.ks[j].kyoShown < 2) w *= dcy(c.ks[j].seat, 0.05);
+    }
+    for (let j = 0; j < c.kc.length; j++) {
+      const e = c.kc[j];
+      const cw = hc[pev.kcSi[j]];
+      if (e.t === "fk") {
+        if (((cw >>> (4 * pev.kcKt[j])) & 15) === 0) {
+          const ky = ((cw >>> 24) & 15) + e.kyoShown;
+          if (ky >= 2) w *= dcy(e.seat, e.lam2); else if (ky === 0) w *= dcy(e.seat, e.lam0);
+          const shW = pev.kcShW[j];
+          for (let x = 0; x < 5; x++) {
+            const t = _KC_PAIR_T[x];
+            if (t === pev.kcKt[j]) continue;
+            if (((cw >>> (4 * t)) & 15) + ((shW >>> (4 * t)) & 15) >= 2) { w *= dcy(e.seat, e.lamP); break; }
+          }
+        }
+      } else if (lacksContinuationC((cw + pev.kcShW[j]) >>> 0)) w *= dcy(e.seat, 0.12);
+    }
+    for (let j = 0; j < c.fa.length; j++) {
+      const ahw = (hc[pev.faSi[j]] + pev.faShW[j]) >>> 0;
+      const __f = faFactorC(c.fa[j].koma, ahw, c.fa[j]);
+      w *= dcy(c.fa[j].seat, dcyT(c.fa[j].seat, FA_TEMPER === 1 ? __f : Math.pow(__f, FA_TEMPER)));
+    }
+    for (let j = 0; j < c.sa.length; j++) {
+      const ahw = (hc[pev.saSi[j]] + pev.saShW[j]) >>> 0;
+      w *= dcy(c.sa[j].seat, dcyT(c.sa[j].seat, saFactorC(c.sa[j].koma, ahw, c.sa[j])));
+    }
+    for (let j = 0; j < c.ta.length; j++) {
+      const ahw = (hc[pev.taSi[j]] + pev.taShW[j]) >>> 0;
+      w *= dcy(c.ta[j].seat, dcyT(c.ta[j].seat, taFactorC(c.ta[j].koma, ahw)));
+    }
+    for (let j = 0; j < c.rc.length; j++) {
+      const ahw = (hc[pev.rcSi[j]] + pev.rcShW[j]) >>> 0;
+      w *= dcy(c.rc[j].seat, dcyT(c.rc[j].seat, rcFactorC(c.rc[j].koma, ahw)));
+    }
+    return w;
   }
   // パー分析: 全手公開(神視点)での各合法手の厳密値 (振り返り用)
   function ddParAnalyze(st, nodeCap) {
@@ -7927,7 +8960,7 @@ const G = (() => {
     const evalFn = makeEvalFn(st, seat, o);
     const total = SEATS.reduce((a, s2) => a + st.hands[s2].length, 0);
     const wc = (o && o.wSample) ? makePassEvCache(view, (SAMPLER_UNIFY & 2) !== 0) : null;
-    const rngB = mulberry32((0xB0B1 ^ (view.hist.length * 977 + SEATS.indexOf(seat))) >>> 0);
+    const rngB = RNG_MK((0xB0B1 ^ (view.hist.length * 977 + SEATS.indexOf(seat))) >>> 0, "buryMC");
     const sampleB = () => wc
       ? sampleWorldW(view, rngB, wc, o.wLambda || 0.2, o.wTries || 6)
       : sampleWorld(view, rngB);
@@ -7935,11 +8968,12 @@ const G = (() => {
     const acc = new Map(cands.map(k => [k, 0]));
     let n = 0;
     const dets = (o && o.ddDets) || 12;
+    // build v199(PackedWorld Phase3C): 同一決定内でstは不変なのでpwCtxはループ前に1回巻き上げる。
+    const pwCtx = (PACKED_WORLD && PACKED_DD === 1 && !DETERMINIZATION_V2) ? PKDD.packRootCtx(st, seat) : undefined;
     for (let d = 0; d < dets; d++) {
       const sampled = sampleB();
       if (o && o.dd && total <= (o.ddLimit || 16)) {
-        const sim = cloneStateForRollout(st, seat, sampled);
-        const rv = ddRootValues(sim, seat, evalFn, acts, o.ddNodeCap || 400000);
+        const rv = ddRootValuesWorld(st, seat, sampled, evalFn, acts, o.ddNodeCap || 400000, pwCtx);
         if (rv) {
           for (const k of cands) acc.set(k, acc.get(k) + rv.get(k));
           n++;
@@ -7990,16 +9024,17 @@ const G = (() => {
       if (total <= (o.ddLimit || 16)) {
         const evalFn = makeEvalFn(st, seat, o);
         const dets = o.ddDets || 16;
-        const rngDD = mulberry32(0x5dd ^ (st.history.length * 131 + SEATS.indexOf(seat)));
+        const rngDD = RNG_MK(0x5dd ^ (st.history.length * 131 + SEATS.indexOf(seat)), "attackMC");
         const acts = candidates.map(k => ({type: "attack", koma: k}));
         const acc = new Map(candidates.map(c => [c, 0]));
         let nOK = 0, fail = false;
         // build v161(ATK_DD_ADAPT): OFF時はperAdapt=nullで下の既存ループに一切影響しない。
         const perAdapt = ATK_DD_ADAPT ? [] : null;
+        // build v199(PackedWorld Phase3C): 同一決定内でstは不変なのでpwCtxは本体・adapt延長で共有する。
+        const pwCtx = (PACKED_WORLD && PACKED_DD === 1 && !DETERMINIZATION_V2) ? PKDD.packRootCtx(st, seat) : undefined;
         for (let d = 0; d < dets; d++) {
           const sampled = sampleW(rngDD);
-          const sim = cloneStateForRollout(st, seat, sampled);
-          const rv = ddRootValues(sim, seat, evalFn, acts, (o.ddNodeCap || 400000));
+          const rv = ddRootValuesWorld(st, seat, sampled, evalFn, acts, (o.ddNodeCap || 400000), pwCtx);
           if (rv === null) { fail = true; break; }      // 予算超過 → DD放棄しロールアウトへ
           for (const c of candidates) acc.set(c, acc.get(c) + rv.get(c));
           nOK++;
@@ -8028,8 +9063,7 @@ const G = (() => {
             const target = Math.min(n + ATK_DD_ADAPT_BLOCK, ATK_DD_ADAPT_MAX);
             for (let dd = n; dd < target; dd++) {
               const sampled = sampleW(rngDD);
-              const sim = cloneStateForRollout(st, seat, sampled);
-              const rv = ddRootValues(sim, seat, evalFn, acts, (o.ddNodeCap || 400000));
+              const rv = ddRootValuesWorld(st, seat, sampled, evalFn, acts, (o.ddNodeCap || 400000), pwCtx);
               if (rv === null) { fail = true; break; }
               for (const c of candidates) acc.set(c, acc.get(c) + rv.get(c));
               nOK++;
@@ -9094,7 +10128,7 @@ const G = (() => {
     // dets(ロールアウトスキップ用の内部フラグ、7693の閾値判定にも波及するため意味は変更しない)とは
     // 独立に保持する。旧実装はdets=0をラベル生成にも流用しており、DD経路(全読み)を通っても
     // 常に「受けMC 0決定化」と表示される誤りがあった(実際はddDets個のダブルダミー決定化で評価)。
-    const rng = mulberry32((opts.mcSeed || 1) * 7919 + st.history.length * 131 + SEATS.indexOf(seat));
+    const rng = RNG_MK((opts.mcSeed || 1) * 7919 + st.history.length * 131 + SEATS.indexOf(seat), "recvMC");
     const sums = new Map(cands.map(c => [c, {v: 0, n: 0}]));
     const wCacheR = opts.wSample ? makePassEvCache(view, (SAMPLER_UNIFY & 1) !== 0) : null;
     // build v109(段階4): wSample(既存の重み付きサンプラー)を使わない経路でのみ、
@@ -9113,10 +10147,11 @@ const G = (() => {
       let fail = false;
       // build v154(DD_ADAPT): OFF時はperAdapt=nullで下の既存ループに一切影響しない。
       const perAdapt = DD_ADAPT ? [] : null;
+      // build v199(PackedWorld Phase3C): 同一決定内でstは不変なのでpwCtxは本体・adapt延長で共有する。
+      const pwCtx = (PACKED_WORLD && PACKED_DD === 1 && !DETERMINIZATION_V2) ? PKDD.packRootCtx(st, seat) : undefined;
       for (let d = 0; d < ddDets; d++) {
         const sampled = sampleWR();
-        const sim = cloneStateForRollout(st, seat, sampled);
-        const rv = ddRootValues(sim, seat, evalFn, acts, opts.ddNodeCap || 400000);
+        const rv = ddRootValuesWorld(st, seat, sampled, evalFn, acts, opts.ddNodeCap || 400000, pwCtx);
         if (rv === null) { fail = true; break; }
         for (const c of cands) {
           const e = sums.get(c); e.v += rv.get(c); e.n++;
@@ -9146,8 +10181,7 @@ const G = (() => {
           const target = Math.min(n + DD_ADAPT_BLOCK, DD_ADAPT_MAX);
           for (let dd = n; dd < target; dd++) {
             const sampled = sampleWR();
-            const sim = cloneStateForRollout(st, seat, sampled);
-            const rv = ddRootValues(sim, seat, evalFn, acts, opts.ddNodeCap || 400000);
+            const rv = ddRootValuesWorld(st, seat, sampled, evalFn, acts, opts.ddNodeCap || 400000, pwCtx);
             if (rv === null) { fail = true; break; }
             for (const c of cands) { const e = sums.get(c); e.v += rv.get(c); e.n++; }
             perAdapt.push(cands.map(c => rv.get(c)));
@@ -9707,9 +10741,35 @@ const G = (() => {
       return draw();
     const cands = [], ws = [];
     let wTot = 0;
+    // ===== 3B-1(PACKED_EV): 証拠重みのPacked評価。サンプラー核=draw()には一切触れない =====
+    // __pevはcacheへ1回だけメモ化(証拠cacheは決定ごとに1個なのでmakePackedEvCacheは決定ごと1回)。
+    // 構成不能(fbShape)・pack失敗・例外(fbErr)は、そのtry(または決定全体)をlegacy重みで評価する。
+    let __pev = null;
+    if (PACKED_EV) {
+      if (cache.__pev === undefined) {
+        PACKED_EV_DIAG.calls++;
+        cache.__pev = makePackedEvCache(cache);
+        if (cache.__pev === null) PACKED_EV_DIAG.fbShape++;
+      }
+      __pev = cache.__pev;
+    }
+    const __pwArr = __pev ? [] : null;
     for (let t = 0; t < tries; t++) {
       const s = draw();
+      let __pwT = null, __wP;
+      if (__pev) {
+        __pwT = packWorld(s, _evPwAt(t), view.seat);
+        if (__pwT === null) PACKED_EV_DIAG.fbShape++;
+        else {
+          try { __wP = _swwPackedW(__pwT, __pev, cache, lambda, view.seat); }
+          catch (err) { __wP = undefined; __pwT = null; PACKED_EV_DIAG.fbErr++; }
+        }
+        __pwArr.push(__pwT);
+      }
       let w = 1;
+      if (PACKED_EV === 1 && __wP !== undefined) {
+        w = __wP; PACKED_EV_DIAG.packed++;
+      } else {
       for (let j = 0; j < cache.ev.length; j++) {
         const held = s[cache.ev[j].seat].concat(cache.shownAfter[j]);
         { const __pf = passFactor(held, cache.ev[j], lambda);
@@ -9775,6 +10835,12 @@ const G = (() => {
             }
           } else if (lacksContinuation(sh.concat(e.shown))) w *= dcy(e.seat, 0.12);
         }
+      // 3B-1 shadow(PACKED_EV=2): legacy w と packed w のビット一致(Object.is)を毎try検査。採用値はlegacy。
+      if (PACKED_EV === 2 && __wP !== undefined) {
+        PACKED_EV_DIAG.shadow++; PACKED_EV_DIAG.cmpN++;
+        if (!Object.is(w, __wP)) PACKED_EV_DIAG.mismatchW++;
+      }
+      }
       cands.push(s); ws.push(BELIEF_SHARPEN === 1 ? w : Math.pow(w, BELIEF_SHARPEN)); wTot += ws[ws.length - 1];
     }
     // build v121(提案1・計装): 有効サンプル数ess = (Σw)²/Σw²。v111でbeliefMC側にsampleWorldC化
@@ -9789,8 +10855,9 @@ const G = (() => {
       DIAG["swEssN" + tag]   = (DIAG["swEssN" + tag]   || 0) + 1;
     }
     let x = rng() * wTot;
-    for (let i = 0; i < cands.length; i++) { x -= ws[i]; if (x <= 0) return cands[i]; }
-    return cands[cands.length - 1];
+    // 3B-1: 当選世界にはそのtryのpwを添付(有効時のみ)。返り値は従来どおり文字列世界そのもの。
+    for (let i = 0; i < cands.length; i++) { x -= ws[i]; if (x <= 0) return __evAttachPw(cands[i], __pwArr ? __pwArr[i] : null); }
+    return __evAttachPw(cands[cands.length - 1], __pwArr ? __pwArr[cands.length - 1] : null);
   }
   // ===== 初動駒→王保有の学習尤度項 (2026-07, B_coop 1万局適合, 情報レベル検証済 ou +8.2mb) =====
   // f = P(初動=k0 | 王保有クラス) / P(初動=k0)。攻め時点手札は sampled+shownSince で厳密復元
@@ -10011,7 +11078,7 @@ const G = (() => {
     const K = o.K || 160;
     const lambda = o.weighted ? (o.lambda != null ? o.lambda : 0.7) : 1.0;
     const view = makeView(st, seat);
-    const rng = mulberry32((o.seed || 1) * 48271 + st.history.length * 257 + SEATS.indexOf(seat));
+    const rng = RNG_MK((o.seed || 1) * 48271 + st.history.length * 257 + SEATS.indexOf(seat), "beliefMC");
     // build v111(段階7): 内部の決定化サンプラーを、枚数読み(komaLedger)の硬い制約を
     // 尊重するsampleWorldCに置き換える(COUNT_SAMPLEで段階4と共通のロールバック)。
     const beliefL = COUNT_SAMPLE ? komaLedger(view) : null;
@@ -10084,6 +11151,24 @@ const G = (() => {
       }
       return set;
     });
+    // ===== 3B-1(PACKED_EV): Packed証拠前計算 (決定ごと1回)。証拠もkyoBiasも無ければlegacyのまま
+    // 素通し(重みループ自体が全て空振りする局面でpackコストを払わない)。 =====
+    let __pev = null, __partsB = null;
+    if (PACKED_EV &&
+        (ev.length || sigEv.length || kakEv.length || spEv.length || kpEv.length || knEv.length ||
+         ksEv.length || kcEv.length || faEv.length || saEv.length || taEv.length || rcEv.length ||
+         SEATS.some(s2 => s2 !== seat && kyoBiasOf(s2) !== 1))) {
+      PACKED_EV_DIAG.calls++;
+      __partsB = {ev, shownAfter, sig: sigEv, kak: kakEv, sp: spEv, kp: kpEv, kn: knEv,
+                  ks: ksEv, kc: kcEv, fa: faEv, faShown, sa: saEv, saShown, ta: taEv, taShown,
+                  rc: rcEv, rcShown};
+      __pev = makePackedEvCache(__partsB);
+      if (__pev === null) PACKED_EV_DIAG.fbShape++;
+    }
+    // 3B-2(PACKED_BC): others→SEATS index の前計算(集計語化が __pwT.handCnt を席indexで読むため)。
+    // 既定(PACKED_BC=1・v203〜)ではこの配列生成とカウンタ更新が決定ごとに毎回発生する(legacy相当のPACKED_BC=0へ切り戻した場合のみ割当・カウンタ更新とも発生しない)。
+    const __oIdx = PACKED_BC ? others.map(p2 => SEATS.indexOf(p2)) : null;
+    if (PACKED_BC) PACKED_BC_DIAG.calls++;
     const acc = {};
     for (const p of others) {
       acc[p] = {hold: {}, exp: {}};
@@ -10092,7 +11177,20 @@ const G = (() => {
     let wSum = 0, w2Sum = 0;
     for (let d = 0; d < K; d++) {
       const sampled = beliefL ? sampleWorldC(view, rng, beliefL) : sampleWorld(view, rng);
+      // 3B-1: packは消費が同期的なので専用1本(_BMC_PW)へ。失敗はtry単位でlegacy重みへ後退。
+      let __pwT = null, __wP;
+      if (__pev) {
+        __pwT = packWorld(sampled, _BMC_PW, seat);
+        if (__pwT === null) PACKED_EV_DIAG.fbShape++;
+        else {
+          try { __wP = _bmcPackedW(__pwT, __pev, __partsB, knLam, lambda, seat); }
+          catch (err) { __wP = undefined; PACKED_EV_DIAG.fbErr++; }
+        }
+      }
       let w = 1;
+      if (PACKED_EV === 1 && __wP !== undefined) {
+        w = __wP; PACKED_EV_DIAG.packed++;
+      } else {
       for (let j = 0; j < ev.length; j++) {
         const held = sampled[ev[j].seat].concat(shownAfter[j]);
         { const __pf = passFactor(held, ev[j], lambda);
@@ -10139,7 +11237,8 @@ const G = (() => {
       }
       for (let j = 0; j < faEv.length; j++) {
         const ah = sampled[faEv[j].seat].concat(faShown[j]);
-        w *= dcy(faEv[j].seat, dcyT(faEv[j].seat, faFactor(faEv[j].koma, ah, faEv[j])));
+        const __f = faFactor(faEv[j].koma, ah, faEv[j]);
+        w *= dcy(faEv[j].seat, dcyT(faEv[j].seat, FA_TEMPER === 1 ? __f : Math.pow(__f, FA_TEMPER)));
       }
       for (let j = 0; j < saEv.length; j++) {
         const ah = sampled[saEv[j].seat].concat(saShown[j]);
@@ -10153,11 +11252,57 @@ const G = (() => {
         const ah = sampled[rcEv[j].seat].concat(rcShown[j]);
         w *= dcy(rcEv[j].seat, dcyT(rcEv[j].seat, rcFactor(rcEv[j].koma, ah)));
       }
+      // 3B-1 shadow(PACKED_EV=2): legacy w と packed w のビット一致(Object.is)を毎回検査。採用値はlegacy。
+      if (PACKED_EV === 2 && __wP !== undefined) {
+        PACKED_EV_DIAG.shadow++; PACKED_EV_DIAG.cmpN++;
+        if (!Object.is(w, __wP)) PACKED_EV_DIAG.mismatchW++;
+      }
+      }
       wSum += w; w2Sum += w * w;
-      for (const p of others) {
-        const cnt = counter(sampled[p]);
-        for (const k in cnt) { acc[p].exp[k] += w * cnt[k]; }
-        for (const k in cnt) if (cnt[k] > 0) acc[p].hold[k] += w;
+      // 3B-2(PACKED_BC): mode1 は集計をカウント語のニブル直読で行う。cw は同一サンプル d で
+      // pack 済みの __pwT(_BMC_PW)を再利用し、無ければ cwOf で構築する。未知駒(cwOf=-1)は
+      // その席のみ legacy 集計へ後退(fbShape)。cwOf が -1 を返す駒は sampleWorld 系の pool
+      // (=KOMA_COUNT 由来の既知8種)には現れないため、本番経路では到達しない防御分岐。
+      if (PACKED_BC === 1) {
+        for (let oi = 0; oi < others.length; oi++) {
+          const p = others[oi];
+          const cw = __pwT !== null ? __pwT.handCnt[__oIdx[oi]] : cwOf(sampled[p]);
+          if (cw === -1) {
+            PACKED_BC_DIAG.fbShape++;
+            const cnt = counter(sampled[p]);
+            for (const k in cnt) { acc[p].exp[k] += w * cnt[k]; }
+            for (const k in cnt) if (cnt[k] > 0) acc[p].hold[k] += w;
+            continue;
+          }
+          if (__pwT !== null) PACKED_BC_DIAG.reuse++; else PACKED_BC_DIAG.cwBuild++;
+          PACKED_BC_DIAG.packed++;
+          const a = acc[p];
+          for (let t = 0; t < 8; t++) {
+            const c = (cw >>> (4 * t)) & 15;
+            if (c) { const k = KOMA_TYPES_ARR[t]; a.exp[k] += w * c; a.hold[k] += w; }
+          }
+        }
+      } else {
+        for (const p of others) {
+          const cnt = counter(sampled[p]);
+          for (const k in cnt) { acc[p].exp[k] += w * cnt[k]; }
+          for (const k in cnt) if (cnt[k] > 0) acc[p].hold[k] += w;
+        }
+        // 3B-2 shadow(PACKED_BC=2): 採用値は上のlegacy集計のまま、8ニブル全駒種のカウント一致を
+        // 毎サンプル検査する(cmpN=比較ニブル数・mismatchC=不一致数)。
+        if (PACKED_BC === 2) {
+          for (let oi = 0; oi < others.length; oi++) {
+            const p = others[oi];
+            const cw = __pwT !== null ? __pwT.handCnt[__oIdx[oi]] : cwOf(sampled[p]);
+            if (cw === -1) { PACKED_BC_DIAG.fbShape++; continue; }
+            const cnt = counter(sampled[p]);
+            PACKED_BC_DIAG.shadow++;
+            for (let t = 0; t < 8; t++) {
+              PACKED_BC_DIAG.cmpN++;
+              if (((cw >>> (4 * t)) & 15) !== (cnt[KOMA_TYPES_ARR[t]] || 0)) PACKED_BC_DIAG.mismatchC++;
+            }
+          }
+        }
       }
     }
     const players = {};
@@ -10196,7 +11341,7 @@ const G = (() => {
     if (st.phase === "over") return null;
     const k = opts.k || 24;
     const view = makeView(st, refSeat);
-    const rng = mulberry32((opts.seed || 1) * 7919 + (st.history ? st.history.length : 0) * 131 + SEATS.indexOf(refSeat));
+    const rng = RNG_MK((opts.seed || 1) * 7919 + (st.history ? st.history.length : 0) * 131 + SEATS.indexOf(refSeat), "geqMC");
     const cache = makePassEvCache(view, (SAMPLER_UNIFY & 4) !== 0);
     const lambda = opts.lambda != null ? opts.lambda : 0.2;
     const tries = opts.tries || 6;
@@ -10210,7 +11355,7 @@ const G = (() => {
     }
     return decided ? nsWins / decided : null;
   }
-  return {setDeterminizationV2, worldV2Metadata, diagnosticCloneStateForRollout: cloneStateForRollout, setTblTrust, tblFactorAt, setOuSignal, setOuTrust, detectOuSignals, partnerSignaledOu, partnerSignaledShi, kakariGotae, shiStarted, canShiAttackC, setOppProfile, oppRatesFromCounts, setEvLambdaGate, inferPartnerHoldings, setSigRead, setOuMix, setKyouMix, setShiKyoFix, setShiCommit, setShiCommitReal, setKakariEv, kakariEvidence, setPassMirror, setShiPairEv, shiPairEvidence, setKPairEv, pairAttackEvidence, setKyoNeg, setKyoNegScope, setKyoNegClosed, kyoNegAttackEvidence, _kyClsProbe, setOuKyoRisk, setLedgerCal, calP, setOulessFk, setTakeTurn, setKamizaWait, setKakuSignal, kakuSigEvidence, setKyoCode, kyoCodeEvidence, setKyoBonus, setKyoRetention, kyoBiasOf, setHumanModel, setBeliefSharpen, setBuryUmaFix, setBuryPairShi, setKeepShiEshi, setKeepShiLastGuard, setShiKeep2, setWidthBury, setBuryCover, buryCoverPick, setUmaKeep, setShiBluff, setCoopSignal, setConvTrust, convTrustOf, moveHint, coopContext, setShiRejectStrong, setShiRideKeep, setFlowbackYield, setFlowbackTh, setFlowbackPreMc, flowbackYieldPass, setShiAtkAvoid, setShiAtkAvoidMin, setUncutAtkAvoid, setUncutFb, setOuSigShiGuard, setKyoR1Conserve, setKyoConsMode, setKyoWeakConserve, strongNonShi, setKyoR1Wait, setKyoCertainRecv, cfrSolve2x2, setRuleLevel, setDiag, setRolloutOpp, modelRespAction, setLeafDd, setLeafDdLimit, setLeafDdCap, matchEquity, ddSolve, ddSolveNaive, ddRootValues, ddParAnalyze, sampleWorldW, makePassEvCache, readingNotes, komaLedger, setCountRead, countWhy, setCountGate, setCountPlanConf, setCountPlanRisk, planRisk, unseenMinusPartnerLedger, sampleWorldC, setCountSample, setCountRecvp, setCountBelief, setCountBeliefMaxHand, setCountBeliefMinEss, ledgerRefine, komaLedgerMaybeRefine, setSoloSig, setOuTakeTurn, setOuTtMaxHand, setOuTtMinChain, setOuTtMargin, setOuTtDets, ouTakeTurnPick, ouChainThroughP, mcDecideReceive, pCanReceive, pEnemyReceives, isFirstRound, SEATS, KOMA_COUNT, POINTS, UNCUTTABLE, team, nextSeat, partnerOf, mcEvalReceive, gameEquityMC, countsFor, freshSolverProbe, puzzleTruthProbe, beliefExact, beliefMC,
+  return {setDeterminizationV2, worldV2Metadata, diagnosticCloneStateForRollout: cloneStateForRollout, setTblTrust, tblFactorAt, setOuSignal, setOuTrust, detectOuSignals, partnerSignaledOu, partnerSignaledShi, kakariGotae, shiStarted, canShiAttackC, setOppProfile, oppRatesFromCounts, setEvLambdaGate, inferPartnerHoldings, setSigRead, setOuMix, setKyouMix, setShiKyoFix, setShiCommit, setShiCommitReal, setKakariEv, kakariEvidence, setPassMirror, setShiPairEv, shiPairEvidence, setKPairEv, pairAttackEvidence, setKyoNeg, setKyoNegScope, setKyoNegClosed, kyoNegAttackEvidence, _kyClsProbe, setOuKyoRisk, setLedgerCal, calP, setOulessFk, setTakeTurn, setKamizaWait, setKakuSignal, kakuSigEvidence, setKyoCode, kyoCodeEvidence, setKyoBonus, setKyoRetention, kyoBiasOf, setHumanModel, setBeliefSharpen, setFaTemper, setBuryUmaFix, setBuryPairShi, setKeepShiEshi, setKeepShiLastGuard, setShiKeep2, setWidthBury, setBuryCover, buryCoverPick, setUmaKeep, setShiBluff, setCoopSignal, setConvTrust, convTrustOf, moveHint, coopContext, setShiRejectStrong, setShiRideKeep, setFlowbackYield, setFlowbackTh, setFlowbackPreMc, flowbackYieldPass, setShiAtkAvoid, setShiAtkAvoidMin, setUncutAtkAvoid, setUncutFb, setOuSigShiGuard, setKyoR1Conserve, setKyoConsMode, setKyoWeakConserve, strongNonShi, setKyoR1Wait, setKyoCertainRecv, cfrSolve2x2, setRuleLevel, setDiag, setRolloutOpp, modelRespAction, setLeafDd, setLeafDdLimit, setLeafDdCap, matchEquity, ddSolve, ddSolveNaive, ddRootValues, ddParAnalyze, sampleWorldW, makePassEvCache, readingNotes, komaLedger, setCountRead, countWhy, setCountGate, setCountPlanConf, setCountPlanRisk, planRisk, unseenMinusPartnerLedger, sampleWorldC, setCountSample, setCountRecvp, setCountBelief, setCountBeliefMaxHand, setCountBeliefMinEss, ledgerRefine, komaLedgerMaybeRefine, setSoloSig, setOuTakeTurn, setOuTtMaxHand, setOuTtMinChain, setOuTtMargin, setOuTtDets, ouTakeTurnPick, ouChainThroughP, mcDecideReceive, pCanReceive, pEnemyReceives, isFirstRound, SEATS, KOMA_COUNT, POINTS, UNCUTTABLE, team, nextSeat, partnerOf, mcEvalReceive, gameEquityMC, countsFor, freshSolverProbe, puzzleTruthProbe, beliefExact, beliefMC,
           mulberry32, shuffle, fullDeck, counter,
           newGameState, advance, canAttackKing, validReceive, legalReceives, legalAttacks,
           maskHistoryFor, makeView, unseenCounts, solveWin, checkKingAtkOk,
@@ -10225,7 +11370,17 @@ const G = (() => {
           estimatePartnerShi, shouldShiAttack, partnerShiSignalAt,
           setShiTeam, setShiTeamTh, setShiTeamThGoshi, setShiTeamDefault,
           playOneGame, selfTest,
-          setPackedDd, packedDdDiag};
+          setPackedDd, packedDdDiag,
+          setPackedWorld, packedWorldDiag, packedWorldSrc, packWorld, unpackWorld, makePackedWorld,
+          setPackedEv, packedEvDiag, cwOf, hasPairC, distinctC, lacksContinuationC,
+          passViolatesC, passFactorC, faFactorC, saFactorC, taFactorC, rcFactorC,
+          makePackedEvCache, _swwPackedW, _bmcPackedW,
+          setPackedBc, packedBcDiag,
+          // 3B-1 検証専用: 網羅差分テスト・ベンチ用のlegacy参照(本番使用禁止)
+          passViolates, passFactor, sampledHasPair, lacksContinuation, dcy, dcyT,
+          // 3B-0 検証専用API(ベンチ・RNG計装・fbNoCtx動的テスト。本番使用禁止)
+          setRngFactory, _pwPrepLegacy, regsEqual, _ddRootValuesWorld: ddRootValuesWorld,
+          _pwPackRootCtx: PKDD.packRootCtx, _benchPackLegacy: PKDD._benchPackLegacy, _benchLoadPacked: PKDD._benchLoadPacked};
 })();
 if (typeof module !== "undefined" && module.exports) module.exports = G;
 
@@ -10255,6 +11410,12 @@ const G_B = (() => {
   let KYO_BONUS = 0;
   let BELIEF_SHARPEN = 1;
   function setBeliefSharpen(g) { BELIEF_SHARPEN = g || 1; }
+  // Phase0B(2026-08): faFactor証拠テンパリング指数α。beliefMC(ledgerRefine)の重みでのみ
+  // f→f^α に圧縮(sampleWorldW側・faFactor内部(tblFactorAt/knLam共有)は対象外)。
+  // 1=OFF(従来どおりf^1・NULL等価)。診断採用候補α=0.5(既定ON化はPhase2 A/B非劣性が条件)。
+  // setterはfalsyを1に写す: α=0(fa全捨て)は実測で有意悪化のため格納不能とする。
+  let FA_TEMPER = 0.5;
+  function setFaTemper(a) { FA_TEMPER = a || 1; return FA_TEMPER; }
   // 伏せの馬処分の修正: 0=従来(馬1枚でも伏せる) / 1=馬ペアは崩さない / 2=特別規則撤廃(一般処分へ)
   // 地上真実プローブで馬ペア処分が代替勝率46%・+12.76ptと突出した漏れ → ペア保護を検証 (2026-06)
   let BURY_UMA_FIX = 0;
@@ -10457,6 +11618,12 @@ const G_B = (() => {
     }
     return arr;
   }
+  /* build 3B-0(RNG計装フック・PLAN_Phase3B §2.6): 既定は素の mulberry32。呼び出し側が渡す
+   * 第2引数(ストリームタグ文字列)はJS仕様上 mulberry32 には無視され、生成されるクロージャは
+   * 従来と完全同一(NULL等価)。検証ハーネスだけが setRngFactory で計装ファクトリへ差し替え、
+   * サンプラー系RNGのストリーム別消費回数・テープを取得する。本番経路での差し替えは禁止。 */
+  let RNG_MK = mulberry32;
+  function setRngFactory(f) { RNG_MK = (typeof f === "function") ? f : mulberry32; }
   const fullDeck = () => {
     const d = [];
     for (const k in KOMA_COUNT) for (let i = 0; i < KOMA_COUNT[k]; i++) d.push(k);
@@ -13320,9 +14487,9 @@ const G_B = (() => {
    * _ddMemo/_ddMemoPool)は1行も変更せず、ddRootValues を ddRootValuesLegacy へ改名して
    * 薄いディスパッチャを被せるだけに留める(PACKED_DD=0 で v196 と完全NULL等価)。
    *
-   * PACKED_DD: 0=legacy(既定・v196完全等価) / 1=packed / 2=シャドー比較(値のみ)
-   * 既定値0の変更は、計画書 Stage 3 の実機ゲート(iPhone Safari / Android Chrome)
-   * 通過まで行わない。起動時 #pkdd=0|1|2 で切替可能(実機計測用)。
+   * PACKED_DD: 0=legacy(v196完全等価・切り戻し用) / 1=packed(既定) / 2=シャドー比較(値のみ)
+   * 既定値は build v198 で 0→1 に変更済み(Stage 3 実機ゲート通過・
+   * REVIEW_REPORT_PackedDD_既定ON_build_v198 承認)。起動時 #pkdd=0|1|2 で切替可能。
    * ================================================================ */
   const PKDD = (function () {
     /* ================================================================
@@ -13369,6 +14536,9 @@ const G_B = (() => {
     let ouV=0;                                   // ddKey用: 履歴中の王出現数
     let kingPub=0;                               // 王攻め解禁(b): 場に攻め/受けで出た王
 
+    // 深さ枠512の根拠 (レビュー N-3): 1手は必ず「駒を1枚減らす」か「パス」であり、
+    // パスは3回で必ず解決して伏せ(=駒減)へ戻る。総駒数の上限は ddParAnalyze の20枚なので
+    // 深さ <= 20 + 3*10 = 50。実測最大は通常DD 21・パー分析 31 で、16倍以上の余裕がある。
     const U      = new Int32Array(512*10);       // undoレコード (深さ×10語)
     const ACTBUF = new Int32Array(512*10);       // 着手バッファ (深さ×10語)
 
@@ -13398,6 +14568,12 @@ const G_B = (() => {
 
     /* 不変条件チェック: 満たさない局面は packed を使わず legacy へ委譲する */
     function packable(st){
+      // respond なのに攻め手/攻め駒が欠けた不正局面。attacker=-1 のまま探索へ入ると
+      // hlen[-1] が undefined になり手駒が減らず無限再帰(RangeError)になる。
+      // ディスパッチャの catch が拾って legacy へ落ちるので正味の挙動は v196 と同じだが、
+      // スタックを使い切る前に委譲したほうが速く静かに失敗する (レビュー N-0)。
+      // packable() が false を増やしても値は変わらない(legacy が答を出す)ので安全側の変更である。
+      if (st.phase === "respond" && (!st.attacker || st.pendingAttack == null)) return false;
       for (let s=0;s<4;s++){
         const nm = SEATS[s];
         if (st.hands[nm].length > 8) return false;                 // 理論上発生しないが弾く
@@ -13467,7 +14643,12 @@ const G_B = (() => {
       if (++entries > (MCAP*0.7)) grow();
     }
 
-    /* 終局値キャッシュ: 鍵に koma を含める(評価関数差し替え時に静かに壊れるため) */
+    /* 終局値キャッシュ: 鍵に koma を含める(評価関数差し替え時に静かに壊れるため)。
+     * 【不変条件】evalFn は純粋関数でなければならない (レビュー N-1)。
+     * legacy は終局ノードを訪れるたびに evalFn を呼ぶが、packed は rootValues 1回あたり
+     * 相異なる終局シグネチャの数だけしか呼ばない(実測で 12,004,639 回 対 数十回のオーダー)。
+     * evalFn に副作用(DIAG カウンタ等)を入れると packed だけ静かにずれる。
+     * 現行の makeEvalFn / meqEval / matchEquity / ddParAnalyze のインライン評価はすべて純粋。 */
     function termVal(kind, winner, pts, dbl, komaT, nextParent){
       const ck = (komaT<<27)|(kind<<20)|((winner+1)<<16)|(pts<<6)|((nextParent+1)<<2)|(dbl?1:0);
       const hit = termCache.get(ck); if (hit !== undefined) return hit;
@@ -13581,14 +14762,14 @@ const G_B = (() => {
       return best;
     }
 
-    /* legacy ddRootValues と同契約。undefined = 不変条件外につき legacy へ委譲されたい */
-    function rootValues(st, seatStr, ef, actions, nodeCap){
-      if (!packable(st)) return undefined;
-      evalFn = ef; termCache = new Map();
-      pack(st);
+    /* build v199(PackedWorld Phase3A/3C・計画: PLAN_v199_PackedWorld_Phase3A3C最小縦切り_Fable5.md):
+     * rootValues() の「actionsループ本体」を rootValuesCore() として逐語的に切り出した。
+     * ロジックは1文字も変えていない(pack済みレジスタから読むだけの箇所を関数境界にしただけ)。
+     * rootValues() = packable+pack+core (legacy経路・無改変の契約)
+     * rootValuesPacked() = packRootCtx済みctx+PackedWorldからレジスタ直接ロード+core (Phase3C経路) */
+    function rootValuesCore(povTeam, actions, nodeCap){
       budget = nodeCap || 300000; failed=false;
       gen++; if (gen===0){ mG.fill(0); gen=1; } entries = 0;
-      const povTeam = SEATS.indexOf(seatStr)&1;
       const out = new Map();
       for (const a0 of actions){
         const a = a0.type==="pass"    ? (2<<3)
@@ -13603,10 +14784,129 @@ const G_B = (() => {
       }
       return out;
     }
-
-    return {rootValues: rootValues, nodes: function () { return NODES; }, resetNodes: function () { NODES = 0; }};
+    /* legacy ddRootValues と同契約。undefined = 不変条件外につき legacy へ委譲されたい */
+    function rootValues(st, seatStr, ef, actions, nodeCap){
+      if (!packable(st)) return undefined;
+      evalFn = ef; termCache = new Map();
+      pack(st);
+      const povTeam = SEATS.indexOf(seatStr)&1;
+      return rootValuesCore(povTeam, actions, nodeCap);
+    }
+    /* packRootCtx: 決定(decision)ごとに1回だけ計算すればよい、sampled worldに依存しない部分
+     * (board最終行由来のopenKind/openKoma・historyから採取するouV/kingPub/buriedKing・
+     * actor/phase/attacker/pending/respIdx・自席手駒)をまとめて確定する。
+     * 【重要な等価性の根拠】legacy 経路は cloneStateForRollout(DETERMINIZATION_V2=false・第2分岐)
+     * が作った sim を pack() するが、その分岐は st.board を無条件コピーする一方、st.history は
+     * 「h.act==='bury' && h.seat!==mySeat」のエントリだけ koma:null にマスクする。ここでも同じ
+     * マスク規則で st.history を直接走査することで、simをpackした場合と同値になる。
+     * 【不変条件】DETERMINIZATION_V2 が true の場合はこの関数を呼ばないこと(意味論が異なる)。
+     * packable() の静的条件(respond不正局面・自席手駒>8・いずれかの席の未確定伏せ)はここで検査
+     * するが、「自席以外の手駒>8」は sampled world 依存なので rootValuesPacked 側の責務とする。 */
+    function packRootCtx(st, mySeatStr){
+      if (st.phase === "respond" && (!st.attacker || st.pendingAttack == null)) return undefined;
+      if (st.hands[mySeatStr].length > 8) return undefined;
+      const ctxOpenKind = new Int8Array(4), ctxOpenKoma = new Int8Array(4), ctxBuriedKing = new Int8Array(4);
+      for (let s=0;s<4;s++){
+        const nm = SEATS[s];
+        const rows = st.board[nm];
+        const last = rows.length ? rows[rows.length-1] : null;
+        if (last && last.atk === null && last.def && last.def.koma == null) return undefined;
+        if (last && last.atk === null && last.def){ ctxOpenKind[s] = last.def.type[0]==="b"?1:2; ctxOpenKoma[s]=TIDX[last.def.koma]; }
+        else { ctxOpenKind[s]=0; ctxOpenKoma[s]=-1; }
+      }
+      let ctxOuV=0, ctxKingPub=0;
+      for (const h of st.history){
+        if (h.act === "bury" && h.seat !== mySeatStr) continue;   // legacy cloneStateForRollout と同一マスク規則
+        if (h.koma === "王"){
+          ctxOuV++;
+          if (h.act==="attack"||h.act==="receive") ctxKingPub=1;
+          else if (h.act==="bury") ctxBuriedKing[SEATS.indexOf(h.seat)]=1;
+        }
+      }
+      const myHand = st.hands[mySeatStr];
+      let myCnt=0, myOrder=0;
+      for (let i=0;i<myHand.length;i++){
+        const t = TIDX[myHand[i]];
+        myCnt += 1<<(4*t);
+        myOrder |= t << (4*i);
+      }
+      for (let i=myHand.length;i<8;i++) myOrder |= 0xF << (4*i);
+      return {
+        mySeat: SEATS.indexOf(mySeatStr),
+        actor: SEATS.indexOf(st.actor), phase: PHASE_I[st.phase],
+        attacker: st.attacker ? SEATS.indexOf(st.attacker) : -1,
+        pending: st.pendingAttack ? TIDX[st.pendingAttack] : -1,
+        respIdx: st.respIdx|0,
+        openKind: ctxOpenKind, openKoma: ctxOpenKoma, buriedKing: ctxBuriedKing,
+        ouV: ctxOuV, kingPub: ctxKingPub,
+        myCnt: myCnt>>>0, myOrder: myOrder>>>0, myLen: myHand.length,
+        histLen: st.history.length
+      };
+    }
+    /* rootValuesPacked: packRootCtx済みctxと PackedWorld(pw; 自席以外の3席分の手駒)から
+     * レジスタを直接ロードし rootValuesCore へ渡す。戻り値契約は rootValues と同一。
+     * build 3B-0(PLAN_Phase3B §1.3-0): レジスタロード部を内部関数 loadWorld(ctx, pw) として
+     * 逐語的に切り出した(_benchLoadPacked と共有するため。ロジックは1文字も変えていない)。
+     * loadWorld は不変条件外で undefined、成功で true を返す。 */
+    function loadWorld(ctx, pw){
+      if (!ctx || !pw) return undefined;
+      for (let s=0;s<4;s++){ if (s!==ctx.mySeat && pw.handLen[s] > 8) return undefined; }
+      slotType.fill(-1); seatTypeMask.fill(0);
+      occ = 0; cnt.fill(0); hlen.fill(0);
+      for (let s=0;s<4;s++){
+        const isMe = (s === ctx.mySeat);
+        const order = isMe ? ctx.myOrder : pw.handOrder[s];
+        const cntWord = isMe ? ctx.myCnt : pw.handCnt[s];
+        const len = isMe ? ctx.myLen : pw.handLen[s];
+        for (let i=0;i<len;i++){
+          const t = (order >>> (4*i)) & 0xF;
+          const g = s*8+i;
+          slotType[g]=t; occ |= (1<<g)>>>0;
+          seatTypeMask[s*8+t] |= (1<<g)>>>0;
+        }
+        cnt[s] = cntWord>>>0;
+        hlen[s]=len;
+        openKind[s]=ctx.openKind[s]; openKoma[s]=ctx.openKoma[s]; buriedKing[s]=ctx.buriedKing[s];
+      }
+      ouV = ctx.ouV; kingPub = ctx.kingPub;
+      actor = ctx.actor; phase = ctx.phase; attacker = ctx.attacker; pending = ctx.pending; respIdx = ctx.respIdx;
+      return true;
+    }
+    function rootValuesPacked(ctx, pw, ef, actions, nodeCap){
+      if (loadWorld(ctx, pw) === undefined) return undefined;
+      evalFn = ef; termCache = new Map();
+      const povTeam = ctx.mySeat & 1;
+      return rootValuesCore(povTeam, actions, nodeCap);
+    }
+    /* shadow検証・テスト専用: 現在ロード済みレジスタ全語のスナップショット */
+    function _dumpRegs(){
+      return {
+        occ, cnt: Array.from(cnt), hlen: Array.from(hlen),
+        slotType: Array.from(slotType), seatTypeMask: Array.from(seatTypeMask),
+        openKind: Array.from(openKind), openKoma: Array.from(openKoma), buriedKing: Array.from(buriedKing),
+        ouV, kingPub, actor, phase, attacker, pending, respIdx
+      };
+    }
+    /* ベンチ専用フック(3B-0・PLAN_Phase3B §1.3-0): 本番経路からは一切呼ばれない(不活性)。
+     * _benchPackLegacy(st): legacy準備(packable判定→pack)だけを実行しレジスタを返す(探索しない)。
+     * _benchLoadPacked(ctx, pw): rootValuesPacked のレジスタロード部(loadWorld)だけを実行する。
+     * 両者の返すレジスタは regsEqual で突き合わせ、計測と正しさ検証を一体化する。 */
+    function _benchPackLegacy(st){
+      if (!packable(st)) return undefined;
+      pack(st);
+      return _dumpRegs();
+    }
+    function _benchLoadPacked(ctx, pw){
+      if (loadWorld(ctx, pw) === undefined) return undefined;
+      return _dumpRegs();
+    }
+    return {rootValues: rootValues, rootValuesPacked: rootValuesPacked, packRootCtx: packRootCtx,
+            _dumpRegs: _dumpRegs,
+            _benchPackLegacy: _benchPackLegacy, _benchLoadPacked: _benchLoadPacked,
+            _coreSrc: rootValuesCore.toString(), _loadWorldSrc: loadWorld.toString(),
+            nodes: function () { return NODES; }, resetNodes: function () { NODES = 0; }};
   })();
-  let PACKED_DD = 0;
+  let PACKED_DD = 1;
   const PACKED_DD_DIAG = {calls: 0, packed: 0, fallback: 0, budgetNull: 0, shadow: 0, mismatch: 0};
   function setPackedDd(n) { PACKED_DD = n | 0; return PACKED_DD; }
   function packedDdDiag() { return Object.assign({mode: PACKED_DD}, PACKED_DD_DIAG); }
@@ -13652,6 +14952,696 @@ const G_B = (() => {
       out.set(a.koma !== undefined ? a.koma : null, v);
     }
     return out;
+  }
+  /* build v199(PackedWorld Phase3A/3C・計画: PLAN_v199_PackedWorld_Phase3A3C最小縦切り_Fable5.md):
+   * DD呼び出し箇所が行っている「文字列サンプル世界 → cloneStateForRollout(JSオブジェクト状態
+   * 構築) → PKDD.pack(再走査)」の往復を、PackedWorld(整数語) + 決定ごとに1回のRootCtx →
+   * PKDDレジスタ直接ロードに置き換える最小縦切り。sampleWorld/W/C 自体は1文字も変更しない
+   * (サンプラーを触らないためRNG消費順の等価性は構成的に自明)。
+   * PACKED_WORLD: 0=legacy(切り戻し用・完全NULL等価) / 1=packed(既定) / 2=シャドー比較(値+レジスタ)。
+   * v199は既定値0で出荷し、ゲート実測レポートを添えた別コミット v200 で既定値を1へ変更済み。 */
+  function makePackedWorld() {
+    return {
+      handCnt: new Uint32Array(4), handOrder: new Uint32Array(4), handLen: new Int32Array(4),
+      buriedCnt: new Uint32Array(4), buriedOrder: new Uint32Array(4), buriedLen: new Int32Array(4),
+      flags: 0, gen: 0
+    };
+  }
+  const PW = makePackedWorld();
+  /* sampled({N,W,S,E}文字列配列 + 非enumerable __worldV2)を PackedWorld(整数語)へ変換する。
+   * scratch規約: pw は次回呼び出しで上書きされる。消費側は同期的に使い切ること(保持禁止)。
+   * 形状不正(手駒>8枚・未知の駒種文字列)を検出したら null を返す(呼び出し元は legacy へ後退)。
+   * 8種有無ビットマスクではなく4bitニブルカウントを使うのは、同席重複(「し」等)を表すため。 */
+  function packWorld(sampled, pw, mySeatStr) {
+    for (let s = 0; s < 4; s++) {
+      const nm = SEATS[s];
+      const hand = sampled[nm];
+      // build 3B-0(繰越3防御・PLAN_Phase3B §2.5-3): mySeatStr 指定時は、自席以外の席の hand が
+      // 配列でなければ形状不正として null(呼び出し元は fbShape で legacy へ後退)。
+      // mySeatStr 省略時(検証ハーネスの全席指定呼び出し等)は従来どおりの寛容な扱い。
+      if (mySeatStr !== undefined && nm !== mySeatStr && !Array.isArray(hand)) return null;
+      // sampled は自席(mySeat)を含まない(sampleWorld/W/C は他3席分しか返さない)。
+      // 自席の要素は rootValuesPacked 側が ctx.my* から読むため、ここではゼロ埋めのまま放置してよい。
+      if (hand === undefined) { pw.handCnt[s] = 0; pw.handOrder[s] = 0xFFFFFFFF >>> 0; pw.handLen[s] = 0; continue; }
+      if (hand.length > 8) return null;
+      let cw = 0, ow = 0;
+      for (let i = 0; i < hand.length; i++) {
+        const t = _KOMA_IDX[hand[i]];
+        if (t === undefined) return null;
+        cw += 1 << (4 * t);
+        ow |= t << (4 * i);
+      }
+      for (let i = hand.length; i < 8; i++) ow |= 0xF << (4 * i);   // 空スロット番兵
+      pw.handCnt[s] = cw >>> 0; pw.handOrder[s] = ow >>> 0; pw.handLen[s] = hand.length;
+    }
+    const meta = (sampled.__worldV2 && sampled.__worldV2.buriedBySeat) ? sampled.__worldV2.buriedBySeat : null;
+    for (let s = 0; s < 4; s++) {
+      const nm = SEATS[s];
+      const list = meta ? meta[nm] : null;
+      if (!list) { pw.buriedCnt[s] = 0; pw.buriedOrder[s] = 0xFFFFFFFF >>> 0; pw.buriedLen[s] = 0; continue; }
+      if (list.length > 8) return null;
+      let cw = 0, ow = 0;
+      for (let i = 0; i < list.length; i++) {
+        const t = _KOMA_IDX[list[i]];
+        if (t === undefined) return null;
+        cw += 1 << (4 * t);
+        ow |= t << (4 * i);
+      }
+      for (let i = list.length; i < 8; i++) ow |= 0xF << (4 * i);
+      pw.buriedCnt[s] = cw >>> 0; pw.buriedOrder[s] = ow >>> 0; pw.buriedLen[s] = list.length;
+    }
+    // build 3B-0(繰越2・flags bit1・PLAN_Phase3B §2.5-2): bit1 = packWorld 単独で判定可能な
+    // 枚数整合(全席 handLen+buriedLen <= 8。TIDX全定義は上の null 返却で既に保証済み)。
+    // st 依存の完全整合(worldV2Complete相当)は packRootCtx.histLen + pw.gen の鮮度検査として
+    // ddRootValuesWorld 側で担保する(ABI文書: bit0=__worldV2有り / bit1=枚数整合)。
+    let b1 = 1;
+    for (let s = 0; s < 4; s++) if (pw.handLen[s] + pw.buriedLen[s] > 8) { b1 = 0; break; }
+    pw.flags = (meta ? 1 : 0) | (b1 ? 2 : 0);
+    pw.gen = (pw.gen + 1) | 0;
+    return pw;
+  }
+  /* 検証専用: PackedWorld → legacy形式({N,W,S,E}文字列配列 + __worldV2buried)への復元。
+   * 順序込みで復元する(run_pw_roundtrip.js 用)。本番経路では呼ばない。 */
+  function unpackWorld(pw) {
+    const out = {};
+    const buriedBySeat = {};
+    for (let s = 0; s < 4; s++) {
+      const nm = SEATS[s];
+      const hand = [];
+      for (let i = 0; i < pw.handLen[s]; i++) hand.push(KOMA_TYPES_ARR[(pw.handOrder[s] >>> (4 * i)) & 0xF]);
+      out[nm] = hand;
+      const buried = [];
+      for (let i = 0; i < pw.buriedLen[s]; i++) buried.push(KOMA_TYPES_ARR[(pw.buriedOrder[s] >>> (4 * i)) & 0xF]);
+      buriedBySeat[nm] = buried;
+    }
+    out.__worldV2buried = buriedBySeat;
+    return out;
+  }
+  let PACKED_WORLD = 1;
+  const PACKED_WORLD_DIAG = {calls: 0, packed: 0, fbPkddOff: 0, fbV2: 0, fbNoCtx: 0,
+                              fbShape: 0, fbKernelUndef: 0, fbErr: 0, fbStaleCtx: 0, budgetNull: 0, b1Off: 0, pwStale: 0,
+                              shadow: 0, mismatchReg: 0, mismatchVal: 0, cmpN: 0};
+  function setPackedWorld(n) { PACKED_WORLD = n | 0; return PACKED_WORLD; }
+  function packedWorldDiag() { return Object.assign({mode: PACKED_WORLD}, PACKED_WORLD_DIAG); }
+  /* G/G_B同期の機械確認用: 新設関数群のソースを連結して返す(run_gb_sync.js が文字列完全一致を要求)。 */
+  function packedWorldSrc() {
+    return [packWorld, unpackWorld, ddRootValuesWorld, setPackedWorld, packedWorldDiag, regsEqual,
+            PKDD.packRootCtx, PKDD.rootValuesPacked, PKDD._dumpRegs,
+            PKDD._benchPackLegacy, PKDD._benchLoadPacked, _pwPrepLegacy, setRngFactory,
+            // 3B-1(PACKED_EV): 新設関数は追加のたびに連結対象へ入れる(PLAN §2.5-1 規約)。
+            // 変更した既存2関数(sampleWorldW/beliefMC)も連結し、重みループ本体の鏡像性も機械確認する。
+            setPackedEv, packedEvDiag, cwOf, hasPairC, distinctC, lacksContinuationC, _cwAnyPair,
+            kyoRiskStrengthC, ouKeepPathC, ouKeepContC, passViolatesC, passFactorC,
+            faFactorC, saFactorC, taFactorC, rcFactorC, makePackedEvCache,
+            _evPwAt, __evAttachPw, _swwPackedW, _bmcPackedW, sampleWorldW, beliefMC,
+            // FA_TEMPER(v201): 新設setterを連結対象へ(規約: 新設関数は追加のたびに入れる)。
+            setFaTemper,
+            // 3B-2(PACKED_BC): 新設setter/診断を連結対象へ(beliefMC本体=集計ループは3B-1で連結済み)。
+            setPackedBc, packedBcDiag]
+      .map(f => f.toString())
+      .concat([PKDD._coreSrc, PKDD._loadWorldSrc])
+      .join('\n');
+  }
+  function regsEqual(a, b) {
+    if (a.occ !== b.occ || a.ouV !== b.ouV || a.kingPub !== b.kingPub || a.actor !== b.actor ||
+        a.phase !== b.phase || a.attacker !== b.attacker || a.pending !== b.pending || a.respIdx !== b.respIdx) return false;
+    for (let i = 0; i < 4; i++) if (a.cnt[i] !== b.cnt[i] || a.hlen[i] !== b.hlen[i] ||
+        a.openKind[i] !== b.openKind[i] || a.openKoma[i] !== b.openKoma[i] || a.buriedKing[i] !== b.buriedKing[i]) return false;
+    for (let i = 0; i < 32; i++) if (a.slotType[i] !== b.slotType[i] || a.seatTypeMask[i] !== b.seatTypeMask[i]) return false;
+    return true;
+  }
+  /* Phase3C最小縦切りディスパッチャ。既存呼び出し箇所の
+   *   const sim = cloneStateForRollout(st, seat, sampled);
+   *   const rv = ddRootValues(sim, seat, evalFn, actions, nodeCap);
+   * を置き換える。pwCtx は呼び出し元がループ前に1回 PKDD.packRootCtx(st, seat) で計算して渡す
+   * (同一決定内で st は不変なので、DD_ADAPT/ATK_DD_ADAPT の延長ループとも共有できる)。
+   * 例外は握りつぶさず理由別カウンタ計上のうえ legacy へ後退する(既存 PACKED_DD_DIAG 踏襲)。 */
+  function ddRootValuesWorld(st, seat, sampled, evalFn, actions, nodeCap, pwCtx) {
+    const legacyPath = () => {
+      const sim = cloneStateForRollout(st, seat, sampled);
+      return ddRootValues(sim, seat, evalFn, actions, nodeCap);
+    };
+    if (!PACKED_WORLD) return legacyPath();
+    if (PACKED_DD !== 1) { PACKED_WORLD_DIAG.fbPkddOff++; return legacyPath(); }
+    if (DETERMINIZATION_V2) { PACKED_WORLD_DIAG.fbV2++; return legacyPath(); }
+    if (pwCtx === undefined) { PACKED_WORLD_DIAG.fbNoCtx++; return legacyPath(); }
+    // build 3B-0(繰越2・鮮度検査): pwCtx は決定ごとに1回計算される契約。st.history が伸びた後の
+    // 古い ctx を検出したら正しさ優先で legacy へ後退する(現行呼び出し元では発火しない防御)。
+    if (pwCtx.histLen !== st.history.length) { PACKED_WORLD_DIAG.fbStaleCtx++; return legacyPath(); }
+    PACKED_WORLD_DIAG.calls++;
+    // build 3B-1(PACKED_EV): sampleWorldW が当選世界へ添付した __pw が新鮮(__pwGen===gen)なら
+    // packWorld 再実行を省略する(fbShape判定は添付時に済んでいる)。リング再利用で上書きされた
+    // 古い添付は黙って再packする(正しさ優先・pwStale計上 — PLAN §2.8-3)。
+    let pw;
+    if (sampled.__pw !== undefined && sampled.__pw !== null && sampled.__pwGen === sampled.__pw.gen) {
+      pw = sampled.__pw;
+    } else {
+      if (sampled.__pw !== undefined) PACKED_WORLD_DIAG.pwStale++;
+      pw = packWorld(sampled, PW, seat);
+    }
+    if (pw === null) { PACKED_WORLD_DIAG.fbShape++; return legacyPath(); }
+    if (PACKED_WORLD === 1) {
+      let r, threw = false;
+      try { r = PKDD.rootValuesPacked(pwCtx, pw, evalFn, actions, nodeCap); }
+      catch (e) { threw = true; }
+      if (threw) { PACKED_WORLD_DIAG.fbErr++; return legacyPath(); }
+      if (r === undefined) { PACKED_WORLD_DIAG.fbKernelUndef++; return legacyPath(); }
+      PACKED_WORLD_DIAG.packed++;
+      if (r === null) PACKED_WORLD_DIAG.budgetNull++;
+      return r;
+    }
+    // PACKED_WORLD===2: シャドー比較。packed経路(rootValuesPacked)とlegacy経路(pack(sim)経由の
+    // rootValues)の両方をPKDDカーネル自身で計算し、レジスタ全語+値を突き合わせる。
+    // 呼び出し元へ返すのは既存ディスパッチャ(ddRootValues)経由の値(挙動を一切変えない)。
+    let rP, regP, errP = false;
+    try { rP = PKDD.rootValuesPacked(pwCtx, pw, evalFn, actions, nodeCap); regP = PKDD._dumpRegs(); }
+    catch (e) { errP = true; }
+    const sim = cloneStateForRollout(st, seat, sampled);
+    let rQ, regQ, errQ = false;
+    try { rQ = PKDD.rootValues(sim, seat, evalFn, actions, nodeCap); regQ = PKDD._dumpRegs(); }
+    catch (e) { errQ = true; }
+    const rL = ddRootValues(sim, seat, evalFn, actions, nodeCap);
+    if (errP || errQ) { PACKED_WORLD_DIAG.fbErr++; return rL; }
+    if (rP === undefined || rQ === undefined) { PACKED_WORLD_DIAG.fbKernelUndef++; return rL; }
+    PACKED_WORLD_DIAG.shadow++; PACKED_WORLD_DIAG.cmpN++;
+    // build 3B-0(繰越2): shadow時のみ flags bit1(枚数整合)を検査する(正常な sampled では常に1)。
+    if (!(pw.flags & 2)) PACKED_WORLD_DIAG.b1Off++;
+    if (!regsEqual(regP, regQ)) PACKED_WORLD_DIAG.mismatchReg++;
+    if (!packedDdSameValues(rP, rQ)) PACKED_WORLD_DIAG.mismatchVal++;
+    return rL;
+  }
+  /* ベンチ専用(3B-0・PLAN_Phase3B §1.3-0): legacy準備コスト(cloneStateForRollout+packable+pack)
+   * の正確な定義。マイクロベンチ(run_pw_bench2.js)専用で、本番経路からは一切呼ばれない。 */
+  function _pwPrepLegacy(st, seat, sampled) {
+    const sim = cloneStateForRollout(st, seat, sampled);
+    return PKDD._benchPackLegacy(sim);
+  }
+  /* ===== Phase 3B-1(PACKED_EV): 証拠重み計算のPacked化 =====================================
+   * PLAN_Phase3B以降_サンプラーPacked化と既定ON化判断_Fable5.md §2.3/§2.4 3B-1。
+   * sampleWorldW / beliefMC の重みループが読むサンプル手駒配列(includes/filter/concat/counter)を
+   * PackedWorld のカウント語(cw = 4bitニブル×8種、TIDX=KOMA_TYPES_ARR順: 王0 飛1 角2 金3 銀4
+   * 馬5 香6 し7)で置き換える。RNGを消費するサンプラー核(draw経路)には1文字も触れない。
+   * 規律:
+   *  - family別プリミティブ(passViolatesC/faFactorC系/lacksContinuationC/hasPairC/distinctC等)
+   *    のみを共有し、重みループ(family適用順=乗算順)は呼び出し元ごとに逐語保存する
+   *    (sampleWorldW: ev→sig→kak→sp→kp→fa→sa→ta→rc→kyoBias→ks→kc /
+   *     beliefMC:     ev→sig→kak→sp→kp→kn→kyoBias→ks→kc→fa→sa→ta→rc — 順序が異なるため共有不可)。
+   *  - 係数はテーブル参照値/同一スカラー式そのものなので、適用順が保存されれば w はビット同一。
+   *  - PACKED_EV: 0=legacy(切り戻し用・完全NULL等価) / 1=packed(既定・v200で既定ON化) / 2=shadow(両実装で w を計算し
+   *    Object.is でビット一致を毎try比較。採用値はlegacy)。例外は握りつぶさず理由別カウンタ
+   *    計上のうえlegacyへ後退する(PACKED_WORLD/PACKED_DDと同じ規律)。
+   */
+  let PACKED_EV = 1;
+  const PACKED_EV_DIAG = {calls: 0, packed: 0, fbShape: 0, fbErr: 0,
+                          shadow: 0, mismatchW: 0, cmpN: 0};
+  function setPackedEv(n) { PACKED_EV = n | 0; return PACKED_EV; }
+  function packedEvDiag() { return Object.assign({mode: PACKED_EV}, PACKED_EV_DIAG); }
+  /* ===== Phase 3B-2(PACKED_BC): beliefMC 集計の語化 ==========================================
+   * PLAN_Phase3B以降_サンプラーPacked化と既定ON化判断_Fable5.md §2.4 3B-2。
+   * beliefMC の Kループ末尾の集計(counter(sampled[p]) の {} 割当 + for-in 列挙)を、
+   * カウント語(cw)のニブル直読へ置換する。3B-1(PACKED_EV)が同一サンプルで pack 済みの
+   * _BMC_PW(__pwT)があればそれを再利用(reuse)し、無い決定(証拠ゼロ・PACKED_EV=0等)では
+   * cwOf(sampled[p]) で語を都度構築する(cwBuild。いずれもオブジェクト割当ゼロ)。
+   * 等価性の根拠: 各 (席p, 駒種k) の累積器 acc[p].exp[k]/hold[k] は互いに独立な float であり、
+   * カウント c>0 のときだけ同値(w*c / w)を加算する限り、サンプル内の駒種列挙順は各累積器の
+   * 加算列(Kループの d 順)を変えない — PLAN §2.4-4 の「浮動小数加算順の罠」は 0 加算を
+   * 発生させないことで構成的に回避する(受け入れ基準は着手列SHAに加え pHold/exp/ess の
+   * 全チェックポイント Object.is 一致・許容誤差0)。
+   * PACKED_BC: 0=legacy(切り戻し用・完全NULL等価) / 1=packed(既定・v203で既定ON化) / 2=shadow(採用値はlegacy集計のまま、
+   * 8ニブル全駒種のカウントを counter() と毎サンプル突き合わせ)。トグルは PACKED_EV と独立に
+   * 新設する(PACKED_EV は v200 で既定ONのため、計画§2.7の「PACKED_EV(3B-1/2)」へ相乗りすると
+   * 本段が段別検証を経ないまま既定ONになる — 実装(OFF)→検証→既定ON判断の2段階規律を優先)。
+   * フォールバックは fbShape(未知駒 cwOf=-1・その席のみ legacy 集計へ後退)のみ:
+   * 集計ブロックは legacy が生き残れる throw を含まない(失敗面が legacy と同一)ため
+   * fbErr 経路は設けない(途中まで加算した acc への二重加算事故を作らないための設計判断)。 */
+  let PACKED_BC = 1;
+  const PACKED_BC_DIAG = {calls: 0, packed: 0, reuse: 0, cwBuild: 0, fbShape: 0,
+                          shadow: 0, mismatchC: 0, cmpN: 0};
+  function setPackedBc(n) { PACKED_BC = n | 0; return PACKED_BC; }
+  function packedBcDiag() { return Object.assign({mode: PACKED_BC}, PACKED_BC_DIAG); }
+  /* 文字列駒配列 → カウント語。未知駒は -1 (呼び出し元は決定全体をlegacyへ後退させる)。 */
+  function cwOf(arr) {
+    let w = 0;
+    for (let i = 0; i < arr.length; i++) {
+      const t = _KOMA_IDX[arr[i]];
+      if (t === undefined) return -1;
+      w += 1 << (4 * t);
+    }
+    return w >>> 0;
+  }
+  /* = sampledHasPair: PAIRABLE_KOMA(金銀馬香飛角 = TIDX1..6)のいずれかが2枚以上。 */
+  function hasPairC(w) {
+    for (let t = 1; t <= 6; t++) if (((w >>> (4 * t)) & 15) >= 2) return true;
+    return false;
+  }
+  /* = new Set(held).size: 非零ニブル数。 */
+  function distinctC(w) {
+    let n = 0;
+    for (let t = 0; t < 8; t++) if ((w >>> (4 * t)) & 15) n++;
+    return n;
+  }
+  /* = lacksContinuation: し以外(王含む)にペアが無く、かつ し<4。 */
+  function lacksContinuationC(w) {
+    for (let t = 0; t < 7; t++) if (((w >>> (4 * t)) & 15) >= 2) return false;
+    return ((w >>> 28) & 15) < 4;
+  }
+  /* P=[金,銀,馬,香,飛,角](TIDX1..6)のうち excl 以外にペアがあるか (excl=-1 で除外なし)。 */
+  function _cwAnyPair(w, excl) {
+    for (let t = 1; t <= 6; t++) { if (t === excl) continue; if (((w >>> (4 * t)) & 15) >= 2) return true; }
+    return false;
+  }
+  /* = kyoRiskStrength(c) (王/香/しを参照しないため、王減算前後どちらの語でも同値)。 */
+  function kyoRiskStrengthC(w) {
+    const cKin = (w >>> 12) & 15, cGin = (w >>> 16) & 15, cUma = (w >>> 20) & 15,
+          cHi = (w >>> 4) & 15, cKaku = (w >>> 8) & 15;
+    let pairs = 0;
+    if (cKin >= 2) pairs++; if (cGin >= 2) pairs++; if (cUma >= 2) pairs++;
+    if (cHi >= 2) pairs++; if (cKaku >= 2) pairs++;
+    if (!pairs) return 0;
+    const strong = (cHi >= 2 || cKaku >= 2) ||
+      (cKin >= 3 || cGin >= 3 || cUma >= 3) || pairs >= 2;
+    return strong ? 2 : 1;
+  }
+  /* = ouKeepPath(held, e)。pe = {at, aOu, aUncut} は makePackedEvCache のイベント別前計算。 */
+  function ouKeepPathC(w, pe) {
+    if (((w >>> (4 * pe.at)) & 15) >= 1) return false;   // 同駒受けは全巡・全席で厳格に扱う
+    if (pe.aOu || pe.aUncut) return false;               // 王攻め・香し攻めは王で切れない
+    return (w & 15) >= 1;
+  }
+  /* = ouKeepCont(held) (王を1枚除いた後に「し以外のペア」または「し4枚以上」)。 */
+  function ouKeepContC(w) {
+    if (((w & 15) - 1) >= 2) return true;
+    for (let t = 1; t <= 6; t++) if (((w >>> (4 * t)) & 15) >= 2) return true;
+    return ((w >>> 28) & 15) >= 4;
+  }
+  /* = passViolates(held, e) の語版。分岐構造を1対1で保存し、係数計算のみ語演算化(PLAN §2.8-1a)。 */
+  function passViolatesC(w, e, pe) {
+    if (PASS_MIRROR && PASS_OU_KEEP && e.round && ouKeepPathC(w, pe) &&
+        (e.byPartner ? (PASS_OU_KEEP === 1 || PASS_OU_KEEP === 3)
+                     : (e.round >= 2 && (PASS_OU_KEEP === 1 || PASS_OU_KEEP === 2))))
+      return false;
+    if (!PASS_MIRROR || e.byPartner || !e.round || e.round >= 2) {
+      // held.some(r => validReceive(r, attack)) ⟺ cnt(attack)≥1 ∨ (attack≠王 ∧ ¬UNCUTTABLE ∧ cnt(王)≥1)
+      if (((w >>> (4 * pe.at)) & 15) >= 1) return true;
+      return !pe.aOu && !pe.aUncut && (w & 15) >= 1;
+    }
+    const a = e.attack;
+    const ca = (w >>> (4 * pe.at)) & 15;
+    if (ca >= 1) {
+      // 上家様子見の鏡映: 有効時は1st応答の1巡目金銀馬同駒パスは定石どおり
+      if (KAMIZA_WAIT > 0 && e.firstResp &&
+          (KAMIZA_WAIT === 2 ? a === "銀" : (a === "金" || a === "銀" || a === "馬")))
+        return false;
+      if (a === "香" && SHI_KYO_FIX) {
+        // 1巡目香温存の鏡映: c["香"]-- 後に続き (し以外ペア or し4) がある時だけ受ける
+        const ky = ((w >>> 24) & 15) - 1;
+        let hasPair = ky >= 2;
+        if (!hasPair) for (let t = 0; t <= 5; t++) if (((w >>> (4 * t)) & 15) >= 2) { hasPair = true; break; }
+        return hasPair || ((w >>> 28) & 15) >= 4;
+      }
+      return true;                                   // 同駒受けは無条件 (香以外)
+    }
+    // 同駒なし: 王切りのみが受け手 (香・しは王切り不可)
+    if (pe.aOu || pe.aUncut || (w & 15) < 1) return false;
+    // 弱い手の1巡目王温存: c["王"]-- 後に続きがなければ切らない → パスは定石どおり
+    const ouDec = (w & 15) - 1;
+    let hasPair2 = ouDec >= 2;
+    if (!hasPair2) for (let t = 1; t <= 6; t++) if (((w >>> (4 * t)) & 15) >= 2) { hasPair2 = true; break; }
+    if (!hasPair2 && ((w >>> 28) & 15) < 4) return false;
+    // 香リスク王切りの鏡映: 有効時は該当条件の手は切るはず → パスは違反
+    if (OU_KYORISK > 0 && ((w >>> 24) & 15) === 0 && e.kyoVis !== undefined &&
+        4 - e.kyoVis >= 2 && kyoRiskStrengthC(w) >= (OU_KYORISK >= 2 ? 2 : 1))
+      return true;
+    if (a === "金" || a === "銀" || a === "馬") return false;   // 1巡目は無条件王温存
+    // 飛角: 手が狭く敵に残りがあれば王切り → パスは違反
+    const narrow = distinctC(w) <= 3;
+    const enemyRemaining = Math.max(0, KOMA_COUNT[a] - (e.vis || 0));
+    if (enemyRemaining >= 1) return narrow;
+    return narrow && ((w >>> 24) & 15) === 0;
+  }
+  /* = passFactor(held, e, fallback) の語版 (λ定数・分岐は legacy と同一。返り値は完全同一のfloat)。 */
+  function passFactorC(w, e, fallback, pe) {
+    if (!passViolatesC(w, e, pe)) return 1;
+    if (!PASS_OU_LAM && !PASS_OU_HUM) return evLambda(e, fallback);
+    if (e.round && ouKeepPathC(w, pe)) {
+      if (PASS_OU_HUM && ouKeepHumanSeat(e.seat)) {
+        if (e.byPartner) return OUK_HUM_P;
+        if (e.round >= 2) return OUK_HUM_E;
+      } else if (PASS_OU_LAM && !e.byPartner && e.round >= 2) {
+        if (PASS_OU_LAM === 1) return Math.max(OUK_FLOOR, OUK_E_AGG);
+        return Math.max(OUK_FLOOR, e.round >= 3 ? OUK_E3
+                        : (ouKeepContC(w) ? OUK_E2_CONT : OUK_E2_NOCONT));
+      }
+    }
+    return evLambda(e, fallback);
+  }
+  /* fa/sa/ta/rc 表因子の語版。表(FIRSTATK_TBL等)とクラス式は1文字も変えず、カウント読みのみ
+   * 語演算化する (較正済み値。返り値は完全同一のfloat — PLAN §2.3)。 */
+  function faFactorC(k0, w, ev) {
+    const row = ((ev && ev.kc) ? FIRSTATK_TBL[k0 + "A"] : FIRSTATK_TBL[k0]) || FIRSTATK_TBL[k0];
+    if (!row) return 1;
+    const ou = (w & 15) >= 1 ? 1 : 0;
+    let cls;
+    if (k0 === "王") {
+      const p2 = (w & 15) >= 2 ? 1 : 0;
+      const oth = _cwAnyPair(w, -1) ? 1 : 0;
+      cls = p2 * 2 + oth;
+    } else if (k0 === "飛" || k0 === "角") {
+      const t0 = _KOMA_IDX[k0];
+      const p2 = ((w >>> (4 * t0)) & 15) >= 2 ? 1 : 0;
+      const ky = Math.min((w >>> 24) & 15, 2);
+      const oth = _cwAnyPair(w, t0) ? 1 : 0;
+      cls = p2 * 6 + ky * 2 + oth;
+    } else if (k0 === "し") {
+      const s4 = ((w >>> 28) & 15) >= 4 ? 1 : 0;
+      const hp = _cwAnyPair(w, -1) ? 1 : 0;
+      cls = s4 * 4 + hp * 2 + ou;
+    } else {
+      const t0 = _KOMA_IDX[k0];
+      const p2 = ((w >>> (4 * t0)) & 15) >= 2 ? 1 : 0;
+      const oth = _cwAnyPair(w, t0) ? 1 : 0;
+      cls = p2 * 4 + ou * 2 + oth;
+    }
+    const f = row[cls];
+    return (f == null) ? 1 : f;
+  }
+  function saFactorC(k1, w, ev) {
+    const row = ((ev && ev.kc) ? SECONDATK_TBL[k1 + "A"] : SECONDATK_TBL[k1]) || SECONDATK_TBL[k1];
+    if (!row) return 1;
+    const ou = (w & 15) >= 1 ? 1 : 0;
+    let cls;
+    if (k1 === "王") {
+      const p2 = (w & 15) >= 2 ? 1 : 0;
+      const oth = _cwAnyPair(w, -1) ? 1 : 0;
+      cls = p2 * 2 + oth;
+    } else if (k1 === "飛" || k1 === "角") {
+      const t0 = _KOMA_IDX[k1];
+      const p2 = ((w >>> (4 * t0)) & 15) >= 2 ? 1 : 0;
+      const ky = Math.min((w >>> 24) & 15, 2);
+      const oth = _cwAnyPair(w, t0) ? 1 : 0;
+      cls = p2 * 6 + ky * 2 + oth;
+    } else if (k1 === "し") {
+      const s4 = ((w >>> 28) & 15) >= 4 ? 1 : 0;
+      const hp = _cwAnyPair(w, -1) ? 1 : 0;
+      cls = s4 * 4 + hp * 2 + ou;
+    } else {
+      const t0 = _KOMA_IDX[k1];
+      const p2 = ((w >>> (4 * t0)) & 15) >= 2 ? 1 : 0;
+      const oth = _cwAnyPair(w, t0) ? 1 : 0;
+      cls = p2 * 4 + ou * 2 + oth;
+    }
+    const f = row[cls];
+    return (f == null) ? 1 : f;
+  }
+  function taFactorC(k0, w) {
+    const row = THIRDATK_TBL[k0];
+    if (!row) return 1;
+    const ou = (w & 15) >= 1 ? 1 : 0;
+    let cls;
+    if (k0 === "王") {
+      const p2 = (w & 15) >= 2 ? 1 : 0;
+      const oth = _cwAnyPair(w, -1) ? 1 : 0;
+      cls = p2 * 2 + oth;
+    } else if (k0 === "飛" || k0 === "角") {
+      const t0 = _KOMA_IDX[k0];
+      const p2 = ((w >>> (4 * t0)) & 15) >= 2 ? 1 : 0;
+      const ky = Math.min((w >>> 24) & 15, 2);
+      const oth = _cwAnyPair(w, t0) ? 1 : 0;
+      cls = p2 * 6 + ky * 2 + oth;
+    } else if (k0 === "し") {
+      const s4 = ((w >>> 28) & 15) >= 4 ? 1 : 0;
+      const hp = _cwAnyPair(w, -1) ? 1 : 0;
+      cls = s4 * 4 + hp * 2 + ou;
+    } else {
+      const t0 = _KOMA_IDX[k0];
+      const p2 = ((w >>> (4 * t0)) & 15) >= 2 ? 1 : 0;
+      const oth = _cwAnyPair(w, t0) ? 1 : 0;
+      cls = p2 * 4 + ou * 2 + oth;
+    }
+    const f = row[cls];
+    return (f == null) ? 1 : f;
+  }
+  function rcFactorC(k0, w) {
+    const row = RECEIVE_TBL[k0];
+    if (!row) return 1;
+    const ou = (w & 15) >= 1 ? 1 : 0;
+    let cls;
+    if (k0 === "王") {
+      const p2 = (w & 15) >= 2 ? 1 : 0;
+      const oth = _cwAnyPair(w, -1) ? 1 : 0;
+      cls = p2 * 2 + oth;
+    } else if (k0 === "飛" || k0 === "角") {
+      const t0 = _KOMA_IDX[k0];
+      const p2 = ((w >>> (4 * t0)) & 15) >= 2 ? 1 : 0;
+      const ky = Math.min((w >>> 24) & 15, 2);
+      const oth = _cwAnyPair(w, t0) ? 1 : 0;
+      cls = p2 * 6 + ky * 2 + oth;
+    } else if (k0 === "し") {
+      const s4 = ((w >>> 28) & 15) >= 4 ? 1 : 0;
+      const hp = _cwAnyPair(w, -1) ? 1 : 0;
+      cls = s4 * 4 + hp * 2 + ou;
+    } else {
+      const t0 = _KOMA_IDX[k0];
+      const p2 = ((w >>> (4 * t0)) & 15) >= 2 ? 1 : 0;
+      const oth = _cwAnyPair(w, t0) ? 1 : 0;
+      cls = p2 * 4 + ou * 2 + oth;
+    }
+    const f = row[cls];
+    return (f == null) ? 1 : f;
+  }
+  /* kcのfk分岐が走査するペア候補 ["金","銀","馬","飛","角"] のTIDX(legacyの走査順を保存)。 */
+  const _KC_PAIR_T = [3, 4, 5, 1, 2];
+  /* 決定ごとに1回: 既存の証拠cache(makePassEvCacheの結果 / beliefMCの関数内前計算)から
+   * Packed付加情報(席index・駒TIDX・shownカウント語)を構築する。証拠抽出ロジックには触れない
+   * (PLAN §2.8-5)。構成できない要素があれば null (呼び出し元は決定全体をlegacy重みで評価)。 */
+  function makePackedEvCache(c) {
+    const seatsOf = list => {
+      const n = list.length, a = new Int32Array(n);
+      for (let j = 0; j < n; j++) { const i = SEATS.indexOf(list[j].seat); if (i < 0) return null; a[j] = i; }
+      return a;
+    };
+    const komasOf = list => {
+      const n = list.length, a = new Int32Array(n);
+      for (let j = 0; j < n; j++) { const t = _KOMA_IDX[list[j].koma]; if (t === undefined) return null; a[j] = t; }
+      return a;
+    };
+    const cwsOf = lists => {
+      const n = lists.length, a = new Uint32Array(n);
+      for (let j = 0; j < n; j++) { const w = cwOf(lists[j]); if (w < 0) return null; a[j] = w; }
+      return a;
+    };
+    const P = {};
+    if (c.ev && c.ev.length) {
+      const n = c.ev.length;
+      P.evSi = new Int32Array(n); P.evShW = new Uint32Array(n); P.evPe = new Array(n);
+      for (let j = 0; j < n; j++) {
+        const e = c.ev[j];
+        const i = SEATS.indexOf(e.seat), at = _KOMA_IDX[e.attack], sw = cwOf(c.shownAfter[j]);
+        if (i < 0 || at === undefined || sw < 0) return null;
+        P.evSi[j] = i; P.evShW[j] = sw;
+        P.evPe[j] = {at, aOu: e.attack === "王", aUncut: UNCUTTABLE.has(e.attack)};
+      }
+    }
+    if (c.sig && c.sig.length) { if ((P.sigSi = seatsOf(c.sig)) === null) return null; }
+    if (c.kak && c.kak.length) {
+      if ((P.kakSi = seatsOf(c.kak)) === null) return null;
+      if ((P.kakKt = komasOf(c.kak)) === null) return null;
+    }
+    if (c.sp && c.sp.length) { if ((P.spSi = seatsOf(c.sp)) === null) return null; }
+    if (c.kp && c.kp.length) {
+      if ((P.kpSi = seatsOf(c.kp)) === null) return null;
+      if ((P.kpKt = komasOf(c.kp)) === null) return null;
+    }
+    if (c.kn && c.kn.length) {
+      if ((P.knSi = seatsOf(c.kn)) === null) return null;
+      if ((P.knShW = cwsOf(c.kn.map(e => e.shown))) === null) return null;
+    }
+    if (c.ks && c.ks.length) { if ((P.ksSi = seatsOf(c.ks)) === null) return null; }
+    if (c.kc && c.kc.length) {
+      if ((P.kcSi = seatsOf(c.kc)) === null) return null;
+      if ((P.kcShW = cwsOf(c.kc.map(e => e.shown))) === null) return null;
+      const n = c.kc.length;
+      P.kcKt = new Int32Array(n);
+      for (let j = 0; j < n; j++) {
+        const e = c.kc[j];
+        if (e.t === "fk") { const t = _KOMA_IDX[e.koma]; if (t === undefined) return null; P.kcKt[j] = t; }
+        else P.kcKt[j] = -1;
+      }
+    }
+    if (c.fa && c.fa.length) {
+      if ((P.faSi = seatsOf(c.fa)) === null) return null;
+      if ((P.faShW = cwsOf(c.faShown)) === null) return null;
+    }
+    if (c.sa && c.sa.length) {
+      if ((P.saSi = seatsOf(c.sa)) === null) return null;
+      if ((P.saShW = cwsOf(c.saShown)) === null) return null;
+    }
+    if (c.ta && c.ta.length) {
+      if ((P.taSi = seatsOf(c.ta)) === null) return null;
+      if ((P.taShW = cwsOf(c.taShown)) === null) return null;
+    }
+    if (c.rc && c.rc.length) {
+      if ((P.rcSi = seatsOf(c.rc)) === null) return null;
+      if ((P.rcShW = cwsOf(c.rcShown)) === null) return null;
+    }
+    return P;
+  }
+  /* tryごとのpack先リング (sampleWorldW用)。scratch規約: 次のsampleWorldW呼び出しで上書きされる。
+   * 当選世界へ添付した pw の鮮度は __pwGen === pw.gen で検査する(PLAN §2.8-3)。 */
+  const _EV_PW_RING = [];
+  function _evPwAt(i) {
+    while (_EV_PW_RING.length <= i) _EV_PW_RING.push(makePackedWorld());
+    return _EV_PW_RING[i];
+  }
+  const _BMC_PW = makePackedWorld();   // beliefMC用 (消費が同期的なので1本でよい)
+  /* ルーレット当選世界へ pw を非enumerable添付する (PLAN §2.4 3B-1 手順3)。
+   * ddRootValuesWorld は __pwGen === __pw.gen のときだけ packWorld 再実行を省略する。 */
+  function __evAttachPw(s, pw) {
+    if (pw) {
+      Object.defineProperty(s, "__pw", {value: pw, configurable: true});
+      Object.defineProperty(s, "__pwGen", {value: pw.gen, configurable: true});
+    }
+    return s;
+  }
+  /* sampleWorldW の重みループの語版。family適用順・分岐形・乗算順を legacy と逐語的に一致させる
+   * (係数はテーブル/λ定数そのものなので w はビット同一 — PACKED_EV=2 shadowが毎tryこれを検査)。 */
+  function _swwPackedW(pw, pev, cache, lambda, viewSeat) {
+    const hc = pw.handCnt;
+    let w = 1;
+    for (let j = 0; j < cache.ev.length; j++) {
+      const ahw = (hc[pev.evSi[j]] + pev.evShW[j]) >>> 0;
+      { const __pf = passFactorC(ahw, cache.ev[j], lambda, pev.evPe[j]);
+        if (__pf !== 1) w *= dcy(cache.ev[j].seat, __pf); }
+    }
+    if (cache.sig)
+      for (let j = 0; j < cache.sig.length; j++)
+        if ((hc[pev.sigSi[j]] & 15) === 0) w *= dcy(cache.sig[j].seat, LAMBDA_SIG);
+    if (cache.kak)
+      for (let j = 0; j < cache.kak.length; j++)
+        if (((hc[pev.kakSi[j]] >>> (4 * pev.kakKt[j])) & 15) >= 1) w *= dcy(cache.kak[j].seat, LAMBDA_KAKARI);
+    if (cache.sp)
+      for (let j = 0; j < cache.sp.length; j++)
+        if (hasPairC(hc[pev.spSi[j]])) w *= dcy(cache.sp[j].seat, LAMBDA_SHIPAIR);
+    if (cache.kp)
+      for (let j = 0; j < cache.kp.length; j++)
+        if (((hc[pev.kpSi[j]] >>> (4 * pev.kpKt[j])) & 15) === 0) w *= dcy(cache.kp[j].seat, cache.kp[j].lam);
+    if (cache.fa)
+      for (let j = 0; j < cache.fa.length; j++) {
+        const ahw = (hc[pev.faSi[j]] + pev.faShW[j]) >>> 0;
+        w *= dcy(cache.fa[j].seat, dcyT(cache.fa[j].seat, faFactorC(cache.fa[j].koma, ahw, cache.fa[j])));
+      }
+    if (cache.sa)
+      for (let j = 0; j < cache.sa.length; j++) {
+        const ahw = (hc[pev.saSi[j]] + pev.saShW[j]) >>> 0;
+        w *= dcy(cache.sa[j].seat, dcyT(cache.sa[j].seat, saFactorC(cache.sa[j].koma, ahw, cache.sa[j])));
+      }
+    if (cache.ta)
+      for (let j = 0; j < cache.ta.length; j++) {
+        const ahw = (hc[pev.taSi[j]] + pev.taShW[j]) >>> 0;
+        w *= dcy(cache.ta[j].seat, dcyT(cache.ta[j].seat, taFactorC(cache.ta[j].koma, ahw)));
+      }
+    if (cache.rc)
+      for (let j = 0; j < cache.rc.length; j++) {
+        const ahw = (hc[pev.rcSi[j]] + pev.rcShW[j]) >>> 0;
+        w *= dcy(cache.rc[j].seat, dcyT(cache.rc[j].seat, rcFactorC(cache.rc[j].koma, ahw)));
+      }
+    for (let si = 0; si < 4; si++) {
+      const se = SEATS[si];
+      if (se === viewSeat) continue;                          // 自席はサンプル世界に含まれない
+      const kappa = kyoBiasOf(se);
+      if (kappa !== 1 && ((hc[si] >>> 24) & 15) >= 1) w *= kappa;   // 人間の香温存補正
+    }
+    if (cache.ks)
+      for (let j = 0; j < cache.ks.length; j++) {
+        const cw = hc[pev.ksSi[j]];
+        if (((cw >>> 8) & 15) === 0 &&
+            ((cw >>> 24) & 15) + cache.ks[j].kyoShown < 2) w *= dcy(cache.ks[j].seat, 0.05);
+      }
+    if (cache.kc)
+      for (let j = 0; j < cache.kc.length; j++) {
+        const e = cache.kc[j];
+        const cw = hc[pev.kcSi[j]];
+        if (e.t === "fk") {
+          if (((cw >>> (4 * pev.kcKt[j])) & 15) === 0) {
+            const ky = ((cw >>> 24) & 15) + e.kyoShown;
+            if (ky >= 2) w *= dcy(e.seat, e.lam2); else if (ky === 0) w *= dcy(e.seat, e.lam0);
+            const shW = pev.kcShW[j];
+            for (let x = 0; x < 5; x++) {
+              const t = _KC_PAIR_T[x];
+              if (t === pev.kcKt[j]) continue;
+              if (((cw >>> (4 * t)) & 15) + ((shW >>> (4 * t)) & 15) >= 2) { w *= dcy(e.seat, e.lamP); break; }
+            }
+          }
+        } else if (lacksContinuationC((cw + pev.kcShW[j]) >>> 0)) w *= dcy(e.seat, 0.12);
+      }
+    return w;
+  }
+  /* beliefMC の重みループの語版 (family適用順は beliefMC のKループと同一 — sampleWorldWと異なる)。 */
+  function _bmcPackedW(pw, pev, c, knLam, lambda, seat) {
+    const hc = pw.handCnt;
+    let w = 1;
+    for (let j = 0; j < c.ev.length; j++) {
+      const ahw = (hc[pev.evSi[j]] + pev.evShW[j]) >>> 0;
+      { const __pf = passFactorC(ahw, c.ev[j], lambda, pev.evPe[j]);
+        if (__pf !== 1) w *= dcy(c.ev[j].seat, __pf); }
+    }
+    for (let j = 0; j < c.sig.length; j++)
+      if ((hc[pev.sigSi[j]] & 15) === 0) w *= dcy(c.sig[j].seat, LAMBDA_SIG);
+    for (let j = 0; j < c.kak.length; j++)
+      if (((hc[pev.kakSi[j]] >>> (4 * pev.kakKt[j])) & 15) >= 1) w *= dcy(c.kak[j].seat, LAMBDA_KAKARI);
+    for (let j = 0; j < c.sp.length; j++)
+      if (hasPairC(hc[pev.spSi[j]])) w *= dcy(c.sp[j].seat, LAMBDA_SHIPAIR);
+    for (let j = 0; j < c.kp.length; j++)
+      if (((hc[pev.kpSi[j]] >>> (4 * pev.kpKt[j])) & 15) === 0) w *= dcy(c.kp[j].seat, c.kp[j].lam);
+    for (let j = 0; j < c.kn.length; j++) {
+      const ky = ((hc[pev.knSi[j]] >>> 24) & 15) + ((pev.knShW[j] >>> 24) & 15);
+      if (ky >= 2) w *= dcy(c.kn[j].seat, knLam[j]);
+    }
+    for (let si = 0; si < 4; si++) {
+      const se = SEATS[si];
+      if (se === seat) continue;                              // 自席はサンプル世界に含まれない
+      const kappa = kyoBiasOf(se);
+      if (kappa !== 1 && ((hc[si] >>> 24) & 15) >= 1) w *= kappa;
+    }
+    for (let j = 0; j < c.ks.length; j++) {
+      const cw = hc[pev.ksSi[j]];
+      if (((cw >>> 8) & 15) === 0 &&
+          ((cw >>> 24) & 15) + c.ks[j].kyoShown < 2) w *= dcy(c.ks[j].seat, 0.05);
+    }
+    for (let j = 0; j < c.kc.length; j++) {
+      const e = c.kc[j];
+      const cw = hc[pev.kcSi[j]];
+      if (e.t === "fk") {
+        if (((cw >>> (4 * pev.kcKt[j])) & 15) === 0) {
+          const ky = ((cw >>> 24) & 15) + e.kyoShown;
+          if (ky >= 2) w *= dcy(e.seat, e.lam2); else if (ky === 0) w *= dcy(e.seat, e.lam0);
+          const shW = pev.kcShW[j];
+          for (let x = 0; x < 5; x++) {
+            const t = _KC_PAIR_T[x];
+            if (t === pev.kcKt[j]) continue;
+            if (((cw >>> (4 * t)) & 15) + ((shW >>> (4 * t)) & 15) >= 2) { w *= dcy(e.seat, e.lamP); break; }
+          }
+        }
+      } else if (lacksContinuationC((cw + pev.kcShW[j]) >>> 0)) w *= dcy(e.seat, 0.12);
+    }
+    for (let j = 0; j < c.fa.length; j++) {
+      const ahw = (hc[pev.faSi[j]] + pev.faShW[j]) >>> 0;
+      const __f = faFactorC(c.fa[j].koma, ahw, c.fa[j]);
+      w *= dcy(c.fa[j].seat, dcyT(c.fa[j].seat, FA_TEMPER === 1 ? __f : Math.pow(__f, FA_TEMPER)));
+    }
+    for (let j = 0; j < c.sa.length; j++) {
+      const ahw = (hc[pev.saSi[j]] + pev.saShW[j]) >>> 0;
+      w *= dcy(c.sa[j].seat, dcyT(c.sa[j].seat, saFactorC(c.sa[j].koma, ahw, c.sa[j])));
+    }
+    for (let j = 0; j < c.ta.length; j++) {
+      const ahw = (hc[pev.taSi[j]] + pev.taShW[j]) >>> 0;
+      w *= dcy(c.ta[j].seat, dcyT(c.ta[j].seat, taFactorC(c.ta[j].koma, ahw)));
+    }
+    for (let j = 0; j < c.rc.length; j++) {
+      const ahw = (hc[pev.rcSi[j]] + pev.rcShW[j]) >>> 0;
+      w *= dcy(c.rc[j].seat, dcyT(c.rc[j].seat, rcFactorC(c.rc[j].koma, ahw)));
+    }
+    return w;
   }
   // パー分析: 全手公開(神視点)での各合法手の厳密値 (振り返り用)
   function ddParAnalyze(st, nodeCap) {
@@ -13752,7 +15742,7 @@ const G_B = (() => {
     const evalFn = makeEvalFn(st, seat, o);
     const total = SEATS.reduce((a, s2) => a + st.hands[s2].length, 0);
     const wc = (o && o.wSample) ? makePassEvCache(view, (SAMPLER_UNIFY & 2) !== 0) : null;
-    const rngB = mulberry32((0xB0B1 ^ (view.hist.length * 977 + SEATS.indexOf(seat))) >>> 0);
+    const rngB = RNG_MK((0xB0B1 ^ (view.hist.length * 977 + SEATS.indexOf(seat))) >>> 0, "buryMC");
     const sampleB = () => wc
       ? sampleWorldW(view, rngB, wc, o.wLambda || 0.2, o.wTries || 6)
       : sampleWorld(view, rngB);
@@ -13760,11 +15750,12 @@ const G_B = (() => {
     const acc = new Map(cands.map(k => [k, 0]));
     let n = 0;
     const dets = (o && o.ddDets) || 12;
+    // build v199(PackedWorld Phase3C): 同一決定内でstは不変なのでpwCtxはループ前に1回巻き上げる。
+    const pwCtx = (PACKED_WORLD && PACKED_DD === 1 && !DETERMINIZATION_V2) ? PKDD.packRootCtx(st, seat) : undefined;
     for (let d = 0; d < dets; d++) {
       const sampled = sampleB();
       if (o && o.dd && total <= (o.ddLimit || 16)) {
-        const sim = cloneStateForRollout(st, seat, sampled);
-        const rv = ddRootValues(sim, seat, evalFn, acts, o.ddNodeCap || 400000);
+        const rv = ddRootValuesWorld(st, seat, sampled, evalFn, acts, o.ddNodeCap || 400000, pwCtx);
         if (rv) {
           for (const k of cands) acc.set(k, acc.get(k) + rv.get(k));
           n++;
@@ -13815,16 +15806,17 @@ const G_B = (() => {
       if (total <= (o.ddLimit || 16)) {
         const evalFn = makeEvalFn(st, seat, o);
         const dets = o.ddDets || 16;
-        const rngDD = mulberry32(0x5dd ^ (st.history.length * 131 + SEATS.indexOf(seat)));
+        const rngDD = RNG_MK(0x5dd ^ (st.history.length * 131 + SEATS.indexOf(seat)), "attackMC");
         const acts = candidates.map(k => ({type: "attack", koma: k}));
         const acc = new Map(candidates.map(c => [c, 0]));
         let nOK = 0, fail = false;
         // build v161(ATK_DD_ADAPT): OFF時はperAdapt=nullで下の既存ループに一切影響しない。
         const perAdapt = ATK_DD_ADAPT ? [] : null;
+        // build v199(PackedWorld Phase3C): 同一決定内でstは不変なのでpwCtxは本体・adapt延長で共有する。
+        const pwCtx = (PACKED_WORLD && PACKED_DD === 1 && !DETERMINIZATION_V2) ? PKDD.packRootCtx(st, seat) : undefined;
         for (let d = 0; d < dets; d++) {
           const sampled = sampleW(rngDD);
-          const sim = cloneStateForRollout(st, seat, sampled);
-          const rv = ddRootValues(sim, seat, evalFn, acts, (o.ddNodeCap || 400000));
+          const rv = ddRootValuesWorld(st, seat, sampled, evalFn, acts, (o.ddNodeCap || 400000), pwCtx);
           if (rv === null) { fail = true; break; }      // 予算超過 → DD放棄しロールアウトへ
           for (const c of candidates) acc.set(c, acc.get(c) + rv.get(c));
           nOK++;
@@ -13853,8 +15845,7 @@ const G_B = (() => {
             const target = Math.min(n + ATK_DD_ADAPT_BLOCK, ATK_DD_ADAPT_MAX);
             for (let dd = n; dd < target; dd++) {
               const sampled = sampleW(rngDD);
-              const sim = cloneStateForRollout(st, seat, sampled);
-              const rv = ddRootValues(sim, seat, evalFn, acts, (o.ddNodeCap || 400000));
+              const rv = ddRootValuesWorld(st, seat, sampled, evalFn, acts, (o.ddNodeCap || 400000), pwCtx);
               if (rv === null) { fail = true; break; }
               for (const c of candidates) acc.set(c, acc.get(c) + rv.get(c));
               nOK++;
@@ -14919,7 +16910,7 @@ const G_B = (() => {
     // dets(ロールアウトスキップ用の内部フラグ、7693の閾値判定にも波及するため意味は変更しない)とは
     // 独立に保持する。旧実装はdets=0をラベル生成にも流用しており、DD経路(全読み)を通っても
     // 常に「受けMC 0決定化」と表示される誤りがあった(実際はddDets個のダブルダミー決定化で評価)。
-    const rng = mulberry32((opts.mcSeed || 1) * 7919 + st.history.length * 131 + SEATS.indexOf(seat));
+    const rng = RNG_MK((opts.mcSeed || 1) * 7919 + st.history.length * 131 + SEATS.indexOf(seat), "recvMC");
     const sums = new Map(cands.map(c => [c, {v: 0, n: 0}]));
     const wCacheR = opts.wSample ? makePassEvCache(view, (SAMPLER_UNIFY & 1) !== 0) : null;
     // build v109(段階4): wSample(既存の重み付きサンプラー)を使わない経路でのみ、
@@ -14938,10 +16929,11 @@ const G_B = (() => {
       let fail = false;
       // build v154(DD_ADAPT): OFF時はperAdapt=nullで下の既存ループに一切影響しない。
       const perAdapt = DD_ADAPT ? [] : null;
+      // build v199(PackedWorld Phase3C): 同一決定内でstは不変なのでpwCtxは本体・adapt延長で共有する。
+      const pwCtx = (PACKED_WORLD && PACKED_DD === 1 && !DETERMINIZATION_V2) ? PKDD.packRootCtx(st, seat) : undefined;
       for (let d = 0; d < ddDets; d++) {
         const sampled = sampleWR();
-        const sim = cloneStateForRollout(st, seat, sampled);
-        const rv = ddRootValues(sim, seat, evalFn, acts, opts.ddNodeCap || 400000);
+        const rv = ddRootValuesWorld(st, seat, sampled, evalFn, acts, opts.ddNodeCap || 400000, pwCtx);
         if (rv === null) { fail = true; break; }
         for (const c of cands) {
           const e = sums.get(c); e.v += rv.get(c); e.n++;
@@ -14971,8 +16963,7 @@ const G_B = (() => {
           const target = Math.min(n + DD_ADAPT_BLOCK, DD_ADAPT_MAX);
           for (let dd = n; dd < target; dd++) {
             const sampled = sampleWR();
-            const sim = cloneStateForRollout(st, seat, sampled);
-            const rv = ddRootValues(sim, seat, evalFn, acts, opts.ddNodeCap || 400000);
+            const rv = ddRootValuesWorld(st, seat, sampled, evalFn, acts, opts.ddNodeCap || 400000, pwCtx);
             if (rv === null) { fail = true; break; }
             for (const c of cands) { const e = sums.get(c); e.v += rv.get(c); e.n++; }
             perAdapt.push(cands.map(c => rv.get(c)));
@@ -15532,9 +17523,35 @@ const G_B = (() => {
       return draw();
     const cands = [], ws = [];
     let wTot = 0;
+    // ===== 3B-1(PACKED_EV): 証拠重みのPacked評価。サンプラー核=draw()には一切触れない =====
+    // __pevはcacheへ1回だけメモ化(証拠cacheは決定ごとに1個なのでmakePackedEvCacheは決定ごと1回)。
+    // 構成不能(fbShape)・pack失敗・例外(fbErr)は、そのtry(または決定全体)をlegacy重みで評価する。
+    let __pev = null;
+    if (PACKED_EV) {
+      if (cache.__pev === undefined) {
+        PACKED_EV_DIAG.calls++;
+        cache.__pev = makePackedEvCache(cache);
+        if (cache.__pev === null) PACKED_EV_DIAG.fbShape++;
+      }
+      __pev = cache.__pev;
+    }
+    const __pwArr = __pev ? [] : null;
     for (let t = 0; t < tries; t++) {
       const s = draw();
+      let __pwT = null, __wP;
+      if (__pev) {
+        __pwT = packWorld(s, _evPwAt(t), view.seat);
+        if (__pwT === null) PACKED_EV_DIAG.fbShape++;
+        else {
+          try { __wP = _swwPackedW(__pwT, __pev, cache, lambda, view.seat); }
+          catch (err) { __wP = undefined; __pwT = null; PACKED_EV_DIAG.fbErr++; }
+        }
+        __pwArr.push(__pwT);
+      }
       let w = 1;
+      if (PACKED_EV === 1 && __wP !== undefined) {
+        w = __wP; PACKED_EV_DIAG.packed++;
+      } else {
       for (let j = 0; j < cache.ev.length; j++) {
         const held = s[cache.ev[j].seat].concat(cache.shownAfter[j]);
         { const __pf = passFactor(held, cache.ev[j], lambda);
@@ -15600,6 +17617,12 @@ const G_B = (() => {
             }
           } else if (lacksContinuation(sh.concat(e.shown))) w *= dcy(e.seat, 0.12);
         }
+      // 3B-1 shadow(PACKED_EV=2): legacy w と packed w のビット一致(Object.is)を毎try検査。採用値はlegacy。
+      if (PACKED_EV === 2 && __wP !== undefined) {
+        PACKED_EV_DIAG.shadow++; PACKED_EV_DIAG.cmpN++;
+        if (!Object.is(w, __wP)) PACKED_EV_DIAG.mismatchW++;
+      }
+      }
       cands.push(s); ws.push(BELIEF_SHARPEN === 1 ? w : Math.pow(w, BELIEF_SHARPEN)); wTot += ws[ws.length - 1];
     }
     // build v121(提案1・計装): 有効サンプル数ess = (Σw)²/Σw²。v111でbeliefMC側にsampleWorldC化
@@ -15614,8 +17637,9 @@ const G_B = (() => {
       DIAG["swEssN" + tag]   = (DIAG["swEssN" + tag]   || 0) + 1;
     }
     let x = rng() * wTot;
-    for (let i = 0; i < cands.length; i++) { x -= ws[i]; if (x <= 0) return cands[i]; }
-    return cands[cands.length - 1];
+    // 3B-1: 当選世界にはそのtryのpwを添付(有効時のみ)。返り値は従来どおり文字列世界そのもの。
+    for (let i = 0; i < cands.length; i++) { x -= ws[i]; if (x <= 0) return __evAttachPw(cands[i], __pwArr ? __pwArr[i] : null); }
+    return __evAttachPw(cands[cands.length - 1], __pwArr ? __pwArr[cands.length - 1] : null);
   }
   // ===== 初動駒→王保有の学習尤度項 (2026-07, B_coop 1万局適合, 情報レベル検証済 ou +8.2mb) =====
   // f = P(初動=k0 | 王保有クラス) / P(初動=k0)。攻め時点手札は sampled+shownSince で厳密復元
@@ -15836,7 +17860,7 @@ const G_B = (() => {
     const K = o.K || 160;
     const lambda = o.weighted ? (o.lambda != null ? o.lambda : 0.7) : 1.0;
     const view = makeView(st, seat);
-    const rng = mulberry32((o.seed || 1) * 48271 + st.history.length * 257 + SEATS.indexOf(seat));
+    const rng = RNG_MK((o.seed || 1) * 48271 + st.history.length * 257 + SEATS.indexOf(seat), "beliefMC");
     // build v111(段階7): 内部の決定化サンプラーを、枚数読み(komaLedger)の硬い制約を
     // 尊重するsampleWorldCに置き換える(COUNT_SAMPLEで段階4と共通のロールバック)。
     const beliefL = COUNT_SAMPLE ? komaLedger(view) : null;
@@ -15909,6 +17933,24 @@ const G_B = (() => {
       }
       return set;
     });
+    // ===== 3B-1(PACKED_EV): Packed証拠前計算 (決定ごと1回)。証拠もkyoBiasも無ければlegacyのまま
+    // 素通し(重みループ自体が全て空振りする局面でpackコストを払わない)。 =====
+    let __pev = null, __partsB = null;
+    if (PACKED_EV &&
+        (ev.length || sigEv.length || kakEv.length || spEv.length || kpEv.length || knEv.length ||
+         ksEv.length || kcEv.length || faEv.length || saEv.length || taEv.length || rcEv.length ||
+         SEATS.some(s2 => s2 !== seat && kyoBiasOf(s2) !== 1))) {
+      PACKED_EV_DIAG.calls++;
+      __partsB = {ev, shownAfter, sig: sigEv, kak: kakEv, sp: spEv, kp: kpEv, kn: knEv,
+                  ks: ksEv, kc: kcEv, fa: faEv, faShown, sa: saEv, saShown, ta: taEv, taShown,
+                  rc: rcEv, rcShown};
+      __pev = makePackedEvCache(__partsB);
+      if (__pev === null) PACKED_EV_DIAG.fbShape++;
+    }
+    // 3B-2(PACKED_BC): others→SEATS index の前計算(集計語化が __pwT.handCnt を席indexで読むため)。
+    // 既定(PACKED_BC=1・v203〜)ではこの配列生成とカウンタ更新が決定ごとに毎回発生する(legacy相当のPACKED_BC=0へ切り戻した場合のみ割当・カウンタ更新とも発生しない)。
+    const __oIdx = PACKED_BC ? others.map(p2 => SEATS.indexOf(p2)) : null;
+    if (PACKED_BC) PACKED_BC_DIAG.calls++;
     const acc = {};
     for (const p of others) {
       acc[p] = {hold: {}, exp: {}};
@@ -15917,7 +17959,20 @@ const G_B = (() => {
     let wSum = 0, w2Sum = 0;
     for (let d = 0; d < K; d++) {
       const sampled = beliefL ? sampleWorldC(view, rng, beliefL) : sampleWorld(view, rng);
+      // 3B-1: packは消費が同期的なので専用1本(_BMC_PW)へ。失敗はtry単位でlegacy重みへ後退。
+      let __pwT = null, __wP;
+      if (__pev) {
+        __pwT = packWorld(sampled, _BMC_PW, seat);
+        if (__pwT === null) PACKED_EV_DIAG.fbShape++;
+        else {
+          try { __wP = _bmcPackedW(__pwT, __pev, __partsB, knLam, lambda, seat); }
+          catch (err) { __wP = undefined; PACKED_EV_DIAG.fbErr++; }
+        }
+      }
       let w = 1;
+      if (PACKED_EV === 1 && __wP !== undefined) {
+        w = __wP; PACKED_EV_DIAG.packed++;
+      } else {
       for (let j = 0; j < ev.length; j++) {
         const held = sampled[ev[j].seat].concat(shownAfter[j]);
         { const __pf = passFactor(held, ev[j], lambda);
@@ -15964,7 +18019,8 @@ const G_B = (() => {
       }
       for (let j = 0; j < faEv.length; j++) {
         const ah = sampled[faEv[j].seat].concat(faShown[j]);
-        w *= dcy(faEv[j].seat, dcyT(faEv[j].seat, faFactor(faEv[j].koma, ah, faEv[j])));
+        const __f = faFactor(faEv[j].koma, ah, faEv[j]);
+        w *= dcy(faEv[j].seat, dcyT(faEv[j].seat, FA_TEMPER === 1 ? __f : Math.pow(__f, FA_TEMPER)));
       }
       for (let j = 0; j < saEv.length; j++) {
         const ah = sampled[saEv[j].seat].concat(saShown[j]);
@@ -15978,11 +18034,57 @@ const G_B = (() => {
         const ah = sampled[rcEv[j].seat].concat(rcShown[j]);
         w *= dcy(rcEv[j].seat, dcyT(rcEv[j].seat, rcFactor(rcEv[j].koma, ah)));
       }
+      // 3B-1 shadow(PACKED_EV=2): legacy w と packed w のビット一致(Object.is)を毎回検査。採用値はlegacy。
+      if (PACKED_EV === 2 && __wP !== undefined) {
+        PACKED_EV_DIAG.shadow++; PACKED_EV_DIAG.cmpN++;
+        if (!Object.is(w, __wP)) PACKED_EV_DIAG.mismatchW++;
+      }
+      }
       wSum += w; w2Sum += w * w;
-      for (const p of others) {
-        const cnt = counter(sampled[p]);
-        for (const k in cnt) { acc[p].exp[k] += w * cnt[k]; }
-        for (const k in cnt) if (cnt[k] > 0) acc[p].hold[k] += w;
+      // 3B-2(PACKED_BC): mode1 は集計をカウント語のニブル直読で行う。cw は同一サンプル d で
+      // pack 済みの __pwT(_BMC_PW)を再利用し、無ければ cwOf で構築する。未知駒(cwOf=-1)は
+      // その席のみ legacy 集計へ後退(fbShape)。cwOf が -1 を返す駒は sampleWorld 系の pool
+      // (=KOMA_COUNT 由来の既知8種)には現れないため、本番経路では到達しない防御分岐。
+      if (PACKED_BC === 1) {
+        for (let oi = 0; oi < others.length; oi++) {
+          const p = others[oi];
+          const cw = __pwT !== null ? __pwT.handCnt[__oIdx[oi]] : cwOf(sampled[p]);
+          if (cw === -1) {
+            PACKED_BC_DIAG.fbShape++;
+            const cnt = counter(sampled[p]);
+            for (const k in cnt) { acc[p].exp[k] += w * cnt[k]; }
+            for (const k in cnt) if (cnt[k] > 0) acc[p].hold[k] += w;
+            continue;
+          }
+          if (__pwT !== null) PACKED_BC_DIAG.reuse++; else PACKED_BC_DIAG.cwBuild++;
+          PACKED_BC_DIAG.packed++;
+          const a = acc[p];
+          for (let t = 0; t < 8; t++) {
+            const c = (cw >>> (4 * t)) & 15;
+            if (c) { const k = KOMA_TYPES_ARR[t]; a.exp[k] += w * c; a.hold[k] += w; }
+          }
+        }
+      } else {
+        for (const p of others) {
+          const cnt = counter(sampled[p]);
+          for (const k in cnt) { acc[p].exp[k] += w * cnt[k]; }
+          for (const k in cnt) if (cnt[k] > 0) acc[p].hold[k] += w;
+        }
+        // 3B-2 shadow(PACKED_BC=2): 採用値は上のlegacy集計のまま、8ニブル全駒種のカウント一致を
+        // 毎サンプル検査する(cmpN=比較ニブル数・mismatchC=不一致数)。
+        if (PACKED_BC === 2) {
+          for (let oi = 0; oi < others.length; oi++) {
+            const p = others[oi];
+            const cw = __pwT !== null ? __pwT.handCnt[__oIdx[oi]] : cwOf(sampled[p]);
+            if (cw === -1) { PACKED_BC_DIAG.fbShape++; continue; }
+            const cnt = counter(sampled[p]);
+            PACKED_BC_DIAG.shadow++;
+            for (let t = 0; t < 8; t++) {
+              PACKED_BC_DIAG.cmpN++;
+              if (((cw >>> (4 * t)) & 15) !== (cnt[KOMA_TYPES_ARR[t]] || 0)) PACKED_BC_DIAG.mismatchC++;
+            }
+          }
+        }
       }
     }
     const players = {};
@@ -16021,7 +18123,7 @@ const G_B = (() => {
     if (st.phase === "over") return null;
     const k = opts.k || 24;
     const view = makeView(st, refSeat);
-    const rng = mulberry32((opts.seed || 1) * 7919 + (st.history ? st.history.length : 0) * 131 + SEATS.indexOf(refSeat));
+    const rng = RNG_MK((opts.seed || 1) * 7919 + (st.history ? st.history.length : 0) * 131 + SEATS.indexOf(refSeat), "geqMC");
     const cache = makePassEvCache(view, (SAMPLER_UNIFY & 4) !== 0);
     const lambda = opts.lambda != null ? opts.lambda : 0.2;
     const tries = opts.tries || 6;
@@ -16035,7 +18137,7 @@ const G_B = (() => {
     }
     return decided ? nsWins / decided : null;
   }
-  return {setDeterminizationV2, worldV2Metadata, diagnosticCloneStateForRollout: cloneStateForRollout, setTblTrust, tblFactorAt, setOuSignal, setOuTrust, detectOuSignals, partnerSignaledOu, partnerSignaledShi, kakariGotae, shiStarted, canShiAttackC, setOppProfile, oppRatesFromCounts, setEvLambdaGate, inferPartnerHoldings, setSigRead, setOuMix, setKyouMix, setShiKyoFix, setShiCommit, setShiCommitReal, setKakariEv, kakariEvidence, setPassMirror, setShiPairEv, shiPairEvidence, setKPairEv, pairAttackEvidence, setKyoNeg, setKyoNegScope, setKyoNegClosed, kyoNegAttackEvidence, _kyClsProbe, setOuKyoRisk, setLedgerCal, calP, setOulessFk, setTakeTurn, setKamizaWait, setKakuSignal, kakuSigEvidence, setKyoCode, kyoCodeEvidence, setKyoBonus, setKyoRetention, kyoBiasOf, setHumanModel, setBeliefSharpen, setBuryUmaFix, setBuryPairShi, setKeepShiEshi, setKeepShiLastGuard, setShiKeep2, setWidthBury, setBuryCover, buryCoverPick, setUmaKeep, setShiBluff, setCoopSignal, setConvTrust, convTrustOf, moveHint, coopContext, setShiRejectStrong, setShiRideKeep, setFlowbackYield, setFlowbackTh, setFlowbackPreMc, flowbackYieldPass, setShiAtkAvoid, setShiAtkAvoidMin, setUncutAtkAvoid, setUncutFb, setOuSigShiGuard, setKyoR1Conserve, setKyoConsMode, setKyoWeakConserve, strongNonShi, setKyoR1Wait, setKyoCertainRecv, cfrSolve2x2, setRuleLevel, setDiag, setRolloutOpp, modelRespAction, setLeafDd, setLeafDdLimit, setLeafDdCap, matchEquity, ddSolve, ddSolveNaive, ddRootValues, ddParAnalyze, sampleWorldW, makePassEvCache, readingNotes, komaLedger, setCountRead, countWhy, setCountGate, setCountPlanConf, setCountPlanRisk, planRisk, unseenMinusPartnerLedger, sampleWorldC, setCountSample, setCountRecvp, setCountBelief, setCountBeliefMaxHand, setCountBeliefMinEss, ledgerRefine, komaLedgerMaybeRefine, setSoloSig, setOuTakeTurn, setOuTtMaxHand, setOuTtMinChain, setOuTtMargin, setOuTtDets, ouTakeTurnPick, ouChainThroughP, mcDecideReceive, pCanReceive, pEnemyReceives, isFirstRound, SEATS, KOMA_COUNT, POINTS, UNCUTTABLE, team, nextSeat, partnerOf, mcEvalReceive, gameEquityMC, countsFor, freshSolverProbe, puzzleTruthProbe, beliefExact, beliefMC,
+  return {setDeterminizationV2, worldV2Metadata, diagnosticCloneStateForRollout: cloneStateForRollout, setTblTrust, tblFactorAt, setOuSignal, setOuTrust, detectOuSignals, partnerSignaledOu, partnerSignaledShi, kakariGotae, shiStarted, canShiAttackC, setOppProfile, oppRatesFromCounts, setEvLambdaGate, inferPartnerHoldings, setSigRead, setOuMix, setKyouMix, setShiKyoFix, setShiCommit, setShiCommitReal, setKakariEv, kakariEvidence, setPassMirror, setShiPairEv, shiPairEvidence, setKPairEv, pairAttackEvidence, setKyoNeg, setKyoNegScope, setKyoNegClosed, kyoNegAttackEvidence, _kyClsProbe, setOuKyoRisk, setLedgerCal, calP, setOulessFk, setTakeTurn, setKamizaWait, setKakuSignal, kakuSigEvidence, setKyoCode, kyoCodeEvidence, setKyoBonus, setKyoRetention, kyoBiasOf, setHumanModel, setBeliefSharpen, setFaTemper, setBuryUmaFix, setBuryPairShi, setKeepShiEshi, setKeepShiLastGuard, setShiKeep2, setWidthBury, setBuryCover, buryCoverPick, setUmaKeep, setShiBluff, setCoopSignal, setConvTrust, convTrustOf, moveHint, coopContext, setShiRejectStrong, setShiRideKeep, setFlowbackYield, setFlowbackTh, setFlowbackPreMc, flowbackYieldPass, setShiAtkAvoid, setShiAtkAvoidMin, setUncutAtkAvoid, setUncutFb, setOuSigShiGuard, setKyoR1Conserve, setKyoConsMode, setKyoWeakConserve, strongNonShi, setKyoR1Wait, setKyoCertainRecv, cfrSolve2x2, setRuleLevel, setDiag, setRolloutOpp, modelRespAction, setLeafDd, setLeafDdLimit, setLeafDdCap, matchEquity, ddSolve, ddSolveNaive, ddRootValues, ddParAnalyze, sampleWorldW, makePassEvCache, readingNotes, komaLedger, setCountRead, countWhy, setCountGate, setCountPlanConf, setCountPlanRisk, planRisk, unseenMinusPartnerLedger, sampleWorldC, setCountSample, setCountRecvp, setCountBelief, setCountBeliefMaxHand, setCountBeliefMinEss, ledgerRefine, komaLedgerMaybeRefine, setSoloSig, setOuTakeTurn, setOuTtMaxHand, setOuTtMinChain, setOuTtMargin, setOuTtDets, ouTakeTurnPick, ouChainThroughP, mcDecideReceive, pCanReceive, pEnemyReceives, isFirstRound, SEATS, KOMA_COUNT, POINTS, UNCUTTABLE, team, nextSeat, partnerOf, mcEvalReceive, gameEquityMC, countsFor, freshSolverProbe, puzzleTruthProbe, beliefExact, beliefMC,
           mulberry32, shuffle, fullDeck, counter,
           newGameState, advance, canAttackKing, validReceive, legalReceives, legalAttacks,
           maskHistoryFor, makeView, unseenCounts, solveWin, checkKingAtkOk,
@@ -16050,7 +18152,17 @@ const G_B = (() => {
           estimatePartnerShi, shouldShiAttack, partnerShiSignalAt,
           setShiTeam, setShiTeamTh, setShiTeamThGoshi, setShiTeamDefault,
           playOneGame, selfTest,
-          setPackedDd, packedDdDiag};
+          setPackedDd, packedDdDiag,
+          setPackedWorld, packedWorldDiag, packedWorldSrc, packWorld, unpackWorld, makePackedWorld,
+          setPackedEv, packedEvDiag, cwOf, hasPairC, distinctC, lacksContinuationC,
+          passViolatesC, passFactorC, faFactorC, saFactorC, taFactorC, rcFactorC,
+          makePackedEvCache, _swwPackedW, _bmcPackedW,
+          setPackedBc, packedBcDiag,
+          // 3B-1 検証専用: 網羅差分テスト・ベンチ用のlegacy参照(本番使用禁止)
+          passViolates, passFactor, sampledHasPair, lacksContinuation, dcy, dcyT,
+          // 3B-0 検証専用API(ベンチ・RNG計装・fbNoCtx動的テスト。本番使用禁止)
+          setRngFactory, _pwPrepLegacy, regsEqual, _ddRootValuesWorld: ddRootValuesWorld,
+          _pwPackRootCtx: PKDD.packRootCtx, _benchPackLegacy: PKDD._benchPackLegacy, _benchLoadPacked: PKDD._benchLoadPacked};
 })();
 </script>
 
@@ -18356,13 +20468,37 @@ const GOITA_ENGINE_REGISTRY = (() => {
   return Object.freeze({ids, get, invoke, invokeAll});
 })();
 /* PHASE9_ENGINE_REGISTRY_END */
-/* build v197: Packed DD kernel の起動時トグル。#pkdd=0|1|2 (既定0 = v196完全等価)。
-   実機(iPhone Safari / Android Chrome)での性能ゲート計測に使う。本番既定値は
-   計画書 Stage 3 の全ゲート通過まで 0 のまま変更しない。 */
+/* build v197→v198: Packed DD kernel の起動時トグル。#pkdd=0|1|2 (既定1 = packed)。
+   build v198 で Stage 3 全ゲート(実機 iPhone Safari / Android Chrome 含む)通過を受け
+   既定ONに変更済み。0 は v196 相当 legacy への切り戻し用、2 はシャドー比較。 */
 (() => {
   try {
     const m = /[#&]pkdd=([012])/.exec(location.hash || "");
     if (m) GOITA_ENGINE_REGISTRY.invokeAll("setPackedDd", +m[1]);
+  } catch (e) { /* トグル不可でも対局は継続 */ }
+})();
+/* build v199(PackedWorld Phase3A/3C): #pkw=0|1|2 (既定1 = packed。v200で既定ON化)。
+   実機計測用の起動時トグル。#pkdd と同一パターン。 */
+(() => {
+  try {
+    const m = /[#&]pkw=([012])/.exec(location.hash || "");
+    if (m) GOITA_ENGINE_REGISTRY.invokeAll("setPackedWorld", +m[1]);
+  } catch (e) { /* トグル不可でも対局は継続 */ }
+})();
+/* build 3B-1(PACKED_EV): #pkev=0|1|2 (既定1 = packed。v200で既定ON化)。#pkw と同一パターン。
+   1=Packed証拠重み評価 / 2=シャドー比較(w のビット一致検査・採用値はlegacy)。 */
+(() => {
+  try {
+    const m = /[#&]pkev=([012])/.exec(location.hash || "");
+    if (m) GOITA_ENGINE_REGISTRY.invokeAll("setPackedEv", +m[1]);
+  } catch (e) { /* トグル不可でも対局は継続 */ }
+})();
+/* build 3B-2(PACKED_BC): #pkbc=0|1|2 (既定1 = packed。v203で既定ON化)。#pkev と同一パターン。
+   1=beliefMC集計の語化 / 2=シャドー比較(カウント一致検査・採用値はlegacy)。 */
+(() => {
+  try {
+    const m = /[#&]pkbc=([012])/.exec(location.hash || "");
+    if (m) GOITA_ENGINE_REGISTRY.invokeAll("setPackedBc", +m[1]);
   } catch (e) { /* トグル不可でも対局は継続 */ }
 })();
 if (typeof document !== "undefined") (() => {
@@ -18625,7 +20761,13 @@ if (typeof document !== "undefined") (() => {
         storageSummary,
         a11yAudit: root => A11Y_AUDIT.measure(root || document),
         packedDd: () => GOITA_ENGINE_REGISTRY.invokeAll("packedDdDiag"),
-        setPackedDd: n => GOITA_ENGINE_REGISTRY.invokeAll("setPackedDd", n)
+        setPackedDd: n => GOITA_ENGINE_REGISTRY.invokeAll("setPackedDd", n),
+        packedWorld: () => GOITA_ENGINE_REGISTRY.invokeAll("packedWorldDiag"),
+        setPackedWorld: n => GOITA_ENGINE_REGISTRY.invokeAll("setPackedWorld", n),
+        packedEv: () => GOITA_ENGINE_REGISTRY.invokeAll("packedEvDiag"),
+        setPackedEv: n => GOITA_ENGINE_REGISTRY.invokeAll("setPackedEv", n),
+        packedBc: () => GOITA_ENGINE_REGISTRY.invokeAll("packedBcDiag"),
+        setPackedBc: n => GOITA_ENGINE_REGISTRY.invokeAll("setPackedBc", n)
       }), configurable: true
     });
   } catch (e) { /* diagnostics公開不可でも対局は継続 */ }
@@ -22237,11 +24379,11 @@ if (typeof document !== "undefined") (() => {
     m.querySelector("#a11y-export").onclick = () => {
       const srStatus = sr.polite === "once" && sr.alert === "once" ? "MANUAL_PASS" :
         (sr.polite && sr.alert ? "MANUAL_FAIL" : "INCOMPLETE");
-      const payload = {schema: "goita-device-a11y-evidence-v1", version: "v197", generatedAt: new Date().toISOString(),
+      const payload = {schema: "goita-device-a11y-evidence-v1", version: "v198", generatedAt: new Date().toISOString(),
         geometry: report, lastDialogGeometry: previousModalReport, screenReader: {status: srStatus, polite: sr.polite, alert: sr.alert},
         device: {userAgent: navigator.userAgent || "", platform: navigator.platform || "", language: navigator.language || ""}};
       const url = URL.createObjectURL(new Blob([JSON.stringify(payload, null, 2) + "\n"], {type: "application/json"}));
-      const a = document.createElement("a"); a.href = url; a.download = `goita-a11y-v197-${new Date().toISOString().slice(0, 10)}.json`;
+      const a = document.createElement("a"); a.href = url; a.download = `goita-a11y-v198-${new Date().toISOString().slice(0, 10)}.json`;
       document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 0);
     };
     m.querySelector("#a11y-close").onclick = closeModal;
