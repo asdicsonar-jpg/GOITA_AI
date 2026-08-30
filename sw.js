@@ -1,5 +1,13 @@
 // ごいた — Service Worker
-// 対象: index.html (build v204, SHA-256 673bb2db782aaad18fd382b786f0ef61c7f69bb0208e615ca0279f9afd3ab0e9)
+// 対象: index.html (build v207, SHA-256 a9817f0efd92a45cbb1273d233790763bfe2c9663069e66de6bb781aef80823d)
+//
+// v205: A-1「ddSolve の Packed 化(PACKED_SOLVE、既定0=legacy)」。出荷既定では1行も
+// 実行されない基盤整備であり、着手列SHA-256 は v204 と完全一致することを機械確認済み。
+// v206: A-2「レイテンシ予算の再配分(TEMPO_BUDGET、既定0)」。app層のみでエンジンは無変更、
+// 既定0では v205 と完全NULL等価。1 でも着手列は変わらないことを実ブラウザ(観戦モード)で確認済み。
+// v207: 振り返り画面のレイアウト崩れ修正(CSSのみ・JSは1行も変えていない)。タッチ端末で
+// 手一覧の行が44pxに潰れて本文とボタンが重なる件、形勢グラフが全端末で潰れる件、
+// 課題が無い局でも「60秒で解き直す」が出て押しても何も起きない件の3点。
 //
 // このファイルは index.html と同じディレクトリに配置すること。index.html 側は
 // すでに以下の登録コードを持っている(http(s)配信時のみ有効。file://や未配置時は
@@ -8,11 +16,11 @@
 //   navigator.serviceWorker.register("sw.js")
 //
 // 【重要】次に index.html を更新して配信し直すときは、必ず CACHE_NAME の版数を
-// 繰り上げること(例: goita-v204 → goita-v205)。繰り上げを忘れると、既にこの
+// 繰り上げること(例: goita-v206 → goita-v207)。繰り上げを忘れると、既にこの
 // アプリを開いたことがある端末には古いキャッシュが残り続け、新しい index.html が
 // 配信されない(PWAの典型的な事故)。
 
-const CACHE_NAME = "goita-v204";
+const CACHE_NAME = "goita-v207";
 
 // 起動シェルとして必ずキャッシュしたいファイル。存在しないもの(まだ配置していない
 // manifest.json やアイコン等)があっても install 全体を失敗させないよう、

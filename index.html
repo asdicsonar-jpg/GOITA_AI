@@ -60,6 +60,80 @@
        切り戻し: 実行中は GOITA_DIAGNOSTICS.setPackedBc(0)(または
        GOITA_ENGINE_REGISTRY.invokeAll("setPackedBc", 0)・URL #pkbc=0)、
        恒久的にはコード2箇所の既定値を 0 へ手動で戻す。 -->
+  <!-- build: v207「振り返り画面のレイアウト崩れ修正」base=v206。CSS のみ(JS・エンジンは無改変)。
+       報告: 「振り返りの文字が読みにくい」「60秒で解き直すボタンが動いてない」(Sonar・実機スクショ2枚)。
+       真因1(重なり): #review / #rv-list はどちらも flex column で、子は既定 flex-shrink:1。
+             @media(pointer:coarse) の .rv-item{min-height:44px} が flex の自動最小サイズ
+             (min-height:auto)を上書きするため、行が 44px まで潰れて中身が次の行に重なっていた。
+             実測(390x844・coarse): 12行すべてで .why が .rv-item を 31–125px はみ出す。
+             タッチ端末限定の症状で、マウス(pointer:fine)では発生しない。
+       真因2(形勢グラフ): #rv-graph は overflow:hidden のため自動最小サイズが 0 になり、
+             pointer 種別に関係なく 85–135px → 10–28px へ潰れていた(全端末)。
+       真因3(60秒で解き直す): 「今回の課題」が無い局では renderReviewLesson が
+             actions.hidden = true を立てるが、#rv-lesson-actions{display:flex} が UA の
+             [hidden]{display:none} に詳細度で勝つため、ボタンが残ったまま表示されていた。
+             app._reviewLesson が null なので reviewLessonRedo() は即 return し、
+             利用者からは「押しても何も起きないボタン」に見えていた。
+       変更: (a) #rv-lesson-actions[hidden]{display:none} を追加。
+             (b) #review の固定高の子と .rv-item / .rw-item を flex:0 0 auto にして縦潰れを止める。
+             (c) 幅 619px 以下では #rv-list を独立スクロールにせず #review 側の1面に統合する
+                 (入れ子のままだと手一覧の窓が実測 117–192px しか残らず1行すら収まらない)。
+       検証: harness/rv_repro.js(重なり0/12・グラフはみ出し0)、harness/rv_probe.js
+             (390x844/360x640/768x1024/1280x800 で0)、phase19_pw/run_app_smoke.js PASS、
+             v206 との差分は <style> 内2箇所のみ(JS 0行)。
+       付随の実測: 「今回の課題(読み切りの逃し)」の成立率は 1局あたり約4.7%
+             (harness/rv_miss_rate.js・150局・対象席が乱打の場合)。つまり大半の局では
+             この課題パネルは「今回の振り返り」表示になり、修正前はそこで死んだボタンが出ていた。
+       切り戻し: 追加した CSS 2 ブロックを削除するだけで v206 の描画に戻る。
+       CACHE_NAME: goita-v206 → goita-v207. -->
+  <!-- build: v206「A-2: レイテンシ予算の再配分(TEMPO_BUDGET、既定0)」base=v205。
+       計画: PLAN_v205_探索予算の精度転換_Opus5.md rev.2 §4.2 A-2(レビュー M2 で範囲を縮小した版)。
+       性質: app層のみ。エンジン(G/G_B)は1文字も変更していない。既定0では v205 と完全NULL等価。
+       発端: step() は aiTempo() の決めた「間」(既定850ms・80〜2800ms)を何もせず待ってから
+             policyAction() を同期実行しており、AIの計算時間が体感遅延に丸ごと上乗せされ、
+             待ち時間のCPUは遊んでいた。決定の p50 は 0.0ms・p95 28.4ms(Phase0実測)で
+             「間」のほうが桁で大きい。
+       変更: 順序の入れ替えのみ。1=「思考表示を描かせる32ms → 計算 → 残りを待つ」。
+             合計は概ね max(tempo.ms, 32 + 計算時間 + floor) となり、計算が軽いときは
+             「間」が完全に保たれ、重いときは既に待たせているぶん短縮される。
+             hideThinking()/pondering解除を適用直前へ移したので、香煙は計算中も出たままになる。
+       触っていないもの: aiHesitation / aiTempo の中身、policyAction / moveHint の返り値形。
+             (計画初版の「means から margin を得て間を決める」案は、両関数が means を返さず
+             三者一致の構造テスト等へ波及するためレビュー M2 で取り下げた。別案件とする。)
+       等価性: 決定は app.st の純関数(強AI経路に Math.random/Date/performance なし)。
+             AI手番中は人間入力が無効で app.st は動かない。_turnToken 検査を計算前・計算後・
+             適用直前の3点に置き、状態が変われば従来どおり破棄する。検証は
+             IMPLEMENTATION_REPORT_v206_A2_TEMPO_BUDGET_Opus5.md 参照。
+       切り戻し: setTempoBudget(0)(既定) / #tempo=0。
+       CACHE_NAME: goita-v205 → goita-v206. -->
+  <!-- build: v205「A-1: ddSolve の Packed 化(PACKED_SOLVE、既定0=legacy)」base=v204。
+       計画: PLAN_v205_探索予算の精度転換_Opus5.md rev.2 §4.2 A-1
+             (goita-dev-loop・Planner/Reviewer/Executor=Opus5。Fable5 がAPIレート制限のため代打)。
+       性質: 出荷既定では1行も実行されない基盤整備。ddSolve の呼び出し元は rollout() 内の
+             LEAF_DD 分岐だけであり、LEAF_DD は既定OFF(=ddSolve 呼出0回。Phase0 で実測確認)。
+             さらに PACKED_SOLVE 自体も既定0。よって v204 と完全NULL等価。
+       発端: Phase0 診断で「ddSolve が v197 の Packed DD 化から漏れており、LEAF_DD のコストが
+             PACKED_DD の有無でほぼ変わらない(×12.83 / ×12.0相当)」ことが判明した。
+             v146 が LEAF_DD を見送った理由(コスト10.6倍)は、Packed 化が無力だからではなく
+             Packed 化がこの経路に届いていなかったからである。
+       変更: (a) 既存 ddSolve を ddSolveLegacy へ改名(本体は1文字も変えていない)。
+             (b) 同名の薄いディスパッチャ ddSolve を新設。PACKED_SOLVE=1 のとき
+                 ddRootValues(ddClone(st), seat, evalFn, ddActions(st), cap-1) の返り値から
+                 extremum(team(st.actor)===team(seat) ? max : min)で単一値を再構成する。
+                 cap-1 を渡すのは、legacy が根でも budget を1消費するのに対し ddRootValues は
+                 根を消費しないため(消費ノード差は常に +1)。これで成功/null の境界も
+                 消費ノード数も厳密に一致する。
+             (c) PACKED_SOLVE(0/1/2)・PACKED_SOLVE_DIAG・setPackedSolve/packedSolveDiag を新設し
+                 G/G_B からexport。packedWorldSrc() の連結対象にも追加(G/G_B ソース一致の機械確認)。
+             (d) GOITA_DIAGNOSTICS に packedSolve/setPackedSolve、起動時トグル #pksolve=0|1|2 を追加。
+       等価性: PACKED_SOLVE=0 では新コードは分岐1つ分しか実行されず v204 と完全NULL等価。
+             PACKED_SOLVE=1 でも LEAF_DD=0 の出荷既定では ddSolve 自体が呼ばれない。
+             検証は IMPLEMENTATION_REPORT_v205_A1_PACKED_SOLVE_Opus5.md 参照。
+       切り戻し: setPackedSolve(0)(既定) / #pksolve=0。PACKED_DD が 1 でないとき(0=legacy切り戻し /
+             2=シャドー比較)も自動的に legacy へ委譲する(診断カウンタ fbPkddOff を計上)。
+       注意: #pksolve=2 は legacy と packed の両方を走らせるため LEAF_DD=1 下ではコストが加算される。
+             実機のレイテンシ計測(C11)には使わないこと。
+       CACHE_NAME: goita-v204 → goita-v205。 -->
   <!-- build: 3B-2「PACKED_BC beliefMC集計語化(既定0=legacy)」base=v202。
        計画: PLAN_Phase3B以降_サンプラーPacked化と既定ON化判断_Fable5.md §2.4 3B-2
        (goita-dev-loop・Executor=Fable5[Sonar明示指示])。
@@ -3522,6 +3596,9 @@ body.nashi-left #actionbar{justify-content:flex-start}
 #rv-lesson-actions{display:flex;gap:7px;flex-wrap:wrap}
 #rv-lesson-actions .btn{padding:6px 12px}
 #rv-lesson[hidden]{display:none}
+/* build v207: #rv-lesson-actions は display:flex のため hidden 属性が効かず、課題が無い局でも
+   「60秒で解き直す」が残っていた(押しても app._reviewLesson が null で何も起きない)。 */
+#rv-lesson-actions[hidden]{display:none}
 /* 振り返り中は手駒・操作・助言は不要 → 隠して振り返り画面を広く使う */
 body.reviewing #handarea,body.reviewing #actionbar,body.reviewing #advice-pill,body.reviewing #mode-banner{display:none!important}
 /* 振り返り中は盤面の駒を一回り小さくして場所を空け、振り返りを広く使う */
@@ -3535,7 +3612,19 @@ body.reviewing #board{gap:4px;padding:7px}
 #review .rv-head .ttl{color:var(--kinari);letter-spacing:.15em}
 #review .rv-head label{display:flex;align-items:center;gap:5px;font-size:.72rem}
 #review .rv-head .sp{flex:1}
-#rv-list{overflow-y:auto;display:flex;flex-direction:column;gap:2px}
+#rv-list{overflow-y:auto;display:flex;flex-direction:column;gap:2px;min-height:0}
+/* build v207: #review / #rv-list は flex column。子の既定 flex-shrink:1 により、
+   内容が入りきらない時に行やグラフが縦へ押し潰され、中身が下の要素に重なっていた。
+   とくに @media(pointer:coarse) の .rv-item{min-height:44px} は flex の自動最小サイズ
+   (min-height:auto)を打ち消すため、実測で 1 行 44px まで潰れて 31–125px はみ出していた。
+   #rv-graph は overflow:hidden で自動最小サイズが 0 になり全端末で潰れていた。縦は縮めない。 */
+#review>.rv-head,#review>#rv-lesson,#review>#rv-tour,#review>#rv-graph,
+#review>#rv-seek-row,#review>#rv-legend,#review>#rv-worst{flex:0 0 auto}
+#rv-list>.rv-item,#rv-worst .rw-item{flex:0 0 auto}
+/* build v207: 狭い端末では #rv-list を独立スクロールにしない。#review 自体が
+   max-height:86dvh で縦スクロールするため、入れ子だと手一覧の窓が実測 117–192px しか
+   残らず 1 行(80–176px)すら収まらない。1 枚のスクロール面にまとめる。 */
+@media (max-width:619px){#rv-list{overflow:visible;flex:0 0 auto}}
 /* v87: 悪手ツアー — ランキングリスト・ツアーカード */
 #rv-worst{display:none;flex-direction:column;gap:2px;margin:2px 0 4px;padding:6px 8px;
   background:rgba(20,28,30,.4);border:1px solid var(--line);border-radius:8px;font-size:.68rem;
@@ -8275,7 +8364,9 @@ const G = (() => {
             // FA_TEMPER(v201): 新設setterを連結対象へ(規約: 新設関数は追加のたびに入れる)。
             setFaTemper,
             // 3B-2(PACKED_BC): 新設setter/診断を連結対象へ(beliefMC本体=集計ループは3B-1で連結済み)。
-            setPackedBc, packedBcDiag]
+            setPackedBc, packedBcDiag,
+            // v205(A-1・PACKED_SOLVE): ddSolve ディスパッチャと改名した legacy 本体、setter/診断。
+            ddSolve, ddSolveLegacy, setPackedSolve, packedSolveDiag]
       .map(f => f.toString())
       .concat([PKDD._coreSrc, PKDD._loadWorldSrc])
       .join('\n');
@@ -8880,7 +8971,71 @@ const G = (() => {
     rows.sort((x, y) => y.v - x.v);
     return {ok: true, total, seat, phase: st.phase, rows};
   }
+  /* build v205(A-1・PACKED_SOLVE: ddSolve の Packed 化)
+   * 計画: PLAN_v205_探索予算の精度転換_Opus5.md rev.2 §4.2 A-1
+   *      (goita-dev-loop・Planner/Reviewer/Executor=Opus5。Fable5 がAPIレート制限のため代打)。
+   * 背景: v197/v198 の Packed DD カーネルは ddRootValues にだけディスパッチャを被せており、
+   *   ddSolve は legacy ddSearch を直接呼んでいた。ddSolve の本番経路での唯一の呼び出し元は
+   *   rollout() 内の LEAF_DD 分岐であり(ddSolve 自体は export されているので検証ハーネスからは
+   *   直接呼べる)、LEAF_DD は既定OFFなので出荷挙動には現れず、この適用漏れは v197 以来
+   *   誰にも見えていなかった(Phase0 診断 §2.4)。実測: LEAF_DD=1 のコストは PACKED_DD の有無で
+   *   ほぼ不変(×12.83 / ×12.0相当)=Packed の恩恵をまったく受けていなかった。
+   * 方式: 次の恒等式で単一値を再構成する。
+   *   ddSolve(st, seat) == extremum_{a in ddActions(st)} ddRootValues(st, seat, evalFn, acts, cap-1)[a]
+   *   extremum は team(st.actor)===team(seat) なら max、そうでなければ min。これは下の ddSearch の
+   *   maximizing 判定 (team(st.actor) === povTeam) と同一である。
+   *   Phase0 実測で G/G_B とも 210/210 局面で値が一致し、LEAF_DD=1 下の着手列も完全一致した。
+   * 予算(budget)の対応 — cap-1 を渡す理由:
+   *   legacy ddSolve は根でも ddSearch に入り budget を1消費するが、ddRootValues は根で ddApply
+   *   してから子で探索に入るため根の分を消費しない(Phase0 実測: 消費ノード差は G/G_B とも常に +1)。
+   *   子部分木の総invoke数を S、legacy の予算を N とすると
+   *     legacy 成功 <=> 1+S <= N-1 <=> S <= N-2 / packed(予算 M) 成功 <=> S <= M-1
+   *   なので M = N-1 とすれば成功/null の境界も消費ノード数も厳密に一致する。
+   *   cap<=1 のときは cap-1 が 0 になり ddRootValues 側の `nodeCap || 300000` で既定値へ化けるため、
+   *   legacy へ委譲する(legacy は cap<=1 では根の --budget.n<=0 で必ず null を返す)。
+   * PACKED_DD !== 1 のときは本経路も legacy へ委譲する(0=legacy切り戻し / 2=シャドー比較の両方)。
+   *   「PACKED_DD が packed 単独モードでないならDD探索は legacy に揃える」という既存の切り戻し
+   *   規約を壊さないため。診断カウンタ fbPkddOff は 0 のときだけでなく 2 のときも計上する
+   *   (名前は fbPkddOff のままだが意味は「PACKED_DD が 1 ではない」である)。
+   * PACKED_SOLVE: 0=legacy(既定・完全NULL等価) / 1=packed / 2=シャドー比較(値を突き合わせ、返すのはlegacy)。
+   * 切り戻し: setPackedSolve(0) または起動時 #pksolve=0。既定0なので出荷挙動は v204 と完全同一
+   *   (出荷既定は LEAF_DD=0 であり ddSolve は1度も呼ばれない。Phase0 実測で呼出0回を確認済み)。
+   */
+  let PACKED_SOLVE = 0;
+  const PACKED_SOLVE_DIAG = {calls: 0, packed: 0, fbPkddOff: 0, fbTinyCap: 0, fbNoActs: 0,
+                             fbErr: 0, fbUndef: 0, budgetNull: 0, shadow: 0, mismatch: 0};
+  function setPackedSolve(n) { PACKED_SOLVE = n | 0; return PACKED_SOLVE; }
+  function packedSolveDiag() { return Object.assign({mode: PACKED_SOLVE}, PACKED_SOLVE_DIAG); }
   function ddSolve(st, seat, evalFn, nodeCap) {
+    if (PACKED_SOLVE === 0) return ddSolveLegacy(st, seat, evalFn, nodeCap);
+    PACKED_SOLVE_DIAG.calls++;
+    if (PACKED_DD !== 1) { PACKED_SOLVE_DIAG.fbPkddOff++; return ddSolveLegacy(st, seat, evalFn, nodeCap); }
+    const cap = nodeCap || 300000;
+    if (cap <= 1) { PACKED_SOLVE_DIAG.fbTinyCap++; return ddSolveLegacy(st, seat, evalFn, nodeCap); }
+    const acts = ddActions(st);
+    if (!acts || acts.length === 0) { PACKED_SOLVE_DIAG.fbNoActs++; return ddSolveLegacy(st, seat, evalFn, nodeCap); }
+    let rv, threw = false;
+    // ddClone は legacy ddSolve と同じ「呼び出し元の st を汚さない」契約を保つための防御。
+    // ddRootValues 経路は apply/undo で必ず復元するが、契約を経路によって変えない。
+    try { rv = ddRootValues(ddClone(st), seat, evalFn, acts, cap - 1); }
+    catch (e) { threw = true; }
+    if (threw) { PACKED_SOLVE_DIAG.fbErr++; return ddSolveLegacy(st, seat, evalFn, nodeCap); }
+    if (rv === undefined) { PACKED_SOLVE_DIAG.fbUndef++; return ddSolveLegacy(st, seat, evalFn, nodeCap); }
+    let v = null;
+    if (rv === null) PACKED_SOLVE_DIAG.budgetNull++;
+    else {
+      const maximizing = team(st.actor) === team(seat);
+      v = maximizing ? -Infinity : Infinity;
+      for (const x of rv.values()) { if (maximizing ? x > v : x < v) v = x; }
+    }
+    if (PACKED_SOLVE === 1) { PACKED_SOLVE_DIAG.packed++; return v; }
+    // PACKED_SOLVE===2: シャドー比較。値を突き合わせ、呼び出し元へ返すのは常に legacy 値。
+    const legacy = ddSolveLegacy(st, seat, evalFn, nodeCap);
+    PACKED_SOLVE_DIAG.shadow++;
+    if (!Object.is(legacy, v)) PACKED_SOLVE_DIAG.mismatch++;
+    return legacy;
+  }
+  function ddSolveLegacy(st, seat, evalFn, nodeCap) {
     // 枝刈りなし+メモ化 (全ノード値が真値=置換表が常に安全。αβのfail-soft境界値問題を回避)
     const budget = {n: nodeCap || 300000};
     const v = ddSearch(ddClone(st), team(seat), evalFn,
@@ -11376,6 +11531,7 @@ const G = (() => {
           passViolatesC, passFactorC, faFactorC, saFactorC, taFactorC, rcFactorC,
           makePackedEvCache, _swwPackedW, _bmcPackedW,
           setPackedBc, packedBcDiag,
+          setPackedSolve, packedSolveDiag,
           // 3B-1 検証専用: 網羅差分テスト・ベンチ用のlegacy参照(本番使用禁止)
           passViolates, passFactor, sampledHasPair, lacksContinuation, dcy, dcyT,
           // 3B-0 検証専用API(ベンチ・RNG計装・fbNoCtx動的テスト。本番使用禁止)
@@ -15057,7 +15213,9 @@ const G_B = (() => {
             // FA_TEMPER(v201): 新設setterを連結対象へ(規約: 新設関数は追加のたびに入れる)。
             setFaTemper,
             // 3B-2(PACKED_BC): 新設setter/診断を連結対象へ(beliefMC本体=集計ループは3B-1で連結済み)。
-            setPackedBc, packedBcDiag]
+            setPackedBc, packedBcDiag,
+            // v205(A-1・PACKED_SOLVE): ddSolve ディスパッチャと改名した legacy 本体、setter/診断。
+            ddSolve, ddSolveLegacy, setPackedSolve, packedSolveDiag]
       .map(f => f.toString())
       .concat([PKDD._coreSrc, PKDD._loadWorldSrc])
       .join('\n');
@@ -15662,7 +15820,71 @@ const G_B = (() => {
     rows.sort((x, y) => y.v - x.v);
     return {ok: true, total, seat, phase: st.phase, rows};
   }
+  /* build v205(A-1・PACKED_SOLVE: ddSolve の Packed 化)
+   * 計画: PLAN_v205_探索予算の精度転換_Opus5.md rev.2 §4.2 A-1
+   *      (goita-dev-loop・Planner/Reviewer/Executor=Opus5。Fable5 がAPIレート制限のため代打)。
+   * 背景: v197/v198 の Packed DD カーネルは ddRootValues にだけディスパッチャを被せており、
+   *   ddSolve は legacy ddSearch を直接呼んでいた。ddSolve の本番経路での唯一の呼び出し元は
+   *   rollout() 内の LEAF_DD 分岐であり(ddSolve 自体は export されているので検証ハーネスからは
+   *   直接呼べる)、LEAF_DD は既定OFFなので出荷挙動には現れず、この適用漏れは v197 以来
+   *   誰にも見えていなかった(Phase0 診断 §2.4)。実測: LEAF_DD=1 のコストは PACKED_DD の有無で
+   *   ほぼ不変(×12.83 / ×12.0相当)=Packed の恩恵をまったく受けていなかった。
+   * 方式: 次の恒等式で単一値を再構成する。
+   *   ddSolve(st, seat) == extremum_{a in ddActions(st)} ddRootValues(st, seat, evalFn, acts, cap-1)[a]
+   *   extremum は team(st.actor)===team(seat) なら max、そうでなければ min。これは下の ddSearch の
+   *   maximizing 判定 (team(st.actor) === povTeam) と同一である。
+   *   Phase0 実測で G/G_B とも 210/210 局面で値が一致し、LEAF_DD=1 下の着手列も完全一致した。
+   * 予算(budget)の対応 — cap-1 を渡す理由:
+   *   legacy ddSolve は根でも ddSearch に入り budget を1消費するが、ddRootValues は根で ddApply
+   *   してから子で探索に入るため根の分を消費しない(Phase0 実測: 消費ノード差は G/G_B とも常に +1)。
+   *   子部分木の総invoke数を S、legacy の予算を N とすると
+   *     legacy 成功 <=> 1+S <= N-1 <=> S <= N-2 / packed(予算 M) 成功 <=> S <= M-1
+   *   なので M = N-1 とすれば成功/null の境界も消費ノード数も厳密に一致する。
+   *   cap<=1 のときは cap-1 が 0 になり ddRootValues 側の `nodeCap || 300000` で既定値へ化けるため、
+   *   legacy へ委譲する(legacy は cap<=1 では根の --budget.n<=0 で必ず null を返す)。
+   * PACKED_DD !== 1 のときは本経路も legacy へ委譲する(0=legacy切り戻し / 2=シャドー比較の両方)。
+   *   「PACKED_DD が packed 単独モードでないならDD探索は legacy に揃える」という既存の切り戻し
+   *   規約を壊さないため。診断カウンタ fbPkddOff は 0 のときだけでなく 2 のときも計上する
+   *   (名前は fbPkddOff のままだが意味は「PACKED_DD が 1 ではない」である)。
+   * PACKED_SOLVE: 0=legacy(既定・完全NULL等価) / 1=packed / 2=シャドー比較(値を突き合わせ、返すのはlegacy)。
+   * 切り戻し: setPackedSolve(0) または起動時 #pksolve=0。既定0なので出荷挙動は v204 と完全同一
+   *   (出荷既定は LEAF_DD=0 であり ddSolve は1度も呼ばれない。Phase0 実測で呼出0回を確認済み)。
+   */
+  let PACKED_SOLVE = 0;
+  const PACKED_SOLVE_DIAG = {calls: 0, packed: 0, fbPkddOff: 0, fbTinyCap: 0, fbNoActs: 0,
+                             fbErr: 0, fbUndef: 0, budgetNull: 0, shadow: 0, mismatch: 0};
+  function setPackedSolve(n) { PACKED_SOLVE = n | 0; return PACKED_SOLVE; }
+  function packedSolveDiag() { return Object.assign({mode: PACKED_SOLVE}, PACKED_SOLVE_DIAG); }
   function ddSolve(st, seat, evalFn, nodeCap) {
+    if (PACKED_SOLVE === 0) return ddSolveLegacy(st, seat, evalFn, nodeCap);
+    PACKED_SOLVE_DIAG.calls++;
+    if (PACKED_DD !== 1) { PACKED_SOLVE_DIAG.fbPkddOff++; return ddSolveLegacy(st, seat, evalFn, nodeCap); }
+    const cap = nodeCap || 300000;
+    if (cap <= 1) { PACKED_SOLVE_DIAG.fbTinyCap++; return ddSolveLegacy(st, seat, evalFn, nodeCap); }
+    const acts = ddActions(st);
+    if (!acts || acts.length === 0) { PACKED_SOLVE_DIAG.fbNoActs++; return ddSolveLegacy(st, seat, evalFn, nodeCap); }
+    let rv, threw = false;
+    // ddClone は legacy ddSolve と同じ「呼び出し元の st を汚さない」契約を保つための防御。
+    // ddRootValues 経路は apply/undo で必ず復元するが、契約を経路によって変えない。
+    try { rv = ddRootValues(ddClone(st), seat, evalFn, acts, cap - 1); }
+    catch (e) { threw = true; }
+    if (threw) { PACKED_SOLVE_DIAG.fbErr++; return ddSolveLegacy(st, seat, evalFn, nodeCap); }
+    if (rv === undefined) { PACKED_SOLVE_DIAG.fbUndef++; return ddSolveLegacy(st, seat, evalFn, nodeCap); }
+    let v = null;
+    if (rv === null) PACKED_SOLVE_DIAG.budgetNull++;
+    else {
+      const maximizing = team(st.actor) === team(seat);
+      v = maximizing ? -Infinity : Infinity;
+      for (const x of rv.values()) { if (maximizing ? x > v : x < v) v = x; }
+    }
+    if (PACKED_SOLVE === 1) { PACKED_SOLVE_DIAG.packed++; return v; }
+    // PACKED_SOLVE===2: シャドー比較。値を突き合わせ、呼び出し元へ返すのは常に legacy 値。
+    const legacy = ddSolveLegacy(st, seat, evalFn, nodeCap);
+    PACKED_SOLVE_DIAG.shadow++;
+    if (!Object.is(legacy, v)) PACKED_SOLVE_DIAG.mismatch++;
+    return legacy;
+  }
+  function ddSolveLegacy(st, seat, evalFn, nodeCap) {
     // 枝刈りなし+メモ化 (全ノード値が真値=置換表が常に安全。αβのfail-soft境界値問題を回避)
     const budget = {n: nodeCap || 300000};
     const v = ddSearch(ddClone(st), team(seat), evalFn,
@@ -18158,6 +18380,7 @@ const G_B = (() => {
           passViolatesC, passFactorC, faFactorC, saFactorC, taFactorC, rcFactorC,
           makePackedEvCache, _swwPackedW, _bmcPackedW,
           setPackedBc, packedBcDiag,
+          setPackedSolve, packedSolveDiag,
           // 3B-1 検証専用: 網羅差分テスト・ベンチ用のlegacy参照(本番使用禁止)
           passViolates, passFactor, sampledHasPair, lacksContinuation, dcy, dcyT,
           // 3B-0 検証専用API(ベンチ・RNG計装・fbNoCtx動的テスト。本番使用禁止)
@@ -20501,6 +20724,18 @@ const GOITA_ENGINE_REGISTRY = (() => {
     if (m) GOITA_ENGINE_REGISTRY.invokeAll("setPackedBc", +m[1]);
   } catch (e) { /* トグル不可でも対局は継続 */ }
 })();
+/* build v205(A-1・PACKED_SOLVE): #pksolve=0|1|2 (既定0 = legacy)。#pkbc と同一パターン。
+   1=ddSolve を PKDD 経由へ / 2=シャドー比較(値の一致検査・採用値はlegacy)。
+   ddSolve の本番経路での呼び出し元は LEAF_DD 分岐のみなので、LEAF_DD=0(出荷既定)では
+   1 でも 2 でも1度も実行されない。
+   【注意】2 は legacy と packed の両方を走らせるため、LEAF_DD=1 のもとではコストが単純に
+   加算される。実機のレイテンシ計測(C11)には 2 を使わないこと。 */
+(() => {
+  try {
+    const m = /[#&]pksolve=([012])/.exec(location.hash || "");
+    if (m) GOITA_ENGINE_REGISTRY.invokeAll("setPackedSolve", +m[1]);
+  } catch (e) { /* トグル不可でも対局は継続 */ }
+})();
 if (typeof document !== "undefined") (() => {
   const $ = id => document.getElementById(id);
   /* ================================================================
@@ -20644,6 +20879,38 @@ if (typeof document !== "undefined") (() => {
     return app.timer;
   }
 
+  /* build v206(A-2・TEMPO_BUDGET: レイテンシ予算の再配分)
+   * 計画: PLAN_v205_探索予算の精度転換_Opus5.md rev.2 §4.2 A-2(レビュー M2 で範囲を縮小した版)。
+   *   経緯と実測は同計画・changelog・IMPLEMENTATION_REPORT_v206_… を参照(ここでは繰り返さない)。
+   * 仕組み: step() の順序だけを入れ替える。
+   *   0(既定): 待つ(tempo.ms) → 計算 → 適用          … v205 と1行も変わらない
+   *   1      : PRE_MS 待つ(思考表示を描かせる) → 計算(所要 d) → 残りを待つ → 適用
+   *   合計は概ね max(tempo.ms, PRE_MS + d + floor)。d が小さければ「間」は完全に保たれ、
+   *   d が大きければ既に待たせているぶん短くなる。
+   * PRE_MS=32: 0 にするとメインスレッドを即ブロックし、香煙が出ないまま固まって見える。
+   * floor=80: 計算後に必ず置く最小の「間」。ただし tempo.ms − PRE_MS で頭打ちにして、
+   *   tempo.ms が短い設定(最速200ms)でも合計が v205 より長くならないようにする。
+   * 触っていない: aiHesitation / aiTempo の中身、policyAction / moveHint の返り値形。
+   * 切り戻し: setTempoBudget(0)(既定) / 起動時 #tempo=0。
+   */
+  let TEMPO_BUDGET = 0;
+  const TEMPO_BUDGET_PRE_MS = 32, TEMPO_BUDGET_TAIL_MS = 80;
+  /* decisions: 本経路で計算した決定数 / absorbedMs: 「間」に吸収できた計算時間 /
+     overrun: 計算が「間」を食い潰した回数 / tailMs: 実際に待った残り時間の合計 */
+  const TEMPO_BUDGET_DIAG = {decisions: 0, absorbedMs: 0, overrun: 0, tailMs: 0};
+  function setTempoBudget(n) { TEMPO_BUDGET = n ? 1 : 0; return TEMPO_BUDGET; }
+  function tempoBudgetDiag() { return Object.assign({mode: TEMPO_BUDGET}, TEMPO_BUDGET_DIAG); }
+  /* build v206(A-2): 起動時トグル #tempo=0|1 (既定0 = v205 と同一の「待ってから計算」)。
+     1 = 「計算してから残りを待つ」。着手は変わらず、体感の「間」も概ね保たれる。
+     ★ エンジン用トグル(#pkdd/#pkw/#pkev/#pkbc/#pksolve)は GOITA_ENGINE_REGISTRY 経由なので
+     app の IIFE の外に置けるが、setTempoBudget は**この IIFE のローカル関数**なので
+     外に置くと ReferenceError になり try/catch に握り潰されて無反応になる。ここに置くこと。 */
+  (() => {
+    try {
+      const m = /[#&]tempo=([01])/.exec(location.hash || "");
+      if (m) setTempoBudget(+m[1]);
+    } catch (e) { /* トグル不可でも対局は継続 */ }
+  })();
   const perfTelemetry = {decision: [], render: []};
   /* PHASE10_RENDER_DIFF_START
    * DOM差分描画の実作業量。保持するのは固定個数の飽和counterだけで、局面・手駒・
@@ -20767,7 +21034,11 @@ if (typeof document !== "undefined") (() => {
         packedEv: () => GOITA_ENGINE_REGISTRY.invokeAll("packedEvDiag"),
         setPackedEv: n => GOITA_ENGINE_REGISTRY.invokeAll("setPackedEv", n),
         packedBc: () => GOITA_ENGINE_REGISTRY.invokeAll("packedBcDiag"),
-        setPackedBc: n => GOITA_ENGINE_REGISTRY.invokeAll("setPackedBc", n)
+        setPackedBc: n => GOITA_ENGINE_REGISTRY.invokeAll("setPackedBc", n),
+        packedSolve: () => GOITA_ENGINE_REGISTRY.invokeAll("packedSolveDiag"),
+        setPackedSolve: n => GOITA_ENGINE_REGISTRY.invokeAll("setPackedSolve", n),
+        tempoBudget: () => tempoBudgetDiag(),
+        setTempoBudget: n => setTempoBudget(n)
       }), configurable: true
     });
   } catch (e) { /* diagnostics公開不可でも対局は継続 */ }
@@ -24828,6 +25099,52 @@ if (typeof document !== "undefined") (() => {
     // _dealAnimUntilが過去(=演出済み/対象外)なら差分が負になりMath.maxで無効化される(自己限定的・以後の手には無影響)。
     const _stepMs = app._dealAnimUntil ? Math.max(tempo.ms, app._dealAnimUntil - performance.now() + 120) : tempo.ms;
     const _turnToken = captureTurnToken(app.st);
+    /* build v206(A-2): TEMPO_BUDGET=1 の「計算してから残りを待つ」経路。
+     * 決定は app.st の純関数(強AI経路に Math.random / Date / performance は無い)なので
+     * 計算の時刻を早めても選ばれる手は変わらない。AI手番中は人間入力が無効で app.st は
+     * 動かないが、念のため _turnToken を計算前・計算後・適用直前の3点で検査する。
+     * hideThinking()/pondering解除は適用直前へ移した(香煙が計算中も出たままになる)。 */
+    if (TEMPO_BUDGET) {
+      const _tb0 = perfNow();
+      scheduleAppTimer(() => {
+        if (!isCurrentTurnToken(_turnToken)) { card.classList.remove("pondering"); return; }
+        if (app.stopped || app.review) return;
+        if (!app.st || app.st.phase === "over" || app.matchOver) return;
+        const _dT0 = perfNow();
+        const a = (app.tiers[actor] === "t1")
+          ? T1AD.policyAction(app.st, actor, engineFor(actor))
+          : engineFor(actor).policyAction(app.st, actor, tierOpts(actor));
+        const _d = perfNow() - _dT0;
+        recordPerf("decision", _d);
+        if (!isCurrentTurnToken(_turnToken)) { card.classList.remove("pondering"); return; }
+        const _floor = Math.max(0, Math.min(TEMPO_BUDGET_TAIL_MS, _stepMs - TEMPO_BUDGET_PRE_MS));
+        const _rest = _stepMs - (perfNow() - _tb0);
+        const _tail = Math.max(_floor, _rest);
+        TEMPO_BUDGET_DIAG.decisions++;
+        TEMPO_BUDGET_DIAG.absorbedMs += Math.min(_d, Math.max(0, _stepMs - TEMPO_BUDGET_PRE_MS));
+        TEMPO_BUDGET_DIAG.tailMs += _tail;
+        if (_rest < _floor) TEMPO_BUDGET_DIAG.overrun++;
+        scheduleAppTimer(() => {
+          if (!isCurrentTurnToken(_turnToken)) { card.classList.remove("pondering"); return; }
+          hideThinking();
+          card.classList.remove("pondering");
+          if (app.stopped || app.review) return;
+          if (!app.st || app.st.phase === "over" || app.matchOver) return;
+          const proceed = () => {
+            if (!isCurrentTurnToken(_turnToken)) { card.classList.remove("pondering"); return; }
+            const ev = applyAndLog(a);
+            if (ev.gameOver) { onGameOver(ev.gameOver); return; }
+            step();
+          };
+          if (app.research && app.research.active && actor === app.research.seatTested) {
+            const sig = detectSignal(app.st, actor, a);
+            if (sig) { showPredictionThen(sig, app.st, actor, a, proceed); return; }
+          }
+          proceed();
+        }, _tail);
+      }, TEMPO_BUDGET_PRE_MS);
+      return;
+    }
     scheduleAppTimer(() => {
       if (!isCurrentTurnToken(_turnToken)) { card.classList.remove("pondering"); return; }
       hideThinking();
