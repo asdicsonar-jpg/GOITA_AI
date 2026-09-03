@@ -1,5 +1,5 @@
 // ごいた — Service Worker
-// 対象: index.html (build v208, SHA-256 313e15639a4943fda6bcce40abf493910798d2f146c87e97c75687da0f7fa808)
+// 対象: index.html (build v210, SHA-256 8d5b3a0a25043d0f04adf41b151e95cf19c3afccf8d1437b5685d3d540b79665)
 //
 // v205: A-1「ddSolve の Packed 化(PACKED_SOLVE、既定0=legacy)」。出荷既定では1行も
 // 実行されない基盤整備であり、着手列SHA-256 は v204 と完全一致することを機械確認済み。
@@ -11,6 +11,10 @@
 // v208: 右上の版数バッジをボタン化し、押すと「更新内容」(前の版からの変更点)を表示する。
 // 版数は APP_CHANGELOG の先頭から自動生成するので、以後 v198 のまま取り残されることはない。
 // エンジン(G/G_B)は両ブロックとも v207 とバイト完全一致。
+// v209: 相手の持ち駒推測(beliefMC 精緻化)を手駒8枚でも行う既定に変更(COUNT_BELIEF_MAXHAND 6→8)。
+// 初手伏せ(証拠なし)は除外(COUNT_BELIEF_MINHIST=1 新設)。エンジン G/G_B の既定値・ゲート条件のみ。着手列は測定範囲で不変。
+// v210: 相手の持ち駒推測(beliefMC)の pHold を制御変量つき推定量 cvs = clip(A + c_k + (W − U)) で書く既定に変更
+//       (BELIEF_EST 新設・既定 "cvs"、setBeliefEst("") で v209 と同一)。推定の雑音分散 −41%、Brier −0.0016〜−0.0018。着手列は 1.6〜2.0% のマッチで分岐(得点は不変)。
 //
 // このファイルは index.html と同じディレクトリに配置すること。index.html 側は
 // すでに以下の登録コードを持っている(http(s)配信時のみ有効。file://や未配置時は
@@ -23,7 +27,7 @@
 // アプリを開いたことがある端末には古いキャッシュが残り続け、新しい index.html が
 // 配信されない(PWAの典型的な事故)。
 
-const CACHE_NAME = "goita-v208";
+const CACHE_NAME = "goita-v210";
 
 // 起動シェルとして必ずキャッシュしたいファイル。存在しないもの(まだ配置していない
 // manifest.json やアイコン等)があっても install 全体を失敗させないよう、

@@ -60,6 +60,35 @@
        切り戻し: 実行中は GOITA_DIAGNOSTICS.setPackedBc(0)(または
        GOITA_ENGINE_REGISTRY.invokeAll("setPackedBc", 0)・URL #pkbc=0)、
        恒久的にはコード2箇所の既定値を 0 へ手動で戻す。 -->
+  <!-- build: v210「相手の持ち駒推測の制御変量推定量 cvs(BELIEF_EST 新設・既定 ON)」base=v209(コメント同期 R-1/R-2 込み)。
+       (goita-dev-loop・Planner/Executor=Fable5.1、Reviewer=Fable5.1+Opus5第二読者。計画: PLAN_PhaseC_v210_beliefMC制御変量cvs既定ON_rev2_Fable5.1.md)
+       変更: G/G_B 各ブロックに同一テキストで (1) beliefMC に非重み付きカウント holdU(7箇所)と probsU を追加、
+             (2) BELIEF_EST("cvs")・BELIEF_EST_C(駒種別 c_k 8値)・BELIEF_EST_EPS(0.001)・setBeliefEst/beliefEstDiag/beliefEstApply を新設し公開、
+             (3) ledgerRefine の pHold 書込点を clip_ε(A + c_k + (W − U)) に(硬い分岐・ess ゲートは不変)、
+             (4) packedWorldSrc に ledgerRefine 等と定数表を連結(G/G_B 鏡像検査)。app 層は版数と更新内容のみ。
+       根拠(Phase B 3-B′ rev.4・確認走 2 帯 ＋ 3B-1 帯・各 5シード×30マッチ・hand=8 の refine 点 ≈4,500/帯・王合図ON):
+             主集合 24 セル平均 Brier(cvs − 現行) −0.00176 [−0.00209,−0.00145] / −0.00157 [−0.00184,−0.00130] / −0.00160、
+             24 セル全部が改善、雑音分散 −41%、相方セル −0.0018。着手列は 1.6〜2.0% のマッチで分岐、
+             h2h 600 ペア Δ +0.04(SE 0.025)で得点は不変、総決定時間 tB/tA 1.023 ≤ A/A 対照 1.028。
+       検証: IMPLEMENTATION_REPORT_v210_…(逆変換 byte-exact、G/G_B 同一差分、setBeliefEst("")≡v209 の NULL 等価 150 マッチ、
+             pHold の三者一致(公開 API からの再構成とビット一致)、OPP_PROFILE 注入帯、コスト、実機レイテンシ、gzip)。
+       切り戻し: 実行中は GOITA_ENGINE_REGISTRY.invokeAll("setBeliefEst", "")、恒久的にはコード各2箇所(G/G_B)の既定値 "cvs" → ""。
+       CACHE_NAME: goita-v209 → goita-v210. -->
+  <!-- build: v209「信念ゲート撤廃(COUNT_BELIEF_MAXHAND 既定 6→8)＋初手伏せの精緻化除外(COUNT_BELIEF_MINHIST=1 新設)」base=v208。
+       (goita-dev-loop・Planner/Executor=Fable5.1、Reviewer=Fable5.1+Opus5第二読者。計画: PLAN_PhaseC_v209_信念ゲート撤廃の既定ON化_Fable5.1.md)
+       変更: G/G_B 各ブロックに同一テキストで (1) let COUNT_BELIEF_MAXHAND = 6 → 8(1文字)、
+             (2) let COUNT_BELIEF_MINHIST = 1 と setCountBeliefMinHist(n) を新設し公開、
+             (3) komaLedgerMaybeRefine に「st.history.length < COUNT_BELIEF_MINHIST なら閉形式のまま」を追加。app層は版数のみ。
+       根拠(Phase B 本走・5シード×30マッチ・1,054局・王合図ON): E2E Brier 全点 −0.00476(95%CI [−0.00508,−0.00443]・5シード同符号)、
+             相方セル −6%、王セル −2.4%、ECE 0.039→0.016。hl=0(初手伏せ)は +0.00144 の悪化(標本雑音)のため除外。
+             着手列は測定範囲(G 31,162手・G_B 15,564手・混成 2,217手・cf 46,726決定)で1手も変わらない
+             (手駒≥7の決定は rule/forced/occ 経路のみで、精緻化した信念を消費する枝が無い)。
+             総決定時間の増分は平均 +1〜2ms/決定(手駒8の伏せ・受けに集中)、p99/max は A/A 対照の雑音幅内。
+       検証: IMPLEMENTATION_REPORT_v209_信念ゲート撤廃既定ON_Fable5.1.md 参照(逆変換 byte-exact、G/G_B 同一差分、
+             v209(6,0)≡v208 の NULL 等価、v209既定≡v208既定の自由走行等価(発火つき)、E2E Brier GO、コスト、実機レイテンシ、gzip)。
+       切り戻し: 実行中は GOITA_ENGINE_REGISTRY.invokeAll("setCountBeliefMaxHand", 6) と
+             GOITA_ENGINE_REGISTRY.invokeAll("setCountBeliefMinHist", 0)、恒久的にはコード各2箇所(G/G_B)の既定値を戻す。
+       CACHE_NAME: goita-v208 → goita-v209. -->
   <!-- build: v208「更新内容の表示(右上の版数バッジをボタン化)」base=v207。app層のみ。
        起票: Sonar「バージョンアップしたら右上のv198の部分を更新しているが、そこをクリックすると
              前のバージョンとの変更部分を簡潔かつ分かりやすい説明が出るようにして」。
@@ -1335,7 +1364,7 @@
        変更2(段階6・beliefMC融合): 新関数ledgerRefine(st, seat, L, opts)が
        beliefMC(重み付き決定化+符牒等の既存証拠群)の結果でkomaLedgerのpHoldを
        上書きする(硬い制約min/maxは常に優先)。性能配慮のためkomaLedgerMaybeRefine
-       で終盤(手駒6枚以下、既定値COUNT_BELIEF_MAXHAND)に限定して発動。段階3の
+       で終盤(手駒 COUNT_BELIEF_MAXHAND 枚以下 — 当時の既定 6、v209 で 8)に限定して発動。段階3の
        Solver団体戦ゲート(bury/respond両フェーズのLBury/LResp)に配線し、
        unseenMinusPartnerLedger/planRiskの判定精度を、既存の香符牒・かかり証拠
        などパッシブな符牒推定も加味した値に引き上げた。COUNT_BELIEF(既定true)で
@@ -4404,7 +4433,7 @@ body.noto #wincut.show .wc-label{animation:wcFude .62s cubic-bezier(.2,.9,.3,1.2
 <div id="setup-screen">
   <!-- build v208: 版数表示は APP_CHANGELOG[0] から起動時に上書きされる(JS が動かない場合の保険としてここにも同じ版数を書いておく)。 -->
   <button type="button" class="setup-version" id="btn-version"
-          aria-label="バージョン v208 — 更新内容を見る" title="更新内容を見る"><span id="btn-version-num">v208</span><span class="sv-i" aria-hidden="true">ⓘ</span></button>
+          aria-label="バージョン v210 — 更新内容を見る" title="更新内容を見る"><span id="btn-version-num">v210</span><span class="sv-i" aria-hidden="true">ⓘ</span></button>
   <div class="title-block">
     <h1 class="serif">ごいた</h1>
     <div class="title-sub">能登・宇出津に伝わる竹駒の伝承遊戯</div>
@@ -4941,7 +4970,7 @@ const G = (() => {
     香: {a: 0.9387, b: 0.5055},
     し: {a: 1.4825, b: -0.2389},
   };
-  let LEDGER_CAL = 0;   // 0=既定OFF / 1=新規出口(提案2・3(c)、未実装)専用・現状no-op / 2=既存3出口
+  let LEDGER_CAL = 0;   // v210: BELIEF_EST が有効なとき、この表(LEDGER_CAL_AB)は W 分布で当てた係数なので再較正が要る。0=既定OFF / 1=新規出口(提案2・3(c)、未実装)専用・現状no-op / 2=既存3出口
                          // (unseenMinusPartnerLedger・planRisk経由のpCanReceive) / 3=ledgerProb内部で全域適用(未実装)
   function setLedgerCal(m) { LEDGER_CAL = m | 0; }
   function _logit(p) { const e = Math.min(Math.max(p, 1e-4), 1 - 1e-4); return Math.log(e / (1 - e)); }
@@ -6290,19 +6319,45 @@ const G = (() => {
   let COUNT_RECVP = true;   // 占有率フォールバック(コーチ専用recvP)をkomaLedgerベースに置換
   function setCountRecvp(on) { COUNT_RECVP = !!on; }
   let COUNT_BELIEF = true;      // pHoldをbeliefMCで精緻化するか(終盤のみ・性能配慮)
-  let COUNT_BELIEF_MAXHAND = 6; // この手駒枚数以下でのみbeliefMC融合を行う
+  let COUNT_BELIEF_MAXHAND = 8; // この手駒枚数以下でのみbeliefMC融合を行う(v209: 6→8=全局面。Phase B 本走で E2E Brier 改善・着手不変を確認)
   function setCountBelief(on) { COUNT_BELIEF = !!on; }
   function setCountBeliefMaxHand(n) { COUNT_BELIEF_MAXHAND = n | 0; }
+  let COUNT_BELIEF_MINHIST = 1;  // st.history がこの長さ未満(=親の初手伏せ・証拠なし)では精緻化しない(v209。Phase B 本走で hl=0 は Brier +0.00144 の悪化=標本雑音)
+  function setCountBeliefMinHist(n) { COUNT_BELIEF_MINHIST = n | 0; }
 
   /** beliefMC(重み付き決定化+符牒等の証拠)の結果でkomaLedgerのpHoldを上書きする。
    *  硬い制約(min/max)は常にbeliefMCの結果より優先する(算術的確定は確率で薄めない)。 */
   let COUNT_BELIEF_MINESS = 12;   // これを下回るessのbeliefMC結果は信用せず閉形式のまま残す
   function setCountBeliefMinEss(n) { COUNT_BELIEF_MINESS = n | 0; }
+  /* v210(BELIEF_EST): beliefMC の pHold を制御変量つきで書く推定量。既定 "cvs" = clip_ε(A + c_k + (W − U))。
+   *   A = 上書き直前の閉形式 pHold、W = 重み付き MC 確率(v209 まではこれをそのまま書いていた)、
+   *   U = 同一サンプル列の非重み付き頻度(holdU/K)。W と U は同じ標本なので W − U が標本雑音を打ち消す
+   *   (Phase B 3-B′: 3 帯で主集合 24 セル平均 Brier −0.0016〜−0.0018、雑音分散 −41%、Cochran Q=0.93 で帯間異質性なし)。
+   *   c_k は B-2 帯で凍結した駒種別 E[U − A](3B-0 付記)。clip は [ε, 1−ε] で 0/1 ちょうどを書かない —
+   *   硬い断定(max=0 / min>0 の分岐)と値で区別を保ち、calP の「p<=0||p>=1 は較正を飛ばす」判定を踏まないため。
+   *   効果の犠牲は 1e-6 未満(ε=0..0.01 の反実仮想で 5 桁目まで不変)。setBeliefEst("") で v209 と完全同一に戻る。 */
+  let BELIEF_EST = "cvs";
+  const BELIEF_EST_C = {"王": 0.0023, "飛": 0.0034, "角": 0.00248, "金": 0.01686, "銀": 0.01727, "馬": 0.01626, "香": 0.01535, "し": 0.03949};
+  const BELIEF_EST_EPS = 0.001;
+  const BELIEF_EST_DIAG = {refines: 0, writes: 0, clipped: 0};
+  function setBeliefEst(name) {
+    const n = name || "";
+    if (n !== "" && n !== "cvs") throw new Error("unknown belief estimator: " + n);
+    BELIEF_EST = n; return BELIEF_EST;
+  }
+  function beliefEstDiag() { return Object.assign({est: BELIEF_EST, eps: BELIEF_EST_EPS, c: BELIEF_EST_C}, BELIEF_EST_DIAG); }
+  function beliefEstApply(__A, W, U, k) {
+    const v = __A + (BELIEF_EST_C[k] || 0) + (W - U);
+    if (v < BELIEF_EST_EPS) { BELIEF_EST_DIAG.clipped++; return BELIEF_EST_EPS; }
+    if (v > 1 - BELIEF_EST_EPS) { BELIEF_EST_DIAG.clipped++; return 1 - BELIEF_EST_EPS; }
+    return v;
+  }
   function ledgerRefine(st, seat, L, opts) {
     const o = opts || {};
     const b = beliefMC(st, seat, {K: o.K || 96, weighted: true,
                                    lambda: o.lambda != null ? o.lambda : 0.7, seed: o.seed || 1});
     L.ess = b.ess;
+    if (BELIEF_EST) BELIEF_EST_DIAG.refines++;
     // build v111(段階7): beliefMC内部サンプラーをsampleWorldC化した副作用でessが下がる
     // ケースが増えたため、ess不足(退化気味)のときは上書きせず閉形式のpHoldを維持する。
     if (b.ess < COUNT_BELIEF_MINESS) { L.beliefRefined = false; return L; }
@@ -6326,13 +6381,17 @@ const G = (() => {
           continue;
         }
         const p = b.players[s].probs[k];
-        if (p != null) L.pHold[s][k] = p;
+        if (p != null) {
+          const __A = L.pHold[s][k];
+          if (BELIEF_EST && __A != null) { L.pHold[s][k] = beliefEstApply(__A, p, b.players[s].probsU[k], k); BELIEF_EST_DIAG.writes++; }
+          else L.pHold[s][k] = p;
+        }
       }
     }
     L.beliefRefined = true;
     return L;
   }
-  /** 手駒がCOUNT_BELIEF_MAXHAND以下の終盤局面でのみbeliefMC融合を行う(性能配慮のゲート)。
+  /** 手駒がCOUNT_BELIEF_MAXHAND以下(v209 既定 8=全局面)かつ st.history が COUNT_BELIEF_MINHIST 以上(初手伏せを除く)の局面でbeliefMC融合を行う。
    *  opts.noMC(ロールアウト内であることを示す既存の合図)のときは絶対に発動しない —
    *  beliefMC自体がMC(K回の決定化)なので、ロールアウト内で呼ぶと
    *  「MCの中でさらにMCを回す」多重ネストが起き、実測で致命的に遅くなる(build v111開発時に発見)。 */
@@ -6340,6 +6399,7 @@ const G = (() => {
     if (!COUNT_BELIEF || !st) return L;
     if (opts && opts.noMC) return L;
     if (view.hand.length > COUNT_BELIEF_MAXHAND) return L;
+    if (st.history.length < COUNT_BELIEF_MINHIST) return L;   // v209: 証拠の無い初手伏せでは閉形式のまま(MC は標本雑音を足すだけ)
     return ledgerRefine(st, seat, L);
   }
   function totalAttackCount(hist) {
@@ -8406,9 +8466,12 @@ const G = (() => {
             // 3B-2(PACKED_BC): 新設setter/診断を連結対象へ(beliefMC本体=集計ループは3B-1で連結済み)。
             setPackedBc, packedBcDiag,
             // v205(A-1・PACKED_SOLVE): ddSolve ディスパッチャと改名した legacy 本体、setter/診断。
-            ddSolve, ddSolveLegacy, setPackedSolve, packedSolveDiag]
+            ddSolve, ddSolveLegacy, setPackedSolve, packedSolveDiag,
+            // v210(BELIEF_EST): pHold を書く経路も鏡像検査に載せる(第二読者 4-3)。可変の BELIEF_EST は
+            // 連結しない(片側だけトグルを倒したテスト後に偽 FAIL が出るため)。定数表と ε は文字列で連結する。
+            ledgerRefine, beliefEstApply, setBeliefEst, beliefEstDiag]
       .map(f => f.toString())
-      .concat([PKDD._coreSrc, PKDD._loadWorldSrc])
+      .concat([PKDD._coreSrc, PKDD._loadWorldSrc, JSON.stringify(BELIEF_EST_C), String(BELIEF_EST_EPS)])
       .join('\n');
   }
   function regsEqual(a, b) {
@@ -11366,8 +11429,8 @@ const G = (() => {
     if (PACKED_BC) PACKED_BC_DIAG.calls++;
     const acc = {};
     for (const p of others) {
-      acc[p] = {hold: {}, exp: {}};
-      for (const k in KOMA_COUNT) { acc[p].hold[k] = 0; acc[p].exp[k] = 0; }
+      acc[p] = {hold: {}, exp: {}, holdU: {}};
+      for (const k in KOMA_COUNT) { acc[p].hold[k] = 0; acc[p].exp[k] = 0; acc[p].holdU[k] = 0; }
     }
     let wSum = 0, w2Sum = 0;
     for (let d = 0; d < K; d++) {
@@ -11467,6 +11530,7 @@ const G = (() => {
             const cnt = counter(sampled[p]);
             for (const k in cnt) { acc[p].exp[k] += w * cnt[k]; }
             for (const k in cnt) if (cnt[k] > 0) acc[p].hold[k] += w;
+            for (const k in cnt) if (cnt[k] > 0) acc[p].holdU[k] += 1;
             continue;
           }
           if (__pwT !== null) PACKED_BC_DIAG.reuse++; else PACKED_BC_DIAG.cwBuild++;
@@ -11474,7 +11538,7 @@ const G = (() => {
           const a = acc[p];
           for (let t = 0; t < 8; t++) {
             const c = (cw >>> (4 * t)) & 15;
-            if (c) { const k = KOMA_TYPES_ARR[t]; a.exp[k] += w * c; a.hold[k] += w; }
+            if (c) { const k = KOMA_TYPES_ARR[t]; a.exp[k] += w * c; a.hold[k] += w; a.holdU[k] += 1; }
           }
         }
       } else {
@@ -11482,6 +11546,7 @@ const G = (() => {
           const cnt = counter(sampled[p]);
           for (const k in cnt) { acc[p].exp[k] += w * cnt[k]; }
           for (const k in cnt) if (cnt[k] > 0) acc[p].hold[k] += w;
+          for (const k in cnt) if (cnt[k] > 0) acc[p].holdU[k] += 1;
         }
         // 3B-2 shadow(PACKED_BC=2): 採用値は上のlegacy集計のまま、8ニブル全駒種のカウント一致を
         // 毎サンプル検査する(cmpN=比較ニブル数・mismatchC=不一致数)。
@@ -11502,12 +11567,13 @@ const G = (() => {
     }
     const players = {};
     for (const p of others) {
-      const probs = {}, exp = {};
+      const probs = {}, exp = {}, probsU = {};
       for (const k in KOMA_COUNT) {
+        probsU[k] = acc[p].holdU[k] / K;
         probs[k] = wSum ? acc[p].hold[k] / wSum : 0;
         exp[k] = wSum ? acc[p].exp[k] / wSum : 0;
       }
-      players[p] = {n: view.sizes[p], probs, exp};
+      players[p] = {n: view.sizes[p], probs, exp, probsU};
     }
     return {basis: lambda < 1 ? "C" : "B", K, lambda,
             ess: wSum ? Math.round(wSum * wSum / w2Sum) : 0, players};
@@ -11550,7 +11616,7 @@ const G = (() => {
     }
     return decided ? nsWins / decided : null;
   }
-  return {setDeterminizationV2, worldV2Metadata, diagnosticCloneStateForRollout: cloneStateForRollout, setTblTrust, tblFactorAt, setOuSignal, setOuTrust, detectOuSignals, partnerSignaledOu, partnerSignaledShi, kakariGotae, shiStarted, canShiAttackC, setOppProfile, oppRatesFromCounts, setEvLambdaGate, inferPartnerHoldings, setSigRead, setOuMix, setKyouMix, setShiKyoFix, setShiCommit, setShiCommitReal, setKakariEv, kakariEvidence, setPassMirror, setShiPairEv, shiPairEvidence, setKPairEv, pairAttackEvidence, setKyoNeg, setKyoNegScope, setKyoNegClosed, kyoNegAttackEvidence, _kyClsProbe, setOuKyoRisk, setLedgerCal, calP, setOulessFk, setTakeTurn, setKamizaWait, setKakuSignal, kakuSigEvidence, setKyoCode, kyoCodeEvidence, setKyoBonus, setKyoRetention, kyoBiasOf, setHumanModel, setBeliefSharpen, setFaTemper, setBuryUmaFix, setBuryPairShi, setKeepShiEshi, setKeepShiLastGuard, setShiKeep2, setWidthBury, setBuryCover, buryCoverPick, setUmaKeep, setShiBluff, setCoopSignal, setConvTrust, convTrustOf, moveHint, coopContext, setShiRejectStrong, setShiRideKeep, setFlowbackYield, setFlowbackTh, setFlowbackPreMc, flowbackYieldPass, setShiAtkAvoid, setShiAtkAvoidMin, setUncutAtkAvoid, setUncutFb, setOuSigShiGuard, setKyoR1Conserve, setKyoConsMode, setKyoWeakConserve, strongNonShi, setKyoR1Wait, setKyoCertainRecv, cfrSolve2x2, setRuleLevel, setDiag, setRolloutOpp, modelRespAction, setLeafDd, setLeafDdLimit, setLeafDdCap, matchEquity, ddSolve, ddSolveNaive, ddRootValues, ddParAnalyze, sampleWorldW, makePassEvCache, readingNotes, komaLedger, setCountRead, countWhy, setCountGate, setCountPlanConf, setCountPlanRisk, planRisk, unseenMinusPartnerLedger, sampleWorldC, setCountSample, setCountRecvp, setCountBelief, setCountBeliefMaxHand, setCountBeliefMinEss, ledgerRefine, komaLedgerMaybeRefine, setSoloSig, setOuTakeTurn, setOuTtMaxHand, setOuTtMinChain, setOuTtMargin, setOuTtDets, ouTakeTurnPick, ouChainThroughP, mcDecideReceive, pCanReceive, pEnemyReceives, isFirstRound, SEATS, KOMA_COUNT, POINTS, UNCUTTABLE, team, nextSeat, partnerOf, mcEvalReceive, gameEquityMC, countsFor, freshSolverProbe, puzzleTruthProbe, beliefExact, beliefMC,
+  return {setDeterminizationV2, worldV2Metadata, diagnosticCloneStateForRollout: cloneStateForRollout, setTblTrust, tblFactorAt, setOuSignal, setOuTrust, detectOuSignals, partnerSignaledOu, partnerSignaledShi, kakariGotae, shiStarted, canShiAttackC, setOppProfile, oppRatesFromCounts, setEvLambdaGate, inferPartnerHoldings, setSigRead, setOuMix, setKyouMix, setShiKyoFix, setShiCommit, setShiCommitReal, setKakariEv, kakariEvidence, setPassMirror, setShiPairEv, shiPairEvidence, setKPairEv, pairAttackEvidence, setKyoNeg, setKyoNegScope, setKyoNegClosed, kyoNegAttackEvidence, _kyClsProbe, setOuKyoRisk, setLedgerCal, calP, setOulessFk, setTakeTurn, setKamizaWait, setKakuSignal, kakuSigEvidence, setKyoCode, kyoCodeEvidence, setKyoBonus, setKyoRetention, kyoBiasOf, setHumanModel, setBeliefSharpen, setFaTemper, setBuryUmaFix, setBuryPairShi, setKeepShiEshi, setKeepShiLastGuard, setShiKeep2, setWidthBury, setBuryCover, buryCoverPick, setUmaKeep, setShiBluff, setCoopSignal, setConvTrust, convTrustOf, moveHint, coopContext, setShiRejectStrong, setShiRideKeep, setFlowbackYield, setFlowbackTh, setFlowbackPreMc, flowbackYieldPass, setShiAtkAvoid, setShiAtkAvoidMin, setUncutAtkAvoid, setUncutFb, setOuSigShiGuard, setKyoR1Conserve, setKyoConsMode, setKyoWeakConserve, strongNonShi, setKyoR1Wait, setKyoCertainRecv, cfrSolve2x2, setRuleLevel, setDiag, setRolloutOpp, modelRespAction, setLeafDd, setLeafDdLimit, setLeafDdCap, matchEquity, ddSolve, ddSolveNaive, ddRootValues, ddParAnalyze, sampleWorldW, makePassEvCache, readingNotes, komaLedger, setCountRead, countWhy, setCountGate, setCountPlanConf, setCountPlanRisk, planRisk, unseenMinusPartnerLedger, sampleWorldC, setCountSample, setCountRecvp, setCountBelief, setCountBeliefMaxHand, setCountBeliefMinHist, setCountBeliefMinEss, setBeliefEst, beliefEstDiag, ledgerRefine, komaLedgerMaybeRefine, setSoloSig, setOuTakeTurn, setOuTtMaxHand, setOuTtMinChain, setOuTtMargin, setOuTtDets, ouTakeTurnPick, ouChainThroughP, mcDecideReceive, pCanReceive, pEnemyReceives, isFirstRound, SEATS, KOMA_COUNT, POINTS, UNCUTTABLE, team, nextSeat, partnerOf, mcEvalReceive, gameEquityMC, countsFor, freshSolverProbe, puzzleTruthProbe, beliefExact, beliefMC,
           mulberry32, shuffle, fullDeck, counter,
           newGameState, advance, canAttackKing, validReceive, legalReceives, legalAttacks,
           maskHistoryFor, makeView, unseenCounts, solveWin, checkKingAtkOk,
@@ -11776,7 +11842,7 @@ const G_B = (() => {
     香: {a: 0.9387, b: 0.5055},
     し: {a: 1.4825, b: -0.2389},
   };
-  let LEDGER_CAL = 0;   // 0=既定OFF / 1=新規出口(提案2・3(c)、未実装)専用・現状no-op / 2=既存3出口
+  let LEDGER_CAL = 0;   // v210: BELIEF_EST が有効なとき、この表(LEDGER_CAL_AB)は W 分布で当てた係数なので再較正が要る。0=既定OFF / 1=新規出口(提案2・3(c)、未実装)専用・現状no-op / 2=既存3出口
                          // (unseenMinusPartnerLedger・planRisk経由のpCanReceive) / 3=ledgerProb内部で全域適用(未実装)
   function setLedgerCal(m) { LEDGER_CAL = m | 0; }
   function _logit(p) { const e = Math.min(Math.max(p, 1e-4), 1 - 1e-4); return Math.log(e / (1 - e)); }
@@ -13139,19 +13205,45 @@ const G_B = (() => {
   let COUNT_RECVP = true;   // 占有率フォールバック(コーチ専用recvP)をkomaLedgerベースに置換
   function setCountRecvp(on) { COUNT_RECVP = !!on; }
   let COUNT_BELIEF = true;      // pHoldをbeliefMCで精緻化するか(終盤のみ・性能配慮)
-  let COUNT_BELIEF_MAXHAND = 6; // この手駒枚数以下でのみbeliefMC融合を行う
+  let COUNT_BELIEF_MAXHAND = 8; // この手駒枚数以下でのみbeliefMC融合を行う(v209: 6→8=全局面。Phase B 本走で E2E Brier 改善・着手不変を確認)
   function setCountBelief(on) { COUNT_BELIEF = !!on; }
   function setCountBeliefMaxHand(n) { COUNT_BELIEF_MAXHAND = n | 0; }
+  let COUNT_BELIEF_MINHIST = 1;  // st.history がこの長さ未満(=親の初手伏せ・証拠なし)では精緻化しない(v209。Phase B 本走で hl=0 は Brier +0.00144 の悪化=標本雑音)
+  function setCountBeliefMinHist(n) { COUNT_BELIEF_MINHIST = n | 0; }
 
   /** beliefMC(重み付き決定化+符牒等の証拠)の結果でkomaLedgerのpHoldを上書きする。
    *  硬い制約(min/max)は常にbeliefMCの結果より優先する(算術的確定は確率で薄めない)。 */
   let COUNT_BELIEF_MINESS = 12;   // これを下回るessのbeliefMC結果は信用せず閉形式のまま残す
   function setCountBeliefMinEss(n) { COUNT_BELIEF_MINESS = n | 0; }
+  /* v210(BELIEF_EST): beliefMC の pHold を制御変量つきで書く推定量。既定 "cvs" = clip_ε(A + c_k + (W − U))。
+   *   A = 上書き直前の閉形式 pHold、W = 重み付き MC 確率(v209 まではこれをそのまま書いていた)、
+   *   U = 同一サンプル列の非重み付き頻度(holdU/K)。W と U は同じ標本なので W − U が標本雑音を打ち消す
+   *   (Phase B 3-B′: 3 帯で主集合 24 セル平均 Brier −0.0016〜−0.0018、雑音分散 −41%、Cochran Q=0.93 で帯間異質性なし)。
+   *   c_k は B-2 帯で凍結した駒種別 E[U − A](3B-0 付記)。clip は [ε, 1−ε] で 0/1 ちょうどを書かない —
+   *   硬い断定(max=0 / min>0 の分岐)と値で区別を保ち、calP の「p<=0||p>=1 は較正を飛ばす」判定を踏まないため。
+   *   効果の犠牲は 1e-6 未満(ε=0..0.01 の反実仮想で 5 桁目まで不変)。setBeliefEst("") で v209 と完全同一に戻る。 */
+  let BELIEF_EST = "cvs";
+  const BELIEF_EST_C = {"王": 0.0023, "飛": 0.0034, "角": 0.00248, "金": 0.01686, "銀": 0.01727, "馬": 0.01626, "香": 0.01535, "し": 0.03949};
+  const BELIEF_EST_EPS = 0.001;
+  const BELIEF_EST_DIAG = {refines: 0, writes: 0, clipped: 0};
+  function setBeliefEst(name) {
+    const n = name || "";
+    if (n !== "" && n !== "cvs") throw new Error("unknown belief estimator: " + n);
+    BELIEF_EST = n; return BELIEF_EST;
+  }
+  function beliefEstDiag() { return Object.assign({est: BELIEF_EST, eps: BELIEF_EST_EPS, c: BELIEF_EST_C}, BELIEF_EST_DIAG); }
+  function beliefEstApply(__A, W, U, k) {
+    const v = __A + (BELIEF_EST_C[k] || 0) + (W - U);
+    if (v < BELIEF_EST_EPS) { BELIEF_EST_DIAG.clipped++; return BELIEF_EST_EPS; }
+    if (v > 1 - BELIEF_EST_EPS) { BELIEF_EST_DIAG.clipped++; return 1 - BELIEF_EST_EPS; }
+    return v;
+  }
   function ledgerRefine(st, seat, L, opts) {
     const o = opts || {};
     const b = beliefMC(st, seat, {K: o.K || 96, weighted: true,
                                    lambda: o.lambda != null ? o.lambda : 0.7, seed: o.seed || 1});
     L.ess = b.ess;
+    if (BELIEF_EST) BELIEF_EST_DIAG.refines++;
     // build v111(段階7): beliefMC内部サンプラーをsampleWorldC化した副作用でessが下がる
     // ケースが増えたため、ess不足(退化気味)のときは上書きせず閉形式のpHoldを維持する。
     if (b.ess < COUNT_BELIEF_MINESS) { L.beliefRefined = false; return L; }
@@ -13175,13 +13267,17 @@ const G_B = (() => {
           continue;
         }
         const p = b.players[s].probs[k];
-        if (p != null) L.pHold[s][k] = p;
+        if (p != null) {
+          const __A = L.pHold[s][k];
+          if (BELIEF_EST && __A != null) { L.pHold[s][k] = beliefEstApply(__A, p, b.players[s].probsU[k], k); BELIEF_EST_DIAG.writes++; }
+          else L.pHold[s][k] = p;
+        }
       }
     }
     L.beliefRefined = true;
     return L;
   }
-  /** 手駒がCOUNT_BELIEF_MAXHAND以下の終盤局面でのみbeliefMC融合を行う(性能配慮のゲート)。
+  /** 手駒がCOUNT_BELIEF_MAXHAND以下(v209 既定 8=全局面)かつ st.history が COUNT_BELIEF_MINHIST 以上(初手伏せを除く)の局面でbeliefMC融合を行う。
    *  opts.noMC(ロールアウト内であることを示す既存の合図)のときは絶対に発動しない —
    *  beliefMC自体がMC(K回の決定化)なので、ロールアウト内で呼ぶと
    *  「MCの中でさらにMCを回す」多重ネストが起き、実測で致命的に遅くなる(build v111開発時に発見)。 */
@@ -13189,6 +13285,7 @@ const G_B = (() => {
     if (!COUNT_BELIEF || !st) return L;
     if (opts && opts.noMC) return L;
     if (view.hand.length > COUNT_BELIEF_MAXHAND) return L;
+    if (st.history.length < COUNT_BELIEF_MINHIST) return L;   // v209: 証拠の無い初手伏せでは閉形式のまま(MC は標本雑音を足すだけ)
     return ledgerRefine(st, seat, L);
   }
   function totalAttackCount(hist) {
@@ -15255,9 +15352,12 @@ const G_B = (() => {
             // 3B-2(PACKED_BC): 新設setter/診断を連結対象へ(beliefMC本体=集計ループは3B-1で連結済み)。
             setPackedBc, packedBcDiag,
             // v205(A-1・PACKED_SOLVE): ddSolve ディスパッチャと改名した legacy 本体、setter/診断。
-            ddSolve, ddSolveLegacy, setPackedSolve, packedSolveDiag]
+            ddSolve, ddSolveLegacy, setPackedSolve, packedSolveDiag,
+            // v210(BELIEF_EST): pHold を書く経路も鏡像検査に載せる(第二読者 4-3)。可変の BELIEF_EST は
+            // 連結しない(片側だけトグルを倒したテスト後に偽 FAIL が出るため)。定数表と ε は文字列で連結する。
+            ledgerRefine, beliefEstApply, setBeliefEst, beliefEstDiag]
       .map(f => f.toString())
-      .concat([PKDD._coreSrc, PKDD._loadWorldSrc])
+      .concat([PKDD._coreSrc, PKDD._loadWorldSrc, JSON.stringify(BELIEF_EST_C), String(BELIEF_EST_EPS)])
       .join('\n');
   }
   function regsEqual(a, b) {
@@ -18215,8 +18315,8 @@ const G_B = (() => {
     if (PACKED_BC) PACKED_BC_DIAG.calls++;
     const acc = {};
     for (const p of others) {
-      acc[p] = {hold: {}, exp: {}};
-      for (const k in KOMA_COUNT) { acc[p].hold[k] = 0; acc[p].exp[k] = 0; }
+      acc[p] = {hold: {}, exp: {}, holdU: {}};
+      for (const k in KOMA_COUNT) { acc[p].hold[k] = 0; acc[p].exp[k] = 0; acc[p].holdU[k] = 0; }
     }
     let wSum = 0, w2Sum = 0;
     for (let d = 0; d < K; d++) {
@@ -18316,6 +18416,7 @@ const G_B = (() => {
             const cnt = counter(sampled[p]);
             for (const k in cnt) { acc[p].exp[k] += w * cnt[k]; }
             for (const k in cnt) if (cnt[k] > 0) acc[p].hold[k] += w;
+            for (const k in cnt) if (cnt[k] > 0) acc[p].holdU[k] += 1;
             continue;
           }
           if (__pwT !== null) PACKED_BC_DIAG.reuse++; else PACKED_BC_DIAG.cwBuild++;
@@ -18323,7 +18424,7 @@ const G_B = (() => {
           const a = acc[p];
           for (let t = 0; t < 8; t++) {
             const c = (cw >>> (4 * t)) & 15;
-            if (c) { const k = KOMA_TYPES_ARR[t]; a.exp[k] += w * c; a.hold[k] += w; }
+            if (c) { const k = KOMA_TYPES_ARR[t]; a.exp[k] += w * c; a.hold[k] += w; a.holdU[k] += 1; }
           }
         }
       } else {
@@ -18331,6 +18432,7 @@ const G_B = (() => {
           const cnt = counter(sampled[p]);
           for (const k in cnt) { acc[p].exp[k] += w * cnt[k]; }
           for (const k in cnt) if (cnt[k] > 0) acc[p].hold[k] += w;
+          for (const k in cnt) if (cnt[k] > 0) acc[p].holdU[k] += 1;
         }
         // 3B-2 shadow(PACKED_BC=2): 採用値は上のlegacy集計のまま、8ニブル全駒種のカウント一致を
         // 毎サンプル検査する(cmpN=比較ニブル数・mismatchC=不一致数)。
@@ -18351,12 +18453,13 @@ const G_B = (() => {
     }
     const players = {};
     for (const p of others) {
-      const probs = {}, exp = {};
+      const probs = {}, exp = {}, probsU = {};
       for (const k in KOMA_COUNT) {
+        probsU[k] = acc[p].holdU[k] / K;
         probs[k] = wSum ? acc[p].hold[k] / wSum : 0;
         exp[k] = wSum ? acc[p].exp[k] / wSum : 0;
       }
-      players[p] = {n: view.sizes[p], probs, exp};
+      players[p] = {n: view.sizes[p], probs, exp, probsU};
     }
     return {basis: lambda < 1 ? "C" : "B", K, lambda,
             ess: wSum ? Math.round(wSum * wSum / w2Sum) : 0, players};
@@ -18399,7 +18502,7 @@ const G_B = (() => {
     }
     return decided ? nsWins / decided : null;
   }
-  return {setDeterminizationV2, worldV2Metadata, diagnosticCloneStateForRollout: cloneStateForRollout, setTblTrust, tblFactorAt, setOuSignal, setOuTrust, detectOuSignals, partnerSignaledOu, partnerSignaledShi, kakariGotae, shiStarted, canShiAttackC, setOppProfile, oppRatesFromCounts, setEvLambdaGate, inferPartnerHoldings, setSigRead, setOuMix, setKyouMix, setShiKyoFix, setShiCommit, setShiCommitReal, setKakariEv, kakariEvidence, setPassMirror, setShiPairEv, shiPairEvidence, setKPairEv, pairAttackEvidence, setKyoNeg, setKyoNegScope, setKyoNegClosed, kyoNegAttackEvidence, _kyClsProbe, setOuKyoRisk, setLedgerCal, calP, setOulessFk, setTakeTurn, setKamizaWait, setKakuSignal, kakuSigEvidence, setKyoCode, kyoCodeEvidence, setKyoBonus, setKyoRetention, kyoBiasOf, setHumanModel, setBeliefSharpen, setFaTemper, setBuryUmaFix, setBuryPairShi, setKeepShiEshi, setKeepShiLastGuard, setShiKeep2, setWidthBury, setBuryCover, buryCoverPick, setUmaKeep, setShiBluff, setCoopSignal, setConvTrust, convTrustOf, moveHint, coopContext, setShiRejectStrong, setShiRideKeep, setFlowbackYield, setFlowbackTh, setFlowbackPreMc, flowbackYieldPass, setShiAtkAvoid, setShiAtkAvoidMin, setUncutAtkAvoid, setUncutFb, setOuSigShiGuard, setKyoR1Conserve, setKyoConsMode, setKyoWeakConserve, strongNonShi, setKyoR1Wait, setKyoCertainRecv, cfrSolve2x2, setRuleLevel, setDiag, setRolloutOpp, modelRespAction, setLeafDd, setLeafDdLimit, setLeafDdCap, matchEquity, ddSolve, ddSolveNaive, ddRootValues, ddParAnalyze, sampleWorldW, makePassEvCache, readingNotes, komaLedger, setCountRead, countWhy, setCountGate, setCountPlanConf, setCountPlanRisk, planRisk, unseenMinusPartnerLedger, sampleWorldC, setCountSample, setCountRecvp, setCountBelief, setCountBeliefMaxHand, setCountBeliefMinEss, ledgerRefine, komaLedgerMaybeRefine, setSoloSig, setOuTakeTurn, setOuTtMaxHand, setOuTtMinChain, setOuTtMargin, setOuTtDets, ouTakeTurnPick, ouChainThroughP, mcDecideReceive, pCanReceive, pEnemyReceives, isFirstRound, SEATS, KOMA_COUNT, POINTS, UNCUTTABLE, team, nextSeat, partnerOf, mcEvalReceive, gameEquityMC, countsFor, freshSolverProbe, puzzleTruthProbe, beliefExact, beliefMC,
+  return {setDeterminizationV2, worldV2Metadata, diagnosticCloneStateForRollout: cloneStateForRollout, setTblTrust, tblFactorAt, setOuSignal, setOuTrust, detectOuSignals, partnerSignaledOu, partnerSignaledShi, kakariGotae, shiStarted, canShiAttackC, setOppProfile, oppRatesFromCounts, setEvLambdaGate, inferPartnerHoldings, setSigRead, setOuMix, setKyouMix, setShiKyoFix, setShiCommit, setShiCommitReal, setKakariEv, kakariEvidence, setPassMirror, setShiPairEv, shiPairEvidence, setKPairEv, pairAttackEvidence, setKyoNeg, setKyoNegScope, setKyoNegClosed, kyoNegAttackEvidence, _kyClsProbe, setOuKyoRisk, setLedgerCal, calP, setOulessFk, setTakeTurn, setKamizaWait, setKakuSignal, kakuSigEvidence, setKyoCode, kyoCodeEvidence, setKyoBonus, setKyoRetention, kyoBiasOf, setHumanModel, setBeliefSharpen, setFaTemper, setBuryUmaFix, setBuryPairShi, setKeepShiEshi, setKeepShiLastGuard, setShiKeep2, setWidthBury, setBuryCover, buryCoverPick, setUmaKeep, setShiBluff, setCoopSignal, setConvTrust, convTrustOf, moveHint, coopContext, setShiRejectStrong, setShiRideKeep, setFlowbackYield, setFlowbackTh, setFlowbackPreMc, flowbackYieldPass, setShiAtkAvoid, setShiAtkAvoidMin, setUncutAtkAvoid, setUncutFb, setOuSigShiGuard, setKyoR1Conserve, setKyoConsMode, setKyoWeakConserve, strongNonShi, setKyoR1Wait, setKyoCertainRecv, cfrSolve2x2, setRuleLevel, setDiag, setRolloutOpp, modelRespAction, setLeafDd, setLeafDdLimit, setLeafDdCap, matchEquity, ddSolve, ddSolveNaive, ddRootValues, ddParAnalyze, sampleWorldW, makePassEvCache, readingNotes, komaLedger, setCountRead, countWhy, setCountGate, setCountPlanConf, setCountPlanRisk, planRisk, unseenMinusPartnerLedger, sampleWorldC, setCountSample, setCountRecvp, setCountBelief, setCountBeliefMaxHand, setCountBeliefMinHist, setCountBeliefMinEss, setBeliefEst, beliefEstDiag, ledgerRefine, komaLedgerMaybeRefine, setSoloSig, setOuTakeTurn, setOuTtMaxHand, setOuTtMinChain, setOuTtMargin, setOuTtDets, ouTakeTurnPick, ouChainThroughP, mcDecideReceive, pCanReceive, pEnemyReceives, isFirstRound, SEATS, KOMA_COUNT, POINTS, UNCUTTABLE, team, nextSeat, partnerOf, mcEvalReceive, gameEquityMC, countsFor, freshSolverProbe, puzzleTruthProbe, beliefExact, beliefMC,
           mulberry32, shuffle, fullDeck, counter,
           newGameState, advance, canAttackKing, validReceive, legalReceives, legalAttacks,
           maskHistoryFor, makeView, unseenCounts, solveWin, checkKingAtkOk,
@@ -30308,6 +30411,13 @@ if (typeof document !== "undefined") (() => {
    * tag: fix=不具合修正 / fast=速くなった / read=読みが良くなった / (無印)=内部のみ
    * ================================================================ */
   const APP_CHANGELOG = [
+    {v: "v210", d: "2026-09-03", tag: "read", tagJa: "読みが良くなった", t: "相方・敵の持ち駒の読みを安定させました", p: [
+      "読み筋の「相方の◯保持推定 nn%」の当たり方を安定させました(推定のばらつきを約4割減らしています)。コーチの説明も同じ推定を使っています。",
+      "AIの強さと打ち筋はほぼ変わりません(600ペアの対戦で同等を確認)。1手あたりの計算時間もほぼ変わりません。"]},
+    {v: "v209", d: "2026-09-02", tag: "read", tagJa: "読みが良くなった", t: "相手の持ち駒の推測を序盤から精密に", p: [
+      "手駒が8枚のときにも、相手の持ち駒の推測を精密に計算するようにしました。読み筋パネルとコーチの説明が正確になります(相方の駒の推測誤差は約6%減)。",
+      "AIが選ぶ手は変わりません(同じ局面では同じ手を打ちます)。1手あたりの計算は平均1〜2msほど増えますが、体感は変わりません。",
+      "最初の伏せ(まだ何の情報も無い局面)では精密計算をしないようにし、無駄な計算とわずかな精度低下を避けました。"]},
     {v: "v208", d: "2026-08-30", tag: "", tagJa: "使い勝手", t: "更新内容を読めるようにしました", p: [
       "右上のバージョン表示を押すと、この「更新内容」が開くようになりました。",
       "版数表示が v198 のまま止まっていたのを直し、常に実際の版数が出るようにしました。"]},
