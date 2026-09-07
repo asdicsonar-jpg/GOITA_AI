@@ -4,11 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>ごいた — 能登の伝承遊戯</title>
-  <!-- build: v215「王温存バケットの手駒 {6,4} 再較正(OUK_H6 新設・既定 ON)」base=v214 候補(未配信。OUK_H2 を含む)。配信中は v213。計画: PLAN_v215_hand64再登載_3帯目_rev1_Fable5.1.md
-       変更: G/G_B 同一テキストで (1) OUK_H6_* の λ 3 本を v212 方策の実測(帯 L2)に置換、(2) passFactor/passFactorC の敵攻め 2 巡目以降・王切り経路で、パスした席の手駒が 6 または 4 なら OUK_H6_*、
-             (3) setOukH6/oukH6Diag を公開・packedWorldSrc に連結。手駒 {8}(OUK_H8)・{2}(OUK_H2)の λ は v214 と同一。app 層は版数・更新内容(v214 の項目を v215 に置換)・#oukh6=0|1。
+  <!-- build: v216「台帳精緻化の ESS フォールバック撤廃」base=v215(配信中)。計画: PLAN_v216_ESSフォールバック撤廃_rev2_Opus5.md
+       変更: G/G_B 同一テキストで (1) 台帳精緻化(ledgerRefine)が beliefMC の実効標本数の低さを理由に結果を捨てて閉形式へ戻す下限を、実測(閉形式の方が桁違いに悪い)に基づいて撤廃、
+             (2) minEssDiag を公開・packedWorldSrc に連結。判定行・beliefMC・推定量・王温存バケットの λ・打ち筋の規則は v215 と同一。app 層は版数・更新内容(v216 を追加)・#miness=1|12。
        ヘッダ履歴: v212.1 以前の build ヘッダ 115 本は docs/BUILD_HISTORY_index.md に移してある(byte-exact 保存は harness/build_headers_v212_1.json)。
-       切り戻し: 実行中は GOITA_ENGINE_REGISTRY.invokeAll("setOukH6", 0) または起動時 #oukh6=0、恒久的にはコード各 2 箇所(G/G_B)の既定値 1 → 0。CACHE_NAME: goita-v214 → goita-v215. -->
+       切り戻し: 実行中は GOITA_ENGINE_REGISTRY.invokeAll("setCountBeliefMinEss", 12) または起動時 #miness=12、恒久的にはコード各 2 箇所(G/G_B)の既定値 1 → 12。CACHE_NAME: goita-v215 → goita-v216. -->
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="ごいた">
@@ -1732,7 +1732,7 @@ body.noto #wincut.show .wc-label{animation:wcFude .62s cubic-bezier(.2,.9,.3,1.2
 <div id="setup-screen">
   <!-- build v208: 版数表示は APP_CHANGELOG[0] から起動時に上書きされる(JS が動かない場合の保険としてここにも同じ版数を書いておく)。 -->
   <button type="button" class="setup-version" id="btn-version"
-          aria-label="バージョン v215 — 更新内容を見る" title="更新内容を見る"><span id="btn-version-num">v215</span><span class="sv-i" aria-hidden="true">ⓘ</span></button>
+          aria-label="バージョン v216 — 更新内容を見る" title="更新内容を見る"><span id="btn-version-num">v216</span><span class="sv-i" aria-hidden="true">ⓘ</span></button>
   <div class="title-block">
     <h1 class="serif">ごいた</h1>
     <div class="title-sub">能登・宇出津に伝わる竹駒の伝承遊戯</div>
@@ -3630,8 +3630,12 @@ const G = (() => {
 
   /** beliefMC(重み付き決定化+符牒等の証拠)の結果でkomaLedgerのpHoldを上書きする。
    *  硬い制約(min/max)は常にbeliefMCの結果より優先する(算術的確定は確率で薄めない)。 */
-  let COUNT_BELIEF_MINESS = 12;   // これを下回るessのbeliefMC結果は信用せず閉形式のまま残す
+  /* v216: 台帳精緻化の ESS フォールバックを撤廃する。beliefMC の ess は wSum > 0 なら必ず 1 以上((Σw)² ≥ Σw²)、
+   *   0 になるのは重み総和が 0(完全縮退)のときだけで、そのとき probs は全駒種 0 という無意味な値になる。
+   *   その 1 件だけ従来どおり閉形式に残し、それ以外は ess が低くても MC の推定を採る。setCountBeliefMinEss(12) / #miness=12 で v215 と同一。 */
+  let COUNT_BELIEF_MINESS = 1;
   function setCountBeliefMinEss(n) { COUNT_BELIEF_MINESS = n | 0; }
+  function minEssDiag() { return {minEss: COUNT_BELIEF_MINESS}; }
   /* v210(BELIEF_EST): beliefMC の pHold を制御変量つきで書く推定量。既定 "cvs" = clip_ε(A + c_k + (W − U))。
    *   A = 上書き直前の閉形式 pHold、W = 重み付き MC 確率(v209 まではこれをそのまま書いていた)、
    *   U = 同一サンプル列の非重み付き頻度(holdU/K)。W と U は同じ標本なので W − U が標本雑音を打ち消す
@@ -5793,7 +5797,7 @@ const G = (() => {
             ddSolve, ddSolveLegacy, setPackedSolve, packedSolveDiag,
             // v210(BELIEF_EST): pHold を書く経路も鏡像検査に載せる(第二読者 4-3)。可変の BELIEF_EST は
             // 連結しない(片側だけトグルを倒したテスト後に偽 FAIL が出るため)。定数表と ε は文字列で連結する。
-            ledgerRefine, beliefEstApply, setBeliefEst, beliefEstDiag,
+            ledgerRefine, beliefEstApply, setBeliefEst, beliefEstDiag, minEssDiag,
             // v211(RECV8_OU_VETO): フックを含む policyAction と拡張した mcDecideReceive、setter/診断を連結。可変のトグルは連結しない。
             policyAction, mcDecideReceive, setRecv8OuVeto, recv8OuVetoDiag,
             passEvidence, passFactor, setOukH8, oukH8Diag,   // v212(OUK_H8。passFactorC は連結済み)
@@ -8984,7 +8988,7 @@ const G = (() => {
     }
     return decided ? nsWins / decided : null;
   }
-  return {setDeterminizationV2, worldV2Metadata, diagnosticCloneStateForRollout: cloneStateForRollout, setTblTrust, tblFactorAt, setOuSignal, setOuTrust, detectOuSignals, partnerSignaledOu, partnerSignaledShi, kakariGotae, shiStarted, canShiAttackC, setOppProfile, oppRatesFromCounts, setEvLambdaGate, inferPartnerHoldings, setSigRead, setOuMix, setKyouMix, setShiKyoFix, setShiCommit, setShiCommitReal, setKakariEv, kakariEvidence, setPassMirror, setShiPairEv, shiPairEvidence, setKPairEv, pairAttackEvidence, setKyoNeg, setKyoNegScope, setKyoNegClosed, kyoNegAttackEvidence, _kyClsProbe, setOuKyoRisk, setLedgerCal, calP, setOulessFk, setTakeTurn, setKamizaWait, setKakuSignal, kakuSigEvidence, setKyoCode, kyoCodeEvidence, setKyoBonus, setKyoRetention, kyoBiasOf, setHumanModel, setBeliefSharpen, setFaTemper, setBuryUmaFix, setBuryPairShi, setKeepShiEshi, setKeepShiLastGuard, setShiKeep2, setWidthBury, setBuryCover, buryCoverPick, setUmaKeep, setShiBluff, setCoopSignal, setConvTrust, convTrustOf, moveHint, coopContext, setShiRejectStrong, setShiRideKeep, setFlowbackYield, setFlowbackTh, setFlowbackPreMc, flowbackYieldPass, setShiAtkAvoid, setShiAtkAvoidMin, setUncutAtkAvoid, setUncutFb, setOuSigShiGuard, setKyoR1Conserve, setKyoConsMode, setKyoWeakConserve, strongNonShi, setKyoR1Wait, setKyoCertainRecv, cfrSolve2x2, setRuleLevel, setDiag, setRolloutOpp, modelRespAction, setLeafDd, setLeafDdLimit, setLeafDdCap, matchEquity, ddSolve, ddSolveNaive, ddRootValues, ddParAnalyze, sampleWorldW, makePassEvCache, readingNotes, komaLedger, setCountRead, countWhy, setCountGate, setCountPlanConf, setCountPlanRisk, planRisk, unseenMinusPartnerLedger, sampleWorldC, setCountSample, setCountRecvp, setCountBelief, setCountBeliefMaxHand, setCountBeliefMinHist, setCountBeliefMinEss, setBeliefEst, beliefEstDiag, ledgerRefine, komaLedgerMaybeRefine, setSoloSig, setOuTakeTurn, setOuTtMaxHand, setOuTtMinChain, setOuTtMargin, setOuTtDets, ouTakeTurnPick, ouChainThroughP, mcDecideReceive, pCanReceive, setRecv8OuVeto, recv8OuVetoDiag, setOukH8, oukH8Diag, setOukH2, oukH2Diag, setOukH6, oukH6Diag, pEnemyReceives, isFirstRound, SEATS, KOMA_COUNT, POINTS, UNCUTTABLE, team, nextSeat, partnerOf, mcEvalReceive, gameEquityMC, countsFor, freshSolverProbe, puzzleTruthProbe, beliefExact, beliefMC,
+  return {setDeterminizationV2, worldV2Metadata, diagnosticCloneStateForRollout: cloneStateForRollout, setTblTrust, tblFactorAt, setOuSignal, setOuTrust, detectOuSignals, partnerSignaledOu, partnerSignaledShi, kakariGotae, shiStarted, canShiAttackC, setOppProfile, oppRatesFromCounts, setEvLambdaGate, inferPartnerHoldings, setSigRead, setOuMix, setKyouMix, setShiKyoFix, setShiCommit, setShiCommitReal, setKakariEv, kakariEvidence, setPassMirror, setShiPairEv, shiPairEvidence, setKPairEv, pairAttackEvidence, setKyoNeg, setKyoNegScope, setKyoNegClosed, kyoNegAttackEvidence, _kyClsProbe, setOuKyoRisk, setLedgerCal, calP, setOulessFk, setTakeTurn, setKamizaWait, setKakuSignal, kakuSigEvidence, setKyoCode, kyoCodeEvidence, setKyoBonus, setKyoRetention, kyoBiasOf, setHumanModel, setBeliefSharpen, setFaTemper, setBuryUmaFix, setBuryPairShi, setKeepShiEshi, setKeepShiLastGuard, setShiKeep2, setWidthBury, setBuryCover, buryCoverPick, setUmaKeep, setShiBluff, setCoopSignal, setConvTrust, convTrustOf, moveHint, coopContext, setShiRejectStrong, setShiRideKeep, setFlowbackYield, setFlowbackTh, setFlowbackPreMc, flowbackYieldPass, setShiAtkAvoid, setShiAtkAvoidMin, setUncutAtkAvoid, setUncutFb, setOuSigShiGuard, setKyoR1Conserve, setKyoConsMode, setKyoWeakConserve, strongNonShi, setKyoR1Wait, setKyoCertainRecv, cfrSolve2x2, setRuleLevel, setDiag, setRolloutOpp, modelRespAction, setLeafDd, setLeafDdLimit, setLeafDdCap, matchEquity, ddSolve, ddSolveNaive, ddRootValues, ddParAnalyze, sampleWorldW, makePassEvCache, readingNotes, komaLedger, setCountRead, countWhy, setCountGate, setCountPlanConf, setCountPlanRisk, planRisk, unseenMinusPartnerLedger, sampleWorldC, setCountSample, setCountRecvp, setCountBelief, setCountBeliefMaxHand, setCountBeliefMinHist, setCountBeliefMinEss, minEssDiag, setBeliefEst, beliefEstDiag, ledgerRefine, komaLedgerMaybeRefine, setSoloSig, setOuTakeTurn, setOuTtMaxHand, setOuTtMinChain, setOuTtMargin, setOuTtDets, ouTakeTurnPick, ouChainThroughP, mcDecideReceive, pCanReceive, setRecv8OuVeto, recv8OuVetoDiag, setOukH8, oukH8Diag, setOukH2, oukH2Diag, setOukH6, oukH6Diag, pEnemyReceives, isFirstRound, SEATS, KOMA_COUNT, POINTS, UNCUTTABLE, team, nextSeat, partnerOf, mcEvalReceive, gameEquityMC, countsFor, freshSolverProbe, puzzleTruthProbe, beliefExact, beliefMC,
           mulberry32, shuffle, fullDeck, counter,
           newGameState, advance, canAttackKing, validReceive, legalReceives, legalAttacks,
           maskHistoryFor, makeView, unseenCounts, solveWin, checkKingAtkOk,
@@ -10581,8 +10585,12 @@ const G_B = (() => {
 
   /** beliefMC(重み付き決定化+符牒等の証拠)の結果でkomaLedgerのpHoldを上書きする。
    *  硬い制約(min/max)は常にbeliefMCの結果より優先する(算術的確定は確率で薄めない)。 */
-  let COUNT_BELIEF_MINESS = 12;   // これを下回るessのbeliefMC結果は信用せず閉形式のまま残す
+  /* v216: 台帳精緻化の ESS フォールバックを撤廃する。beliefMC の ess は wSum > 0 なら必ず 1 以上((Σw)² ≥ Σw²)、
+   *   0 になるのは重み総和が 0(完全縮退)のときだけで、そのとき probs は全駒種 0 という無意味な値になる。
+   *   その 1 件だけ従来どおり閉形式に残し、それ以外は ess が低くても MC の推定を採る。setCountBeliefMinEss(12) / #miness=12 で v215 と同一。 */
+  let COUNT_BELIEF_MINESS = 1;
   function setCountBeliefMinEss(n) { COUNT_BELIEF_MINESS = n | 0; }
+  function minEssDiag() { return {minEss: COUNT_BELIEF_MINESS}; }
   /* v210(BELIEF_EST): beliefMC の pHold を制御変量つきで書く推定量。既定 "cvs" = clip_ε(A + c_k + (W − U))。
    *   A = 上書き直前の閉形式 pHold、W = 重み付き MC 確率(v209 まではこれをそのまま書いていた)、
    *   U = 同一サンプル列の非重み付き頻度(holdU/K)。W と U は同じ標本なので W − U が標本雑音を打ち消す
@@ -12744,7 +12752,7 @@ const G_B = (() => {
             ddSolve, ddSolveLegacy, setPackedSolve, packedSolveDiag,
             // v210(BELIEF_EST): pHold を書く経路も鏡像検査に載せる(第二読者 4-3)。可変の BELIEF_EST は
             // 連結しない(片側だけトグルを倒したテスト後に偽 FAIL が出るため)。定数表と ε は文字列で連結する。
-            ledgerRefine, beliefEstApply, setBeliefEst, beliefEstDiag,
+            ledgerRefine, beliefEstApply, setBeliefEst, beliefEstDiag, minEssDiag,
             // v211(RECV8_OU_VETO): フックを含む policyAction と拡張した mcDecideReceive、setter/診断を連結。可変のトグルは連結しない。
             policyAction, mcDecideReceive, setRecv8OuVeto, recv8OuVetoDiag,
             passEvidence, passFactor, setOukH8, oukH8Diag,   // v212(OUK_H8。passFactorC は連結済み)
@@ -15935,7 +15943,7 @@ const G_B = (() => {
     }
     return decided ? nsWins / decided : null;
   }
-  return {setDeterminizationV2, worldV2Metadata, diagnosticCloneStateForRollout: cloneStateForRollout, setTblTrust, tblFactorAt, setOuSignal, setOuTrust, detectOuSignals, partnerSignaledOu, partnerSignaledShi, kakariGotae, shiStarted, canShiAttackC, setOppProfile, oppRatesFromCounts, setEvLambdaGate, inferPartnerHoldings, setSigRead, setOuMix, setKyouMix, setShiKyoFix, setShiCommit, setShiCommitReal, setKakariEv, kakariEvidence, setPassMirror, setShiPairEv, shiPairEvidence, setKPairEv, pairAttackEvidence, setKyoNeg, setKyoNegScope, setKyoNegClosed, kyoNegAttackEvidence, _kyClsProbe, setOuKyoRisk, setLedgerCal, calP, setOulessFk, setTakeTurn, setKamizaWait, setKakuSignal, kakuSigEvidence, setKyoCode, kyoCodeEvidence, setKyoBonus, setKyoRetention, kyoBiasOf, setHumanModel, setBeliefSharpen, setFaTemper, setBuryUmaFix, setBuryPairShi, setKeepShiEshi, setKeepShiLastGuard, setShiKeep2, setWidthBury, setBuryCover, buryCoverPick, setUmaKeep, setShiBluff, setCoopSignal, setConvTrust, convTrustOf, moveHint, coopContext, setShiRejectStrong, setShiRideKeep, setFlowbackYield, setFlowbackTh, setFlowbackPreMc, flowbackYieldPass, setShiAtkAvoid, setShiAtkAvoidMin, setUncutAtkAvoid, setUncutFb, setOuSigShiGuard, setKyoR1Conserve, setKyoConsMode, setKyoWeakConserve, strongNonShi, setKyoR1Wait, setKyoCertainRecv, cfrSolve2x2, setRuleLevel, setDiag, setRolloutOpp, modelRespAction, setLeafDd, setLeafDdLimit, setLeafDdCap, matchEquity, ddSolve, ddSolveNaive, ddRootValues, ddParAnalyze, sampleWorldW, makePassEvCache, readingNotes, komaLedger, setCountRead, countWhy, setCountGate, setCountPlanConf, setCountPlanRisk, planRisk, unseenMinusPartnerLedger, sampleWorldC, setCountSample, setCountRecvp, setCountBelief, setCountBeliefMaxHand, setCountBeliefMinHist, setCountBeliefMinEss, setBeliefEst, beliefEstDiag, ledgerRefine, komaLedgerMaybeRefine, setSoloSig, setOuTakeTurn, setOuTtMaxHand, setOuTtMinChain, setOuTtMargin, setOuTtDets, ouTakeTurnPick, ouChainThroughP, mcDecideReceive, pCanReceive, setRecv8OuVeto, recv8OuVetoDiag, setOukH8, oukH8Diag, setOukH2, oukH2Diag, setOukH6, oukH6Diag, pEnemyReceives, isFirstRound, SEATS, KOMA_COUNT, POINTS, UNCUTTABLE, team, nextSeat, partnerOf, mcEvalReceive, gameEquityMC, countsFor, freshSolverProbe, puzzleTruthProbe, beliefExact, beliefMC,
+  return {setDeterminizationV2, worldV2Metadata, diagnosticCloneStateForRollout: cloneStateForRollout, setTblTrust, tblFactorAt, setOuSignal, setOuTrust, detectOuSignals, partnerSignaledOu, partnerSignaledShi, kakariGotae, shiStarted, canShiAttackC, setOppProfile, oppRatesFromCounts, setEvLambdaGate, inferPartnerHoldings, setSigRead, setOuMix, setKyouMix, setShiKyoFix, setShiCommit, setShiCommitReal, setKakariEv, kakariEvidence, setPassMirror, setShiPairEv, shiPairEvidence, setKPairEv, pairAttackEvidence, setKyoNeg, setKyoNegScope, setKyoNegClosed, kyoNegAttackEvidence, _kyClsProbe, setOuKyoRisk, setLedgerCal, calP, setOulessFk, setTakeTurn, setKamizaWait, setKakuSignal, kakuSigEvidence, setKyoCode, kyoCodeEvidence, setKyoBonus, setKyoRetention, kyoBiasOf, setHumanModel, setBeliefSharpen, setFaTemper, setBuryUmaFix, setBuryPairShi, setKeepShiEshi, setKeepShiLastGuard, setShiKeep2, setWidthBury, setBuryCover, buryCoverPick, setUmaKeep, setShiBluff, setCoopSignal, setConvTrust, convTrustOf, moveHint, coopContext, setShiRejectStrong, setShiRideKeep, setFlowbackYield, setFlowbackTh, setFlowbackPreMc, flowbackYieldPass, setShiAtkAvoid, setShiAtkAvoidMin, setUncutAtkAvoid, setUncutFb, setOuSigShiGuard, setKyoR1Conserve, setKyoConsMode, setKyoWeakConserve, strongNonShi, setKyoR1Wait, setKyoCertainRecv, cfrSolve2x2, setRuleLevel, setDiag, setRolloutOpp, modelRespAction, setLeafDd, setLeafDdLimit, setLeafDdCap, matchEquity, ddSolve, ddSolveNaive, ddRootValues, ddParAnalyze, sampleWorldW, makePassEvCache, readingNotes, komaLedger, setCountRead, countWhy, setCountGate, setCountPlanConf, setCountPlanRisk, planRisk, unseenMinusPartnerLedger, sampleWorldC, setCountSample, setCountRecvp, setCountBelief, setCountBeliefMaxHand, setCountBeliefMinHist, setCountBeliefMinEss, minEssDiag, setBeliefEst, beliefEstDiag, ledgerRefine, komaLedgerMaybeRefine, setSoloSig, setOuTakeTurn, setOuTtMaxHand, setOuTtMinChain, setOuTtMargin, setOuTtDets, ouTakeTurnPick, ouChainThroughP, mcDecideReceive, pCanReceive, setRecv8OuVeto, recv8OuVetoDiag, setOukH8, oukH8Diag, setOukH2, oukH2Diag, setOukH6, oukH6Diag, pEnemyReceives, isFirstRound, SEATS, KOMA_COUNT, POINTS, UNCUTTABLE, team, nextSeat, partnerOf, mcEvalReceive, gameEquityMC, countsFor, freshSolverProbe, puzzleTruthProbe, beliefExact, beliefMC,
           mulberry32, shuffle, fullDeck, counter,
           newGameState, advance, canAttackKing, validReceive, legalReceives, legalAttacks,
           maskHistoryFor, makeView, unseenCounts, solveWin, checkKingAtkOk,
@@ -18274,6 +18282,13 @@ const GOITA_ENGINE_REGISTRY = (() => {
   try {
     const m = /[#&]pkdd=([012])/.exec(location.hash || "");
     if (m) GOITA_ENGINE_REGISTRY.invokeAll("setPackedDd", +m[1]);
+  } catch (e) { /* トグル不可でも対局は継続 */ }
+})();
+/* build v216: #miness=12|1 (既定1 = 台帳精緻化のフォールバック撤廃)。12 で v215 と同一。列挙に限定し長い候補を先に置く(正規表現の交替順)。 */
+(() => {
+  try {
+    const m = /[#&]miness=(12|1)(?![0-9])/.exec(location.hash || "");
+    if (m) GOITA_ENGINE_REGISTRY.invokeAll("setCountBeliefMinEss", +m[1]);
   } catch (e) { /* トグル不可でも対局は継続 */ }
 })();
 /* build v215(OUK_H6): #oukh6=0|1 (既定1 = 手駒 6・4 の王温存バケット ON)。#oukh2 と同一パターン。0 で v214 と同一。 */
@@ -27915,6 +27930,8 @@ if (typeof document !== "undefined") (() => {
    * tag: fix=不具合修正 / fast=速くなった / read=読みが良くなった / ui=使いやすくなった(v212.1 新設) / (無印)=内部のみ
    * ================================================================ */
   const APP_CHANGELOG = [
+    {v: "v216", d: "2026-09-07", tag: "read", tagJa: "読みが良くなった", t: "読みの安定性を直しました", p: [
+      "相手の手の読みが不安定になる局面で、読みを粗い近似に戻していた処理をやめ、常に詳しい推定を使うようにしました。"]},
     {v: "v215", d: "2026-09-06", tag: "read", tagJa: "読みが良くなった", t: "手駒が減ってから敵の攻めを通した席の王の読みを直しました", p: [
       "手駒が6枚以下になってから敵の攻めを通した席について、王を持っている見込みの読み方を実測に合わせて較正し直しました。"]},
     {v: "v213", d: "2026-09-04", tag: "", tagJa: "内部のみ", t: "ファイル内のビルド履歴を外部の記録に移しました", p: [
