@@ -4,11 +4,18 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>ごいた — 能登の伝承遊戯</title>
-  <!-- build: v216「台帳精緻化の ESS フォールバック撤廃」base=v215(配信中)。計画: PLAN_v216_ESSフォールバック撤廃_rev2_Opus5.md
-       変更: G/G_B 同一テキストで (1) 台帳精緻化(ledgerRefine)が beliefMC の実効標本数の低さを理由に結果を捨てて閉形式へ戻す下限を、実測(閉形式の方が桁違いに悪い)に基づいて撤廃、
-             (2) minEssDiag を公開・packedWorldSrc に連結。判定行・beliefMC・推定量・王温存バケットの λ・打ち筋の規則は v215 と同一。app 層は版数・更新内容(v216 を追加)・#miness=1|12。
+  <!-- build: v219.2「UI-2（駒数の長押し表示 / 観戦の残り点 / プレイスタイル / 席の交換 / サマリー画像）＋ UI-3 第 1 便（開始画面 / 受けの助言 / 2 タップ確定 / タップ領域 / 自動振り返り既定 OFF）」base=v219（配信中）。
+       v219.1（UI-2 単独）は未配信のまま本版に含む。計画: PLAN_v219.2_UI2UI3まとめ配信物化_rev1_Opus5.md ＋ PLAN_UI3_第1便_UX05_UX02_UX07_UX01_rev3_Fable5.1.md（裁定 1〜16）
+       変更: UI 層のみ。apply_ui2.py（35 置換）→ apply_ui3.py（39 置換）→ apply_v219_2_glue.py（15 置換・駒数の長押しを補助として要約・大会仕様・卒業帳・稽古札の試し・出場前チェックリストに揃える）→ apply_ui_release.py（版数・CHANGELOG・バッジ・sw.js）。新設定 countsHold は既定 OFF・既定 opMode は tap のまま。
+       エンジン: G / G_B / T1 を含むエンジン区画は v219 と byte 同一（verify_chain_v219_2.py の区画照合・make_block_raw / gb_sync / b2_make_engine 計装 sha 一致・着手列 SHA 一致で機械確認）。
+       CACHE_NAME: goita-v219 → goita-v219.2. -->
+  <!-- build: v219「攻めの DD-PIMC に規則再生の整合重み(ATK_CONS_W・既定 1・λ 0.2)」base=v216(配信中)。計画: PLAN_v218_整合重み_rev3_Fable5.1.md ＋ PREREG_P-A2(λ 0.2)。v218(λ 0.5)は判定帯で条件 3 未達・未配信
+       変更: G/G_B 同一テキストで (1) 総手駒 ≤ 16・手駒 ≤ 4 の攻め DD-PIMC(attackMC の dd 分岐)で、候補世界ごとに他 3 席の履歴上の全決定を規則のみ(noMC)で再生し、
+             観測との不一致数 k で (1 − trust·0.8)^k(AI 席は 0.2^k)の重みを DD 値に掛けて平均する(ESS < 4 の決定は無重みに退避。世界列と適応的追加標本の停止規則は v216 のまま)、
+             (2) advance() が し攻め拒否の添字 rejShiAt を記録(再生用)、(3) 対人席の trust チャネル setAtkConsTrust(表整合性の事後・n ≥ 12 まで 0)。
+             標本器・証拠モデル・台帳・受け MC・伏せ MC は v216 と同一。app 層は版数・更新内容(v219 を追加)・#atkcons=0|1・applyOppProfile の trust 供給。
        ヘッダ履歴: v212.1 以前の build ヘッダ 115 本は docs/BUILD_HISTORY_index.md に移してある(byte-exact 保存は harness/build_headers_v212_1.json)。
-       切り戻し: 実行中は GOITA_ENGINE_REGISTRY.invokeAll("setCountBeliefMinEss", 12) または起動時 #miness=12、恒久的にはコード各 2 箇所(G/G_B)の既定値 1 → 12。CACHE_NAME: goita-v215 → goita-v216. -->
+       切り戻し: 実行中は GOITA_ENGINE_REGISTRY.invokeAll("setAtkConsW", 0) または起動時 #atkcons=0、恒久的にはコード各 2 箇所(G/G_B)の既定値 1 → 0。CACHE_NAME: goita-v216 → goita-v219. -->
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="ごいた">
@@ -156,6 +163,15 @@ body.theme-kinari .coach-tier button.on{background:#a58f52;border-color:#a58f52}
 .coach-adv>summary::-webkit-details-marker{display:none}
 .coach-adv>summary::before{content:"▸ ";color:var(--kin)}
 .coach-adv[open]>summary::before{content:"▾ "}
+/* UI-3(UX-01): 詳しい設定の折りたたみ。summary は常時可視の主要導線なので当たり判定 44px。
+   .actions は #setup-go の内側へ移ったため body.noto #setup-screen>.actions の規則は到達不能(残置・#setup-go は .panel で同規則に掛かる) */
+#setup-adv>summary{font-size:.8rem;color:var(--gin);cursor:pointer;padding:6px 4px;letter-spacing:.08em;list-style:none;min-height:44px;display:flex;align-items:center}
+#setup-adv>summary::-webkit-details-marker{display:none}
+#setup-adv>summary::before{content:"▸ ";color:var(--kin)}
+#setup-adv[open]>summary::before{content:"▾ "}
+.setup-adv-body{display:flex;flex-direction:column;gap:14px;margin-top:10px}
+body.noto #setup-screen>#setup-adv{position:relative;z-index:1}
+body.theme-kinari #setup-adv>summary,body.theme-kinari #setup-adv>summary::before{color:#7a6221}
 .coach-adv>summary:hover{color:var(--kinari)}
 /* O3(v70): 「調整」モーダルの5群見出し。既存.coach-advの▸/▾意匠を踏襲しつつ、区分の境界が分かるよう枠線を付与 */
 .settings-group{border:1px solid var(--hair2);border-radius:9px;margin-bottom:9px;padding:0 12px}
@@ -239,9 +255,11 @@ body.readHint #hand{row-gap:28px;padding-bottom:28px}
 /* 受ける駒が皆無のとき: 手駒を薄黒く沈めて「受けられない」を明示（「なし」発光と併用） */
 #hand.norecv .koma{filter:brightness(.4) saturate(.55);pointer-events:none;transition:filter .25s ease}
 @media (forced-colors:active){#hand.norecv .koma{filter:none;color:GrayText;border-color:GrayText}}
-/* タッチ端末: 手駒・選択駒のタップ領域を44px以上に拡張(見た目は不変) */
+/* タッチ端末: 手駒のタップ領域を44px以上に拡張(見た目は不変)。UI-3(UX-07): .koma は clip-path を持ち擬似要素もクリップされて
+   ヒットテストに効かなかった(CSS Masking §5)ため、clip-path を持たない .koma-slot 側に置く。横は隣と重ならない幅(駒間の半分)。
+   JS 側は #hand の委譲クリックで内側の駒へ渡す。.att-area 側は空運用(renderStage が空にする)のため据え置き */
 @media (pointer:coarse){
-  #hand .koma::before,.att-area .koma::before{content:"";position:absolute;inset:-7px -3px;border-radius:6px}
+  #hand .koma-slot::before,.att-area .koma::before{content:"";position:absolute;inset:-7px -3px;border-radius:6px}
   #hand .koma,.att-area .koma{min-width:38px}
 }
 .koma.sel{outline:2px solid var(--kin);outline-offset:2px}
@@ -859,6 +877,17 @@ body.nashi-left #actionbar{justify-content:flex-start}
 .tbar .tl{flex:none;width:2.6em;color:var(--gin)}
 .tbar .tt{flex:1;height:7px;border-radius:4px;background:var(--ink2);overflow:hidden}
 .tbar .tf{display:block;height:100%;background:var(--aoi);border-radius:4px}
+.pstyle{margin:10px 0;border-top:1px solid var(--hair2);padding-top:8px}
+.pstyle .ps-body{display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap}
+.pstyle .radar{width:190px;height:190px;flex:none}
+.pstyle .radar .rg{fill:none;stroke:var(--hair2);stroke-width:1}
+.pstyle .radar .ra{stroke:var(--hair2);stroke-width:1}
+.pstyle .radar .rp{fill:var(--aoi);fill-opacity:.25;stroke:var(--aoi);stroke-width:2;stroke-linejoin:round}
+.pstyle .radar .rm{fill:var(--aoi);stroke:var(--ink1);stroke-width:2}
+.pstyle .radar .rm.na{fill:var(--gin-d)}
+.pstyle .radar .rl{fill:var(--gin);font-size:10px}
+.pstyle .ps-bars{flex:1;min-width:200px}
+.pstyle .tbar .tl{width:3.4em}
 .tbar .tn{flex:none;min-width:6.5em;text-align:right;color:var(--kinari);font-variant-numeric:tabular-nums}
 /* D-1(v90e): テンポ計の行(帯ラベル+一致率)。.tbarとは別の軽量行(バー描画なし・純テキスト) */
 .trow{display:flex;justify-content:space-between;gap:8px;font-size:.76rem;padding:2px 0}
@@ -888,12 +917,28 @@ body.nashi-left #actionbar{justify-content:flex-start}
 .mcard .mline.shu b{color:var(--shu)}
 .mcard .mline.kin{color:var(--kin)}
 .rv-btns{display:inline-flex;gap:6px;flex-wrap:wrap;margin-top:5px}
-#count-bar .cb-i{display:inline-block;margin-left:5px;font-size:.66rem}
-#count-bar .cb-i.z{opacity:.32}
-#count-bar .cb-t{font-size:.6rem;color:var(--gin-d)}
-/* P3 B4: 要駒(王/香/し)の未見数を強調。切れ・王攻め判断の目安 */
-#count-bar .cb-i.key{color:var(--kin);font-weight:700}
-#count-bar .cb-i.key.z{color:var(--kin);opacity:.4}
+/* UI-2: カウント表は図形(.cgrid)に置き換え(旧 .cb-i / .cb-t は生成されないので CSS も外した) */
+#count-hold[hidden],#count-overlay[hidden],#watch-info[hidden]{display:none}
+#count-hold{margin-left:6px;padding:2px 8px;font-size:.66rem;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;align-self:center;flex:none}   /* v219.2 glue G4 */
+.cgrid{display:flex;flex-wrap:wrap;gap:3px 9px;align-items:center;font-size:.62rem;line-height:1}
+.cgrid .cg-row{display:inline-flex;align-items:center;gap:3px;white-space:nowrap}
+.cgrid .cg-row.z{opacity:.35}
+.cgrid .cg-k{width:14px;height:17px;font-size:.62rem;flex:none}
+.cgrid .cg-pips{display:inline-flex;gap:2px}
+.cgrid .cg-pip{display:inline-block;width:6px;height:6px;border-radius:50%;border:1px solid var(--gin-d);box-sizing:border-box}
+.cgrid .cg-pip.on{background:var(--gin);border-color:var(--gin)}
+.cgrid .cg-row.key .cg-pip.on{background:var(--kin);border-color:var(--kin)}
+.cgrid .cg-n{font-variant-numeric:tabular-nums;color:var(--gin);font-weight:400}
+.cgrid .cg-row.key .cg-n{color:var(--kin);font-weight:700}
+#count-overlay{position:absolute;inset:0;z-index:8;display:flex;align-items:center;justify-content:center;pointer-events:none;background:rgba(8,12,10,.5);border-radius:12px}
+#count-overlay .cgrid.big{flex-direction:column;align-items:stretch;gap:6px;font-size:.92rem;background:var(--ink1);border:1px solid var(--hair2);border-radius:10px;padding:10px 14px;box-shadow:0 6px 24px rgba(0,0,0,.45)}
+#count-overlay .cgrid.big .cg-k{width:22px;height:27px;font-size:.9rem}
+#count-overlay .cgrid.big .cg-pip{width:10px;height:10px}
+#watch-info{display:flex;flex-wrap:wrap;gap:3px 14px;justify-content:center;font-size:.66rem;color:var(--gin);padding:4px 8px}
+#watch-info .wi-pts{color:var(--kinari)}
+.legend .pc-lg{display:inline-block;border:1px solid currentColor;border-radius:3px;padding:0 3px;margin-right:3px;font-size:.6rem;line-height:1.2}
+.legend .pc-lg.p{color:var(--aoi)}
+.legend .pc-lg.e{color:var(--shu)}
 /* P3 B5: 推奨攻め駒のゴースト先出し（半透明で置かれる予定位置に表示） */
 .farea .fghost{opacity:.34;animation:ghostPulse 1.5s var(--ease-soft) infinite}
 @keyframes ghostPulse{0%,100%{opacity:.22}50%{opacity:.46}}
@@ -1200,6 +1245,9 @@ body.tut #main-screen{padding-bottom:36vh}   /* 盤面を上端までスクロ�
 /* 2タップ確定モード: 1度目のタップで「武装」した駒 */
 .koma.armed{outline:3px solid var(--kin);outline-offset:3px;transform:translateY(-6px);
   box-shadow:0 6px 14px rgba(0,0,0,.4)}
+/* UI-3(UX-02): 2タップ確定モードで武装した「なし」ボタン(.rec の box-shadow/animation と両立) */
+#actionbar .btn.armed{outline:3px solid var(--kin);outline-offset:2px}
+@media (forced-colors:active){#actionbar .btn.armed{outline:3px solid Highlight}}
 @media (prefers-reduced-motion:reduce){.koma.armed{transform:none}}
 /* CUD(色覚サポート): 相方/敵を形状マーカーでも区別。色だけに依存しない */
 body.cud .pcard .phead .nm.ally::before{content:"●";margin-right:3px;font-size:.7em;color:var(--aoi)}
@@ -1215,6 +1263,7 @@ body.cud .pcard .phead .nm:not(.ally){color:#e8b89f}  /* 敵=暖色系で寒色�
   #handarea{position:sticky;bottom:0;z-index:5;padding-top:4px;padding-bottom:4px}
   #hand{flex-wrap:nowrap;overflow-x:auto;justify-content:flex-start;--hand-gap:4px;gap:var(--hand-gap);
     scrollbar-width:thin;-webkit-overflow-scrolling:touch}
+  #hand .koma-slot::before{inset:-7px -2px}   /* UI-3(UX-07): 横持ちも駒間 4px なので横 2px。上下は #hand の overflow でクリップされる(制約) */
   #beliefbox,#readingbox{max-height:30vh;overflow-y:auto}
 }
 /* ===== 縦持ち(スマホ)コンパクション: 鳥瞰十字を背の低い端末でも1画面に収める ===== */
@@ -1356,7 +1405,7 @@ body.cud .pcard .phead .nm:not(.ally){color:#e8b89f}  /* 敵=暖色系で寒色�
      flex項目としての縮小防止(flex:0 0 auto)・最小幅解除(min-width:0)は.koma-slot側に複製する必要がある
      (.koma側の指定はもはやflexアルゴリズムに効かないため、8枚を1段に収める挙動が崩れるのを防止) */
   #hand .koma-slot{min-width:0;flex:0 0 auto}
-  #hand .koma::before{inset:-8px -3px}
+  #hand .koma-slot::before{inset:-8px -2px}   /* UI-3: 駒間 4px なので横 2px(隣の輪と重ねない) */
   /* build v152: 攻めバッジに「通」接頭辞を追加した分(旧「37%」→新「通37%」)、狭幅では
      隣接駒との重なり余地を減らすためフォントをわずかに縮小する。position:absolute+nowrapの
      ため万一詰まっても折返し・見切れ(v149/v150で対処した縦方向のクリップ問題)には発展しない。 */
@@ -1417,7 +1466,7 @@ body.reviewing #turn-focus{display:none!important}
   #hand{max-width:170px;margin-inline:auto;flex-wrap:wrap;gap:10px 6px;overflow:visible}
   #hand .koma{--koma-w:38px;--koma-h:47px;min-width:38px}
   #hand .koma-slot{min-width:38px}
-  #hand .koma::before{inset:-4px -3px}
+  #hand .koma-slot::before{inset:-4px -3px}
 }
 /* PHASE14_MOBILE_A11Y_CSS_END */
 /* PHASE15_DEVICE_AUDIT_CSS_START */
@@ -1732,7 +1781,7 @@ body.noto #wincut.show .wc-label{animation:wcFude .62s cubic-bezier(.2,.9,.3,1.2
 <div id="setup-screen">
   <!-- build v208: 版数表示は APP_CHANGELOG[0] から起動時に上書きされる(JS が動かない場合の保険としてここにも同じ版数を書いておく)。 -->
   <button type="button" class="setup-version" id="btn-version"
-          aria-label="バージョン v216 — 更新内容を見る" title="更新内容を見る"><span id="btn-version-num">v216</span><span class="sv-i" aria-hidden="true">ⓘ</span></button>
+          aria-label="バージョン v219.2 — 更新内容を見る" title="更新内容を見る"><span id="btn-version-num">v219.2</span><span class="sv-i" aria-hidden="true">ⓘ</span></button>
   <div class="title-block">
     <h1 class="serif">ごいた</h1>
     <div class="title-sub">能登・宇出津に伝わる竹駒の伝承遊戯</div>
@@ -1812,6 +1861,19 @@ body.noto #wincut.show .wc-label{animation:wcFude .62s cubic-bezier(.2,.9,.3,1.2
     <p class="desc" id="ladder-note" style="margin-top:9px">まずは「はじめて」から。慣れてきたら「腕試し」、実際の宇出津の大会に近い感覚をつかみたくなったら「大会仕様」をどうぞ。下の「席の構成」で個別に調整することもできます。</p>
   </div>
 
+  <!-- UI-3(UX-01・案 A): 目的(プリセット)の直下に「設定要約＋開始/観戦」。席の構成・対局の設定・AIと表示は下の details に畳む(id は不変) -->
+  <div class="panel setup-card" id="setup-go">
+    <h2>この設定で</h2>
+    <p class="desc" id="setup-summary"></p>
+    <div class="actions">
+      <button class="btn primary" id="btn-start" aria-describedby="setup-summary">対局をはじめる</button>
+      <button class="btn" id="btn-watch">観戦（全席AI）</button>
+    </div>
+    <p class="desc">席の構成・先取点・AIと表示は下の「詳しい設定」で変えられます。</p>
+  </div>
+  <details id="setup-adv">
+    <summary>詳しい設定（席の構成・先取点・AIと表示）</summary>
+    <div class="setup-adv-body">
   <details class="panel setup-card" id="seat-detail">
     <summary>席の構成（細かく選ぶ）</summary>
     <div class="seatcfg">
@@ -1877,7 +1939,7 @@ body.noto #wincut.show .wc-label{animation:wcFude .62s cubic-bezier(.2,.9,.3,1.2
         <button type="button" data-tier="std">標準</button>
         <button type="button" data-tier="full">詳しい</button>
       </div>
-      <div class="desc" style="margin-top:7px">オフ＝案内なし／標準（既定）＝操作ヒントと読み筋／詳しい＝推奨手ハイライト・パターンタグ・候補手・カウント・ミスガードまで全部入り。<b class="kin-em">はじめての方は「詳しい」がおすすめ</b>（学習補助が一通り有効になります）。下の詳細で個別にも調整できます。</div>
+      <div class="desc" style="margin-top:7px">オフ＝案内なし／標準（既定）＝操作ヒントと読み筋／詳しい＝推奨手ハイライト・パターンタグ・候補手・カウント・受けの助言まで全部入り。<b class="kin-em">はじめての方は「詳しい」がおすすめ</b>（学習補助が一通り有効になります）。下の詳細で個別にも調整できます。</div>
       <details class="coach-adv">
         <summary>詳細（個別に調整）</summary>
         <label class="toggle"><input type="checkbox" id="cfg-hints" checked>
@@ -1893,13 +1955,13 @@ body.noto #wincut.show .wc-label{animation:wcFude .62s cubic-bezier(.2,.9,.3,1.2
         <label class="toggle"><input type="checkbox" id="cfg-readHint">
           <span>読みヒント（通る目安・保有推定）<span class="desc">あなたの手番のみ表示。攻め候補には「この攻めが通る目安」のバッジ（敵チームが受けられない確率の推定。敵が受けを見送る場合もあるため実際はこれ以上）、受け候補にはAIの推奨バッジ。駒を長押しすると相手の保有推定(pHold)も見られます。数値は推定であり断定ではありません。</span></span></label>
         <label class="toggle"><input type="checkbox" id="cfg-missGuard">
-          <span>ミスガード<span class="desc">明確な受けと違う駒を選んだ時だけ軽い確認。誤タップ防止。確認した局は成績集計から除外。</span></span></label>
+          <span>受けの助言（明確な局面だけ・確認つき）<span class="desc">明確な最善受けがあるのに別の駒を選んだときだけ、AIの推奨を示して確認します（戦術の助言です。誤タップ防止ではありません）。表示した局は成績集計から除外。</span></span></label>
         <label class="toggle"><input type="checkbox" id="cfg-counts">
           <span>カウント表（王/香/しを強調）<span class="desc">自分の視点で場に出ていない駒数を表示します。</span></span></label>
         <label class="toggle"><input type="checkbox" id="cfg-sighonest">
           <span>符丁の正直さコーチ<span class="desc">振り返りで、あなたの攻めが相方へ送った合図と手札の整合を点検します（学習向け）。</span></span></label>
-        <label class="toggle"><input type="checkbox" id="cfg-autoWorstTour" checked>
-          <span>終局後に悪手を自動で振り返る<span class="desc">対局が終わった直後、この局で検出した悪手(⚠読み切り逃し・☆明確局面での逸脱)を悪手度の高い順に自動で巡回表示します（既定ON）。オフでもアクションバーの「悪手を振り返る」から手動で開けます。</span></span></label>
+        <label class="toggle"><input type="checkbox" id="cfg-autoWorstTour">
+          <span>終局後に悪手を自動で振り返る<span class="desc">対局が終わった直後、この局で検出した悪手(⚠読み切り逃し・☆明確局面での逸脱)を悪手度の高い順に自動で巡回表示します（既定OFF）。オフでもアクションバーの「悪手を振り返る」から手動で開けます。</span></span></label>
       </details>
     </div>
     <label class="toggle"><input type="checkbox" id="cfg-tempo" checked>
@@ -1912,12 +1974,12 @@ body.noto #wincut.show .wc-label{animation:wcFude .62s cubic-bezier(.2,.9,.3,1.2
       <span>直前の「なし」を席カードに表示<span class="desc">各席が最近「なし」で通した攻め駒を名札の下に小さく並べます（青＝相方の攻め、朱＝敵の攻め。既定OFF）。</span></span></label>
     <label class="toggle"><input type="checkbox" id="cfg-watchReveal">
       <span>観戦時に4席の手駒を公開<span class="desc">観戦（全席AI）のときだけ、全員の手駒と伏せ駒を表向きで表示します。人間が打つ対局では働きません（既定OFF）。</span></span></label>
+    <label class="toggle"><input type="checkbox" id="cfg-countsHold">
+      <span>駒数を長押しで表示<span class="desc">手駒欄の「駒数」ボタンを押している間だけ、まだ見えていない駒の数（自分の手駒を除く）を盤に重ねて表示します。競技どおりに遊ぶなら「カウント表」と両方OFF（既定OFF）。</span></span></label>
   </div>
 
-  <div class="actions">
-    <button class="btn primary" id="btn-start">対局をはじめる</button>
-    <button class="btn" id="btn-watch">観戦（全席AI）</button>
-  </div>
+    </div><!-- /.setup-adv-body -->
+  </details>
   <button type="button" class="title-link setup-a11y-audit" id="btn-a11y-audit-setup">表示・読み上げの実機診断</button>
   <div id="setup-note">AIはあなたの伏せ駒の種類を見ません。五しの相談は公式どおり、保持者の相方が自分の手駒だけを見て判断します。</div>
   <div class="footer-links" role="group" aria-label="宇出津のごいた案内">
@@ -1969,6 +2031,7 @@ body.noto #wincut.show .wc-label{animation:wcFude .62s cubic-bezier(.2,.9,.3,1.2
 
   <div id="board" role="main" aria-label="対局盤面" tabindex="-1">
     <div id="turn-token" aria-hidden="true"><span class="serif">番</span></div>
+    <div id="count-overlay" hidden aria-hidden="true"></div>
     <div class="panel pcard" id="card-n"></div>
     <div id="stage">
       <div id="tug-bar" role="img" aria-label="点差ゲージ">
@@ -1998,8 +2061,9 @@ body.noto #wincut.show .wc-label{animation:wcFude .62s cubic-bezier(.2,.9,.3,1.2
     <div class="panel pcard" id="card-s"></div>
   </div>
 
+  <div id="watch-info" hidden></div>
   <div class="panel" id="handarea">
-    <div class="hd"><span>あなたの手駒</span><span id="hand-hint"></span><span id="count-bar" style="margin-left:auto;color:var(--gin-d);font-variant-numeric:tabular-nums"></span></div>
+    <div class="hd"><span>あなたの手駒</span><span id="hand-hint"></span><span id="count-bar" style="margin-left:auto;color:var(--gin-d);font-variant-numeric:tabular-nums"></span><button type="button" id="count-hold" class="btn small" hidden aria-label="駒数（押している間だけ盤に表示）">駒数</button></div>
     <div id="hand"></div>
     <div id="rh-legend" hidden>数字=この攻めが通る目安　<span class="rh-badge rh-safe">通65%〜</span>=通りやすい　<span class="rh-badge rh-risk">〜通64%</span>=受けられやすい</div>
   </div>
@@ -2058,6 +2122,7 @@ body.noto #wincut.show .wc-label{animation:wcFude .62s cubic-bezier(.2,.9,.3,1.2
     <span class="lg"><i class="dot foe"></i>敵（東西）</span>
     <span class="lg"><i class="sw atkseat"></i>名札の「攻」＋席の淡い光＝今の攻め手</span>
     <span class="lg"><i class="sw turntoken"></i>真鍮の番札＝今の手番</span>
+    <span class="lg"><span class="pc-lg p">飛×</span>相方の攻めを通した　<span class="pc-lg e">飛×</span>敵の攻めを通した（設定「直前の「なし」を席カードに表示」ON時・名札の下）</span>
     <span class="lg">下家＝自分の次に手番が回る敵、上家＝自分の前に手番を持つ敵</span>
   </div></details>
   <details id="log-wrap"><summary>棋譜ログ</summary><div class="panel" id="log"></div></details>
@@ -2418,7 +2483,7 @@ const G = (() => {
       removeOne(st.hands[st.actor], a.koma);
       st.board[st.actor].push({def: {koma: a.koma, type: "receive"}, atk: null});
       st.history.push({seat: st.actor, koma: a.koma, act: "receive"});
-      if (a.intent && a.intent.rejectShi) { if (!st.rejShi) st.rejShi = {}; st.rejShi[st.actor] = true; }   // [A項] why文字列依存を撤廃しintentで判定
+      if (a.intent && a.intent.rejectShi) { if (!st.rejShi) st.rejShi = {}; st.rejShi[st.actor] = true; if (!st.rejShiAt) st.rejShiAt = {}; if (st.rejShiAt[st.actor] === undefined) st.rejShiAt[st.actor] = st.history.length - 1; }   // [A項] why文字列依存を撤廃しintentで判定 / build v218: 最初に立てた時点の添字(整合再生用)
       // 【受け上がり】最後の1枚で受けて手駒0 → 受けた側の勝ち (得点=攻め駒・2倍なし)
       if (st.hands[st.actor].length === 0) {
         ev.gameOver = {winner: st.actor, pts: POINTS[st.pendingAttack], dbl: false,
@@ -5802,10 +5867,10 @@ const G = (() => {
             policyAction, mcDecideReceive, setRecv8OuVeto, recv8OuVetoDiag,
             passEvidence, passFactor, setOukH8, oukH8Diag,   // v212(OUK_H8。passFactorC は連結済み)
             setOukH2, oukH2Diag,   // v214(OUK_H2)
-            setOukH6, oukH6Diag]   // v215(OUK_H6)
+            setOukH6, oukH6Diag, attackMC, atkConsWeight, atkConsFactor, setAtkConsW, setAtkConsTrust, atkConsDiag, advance]   // v218(ATK_CONS_W)
       .map(f => f.toString())
       .concat([PKDD._coreSrc, PKDD._loadWorldSrc, JSON.stringify(BELIEF_EST_C), String(BELIEF_EST_EPS), String(RECV8_OU_VETO_DETS), String(RECV8_OU_VETO_Z),
-               String(OUK_H8_E2_CONT), String(OUK_H8_E2_NOCONT), String(OUK_H8_E3), String(OUK_H6_E2_CONT), String(OUK_H6_E2_NOCONT), String(OUK_H6_E3), String(OUK_H2_E2), String(OUK_H2_E3)])
+               String(OUK_H8_E2_CONT), String(OUK_H8_E2_NOCONT), String(OUK_H8_E3), String(OUK_H6_E2_CONT), String(OUK_H6_E2_NOCONT), String(OUK_H6_E3), String(OUK_H2_E2), String(OUK_H2_E3), String(ATK_CONS_LAMBDA), String(ATK_CONS_MIN_ESS)])
       .join('\n');
   }
   function regsEqual(a, b) {
@@ -6603,6 +6668,64 @@ const G = (() => {
   // build v161 mixed-engine A/B(ペア化9,000対=18,000局): 勝率57.35%(95%CI[50.71%,63.98%])で
   // 事前登録基準(CI下限>50%)を満たしたため既定ON。
   let ATK_DD_ADAPT = 1, ATK_DD_ADAPT_MAX = 48, ATK_DD_ADAPT_BLOCK = 8, ATK_DD_ADAPT_Z = 1.96;
+  // build v218(G2c-soft・整合重み): 攻めの DD-PIMC(attackMC の dd 分岐。総手駒 ≤ 16・手駒 ≤ 4)で、候補世界ごとに「他 3 席の履歴上の
+  //   全決定を規則のみ(opts.noMC: MC/DD/refine なし)で再生したときの観測との不一致数 k」を数え、その世界の DD 値に
+  //   Π_席 (1 − ATK_CONS_TRUST[席]·(1 − λ))^{k_席} の重みを掛けて信念平均を取る(λ = ATK_CONS_LAMBDA = 0.2 — v219。v218 の 0.5 は判定帯 SH で条件 3 未達、0.2 は事前登録帯 SH2 で通過。AI 席は trust 未設定 = 1.0 で λ^k、
+  //   対人席は app が表整合性の事後(n ≥ 12 のとき tblTrustVal、それまで 0 = 数えない)を setAtkConsTrust で供給する — dcyT と同じ形の減衰)。
+  //   適応的追加標本(ATK_DD_ADAPT)の停止規則と世界列は無重みのまま(v216 と同じ世界列)。重みは最終の平均にだけ掛け、
+  //   実効標本数 ESS = (Σw)²/Σw² が ATK_CONS_MIN_ESS 未満の決定は無重み(v216 の平均)に退避する。ATK_CONS_W = 0 で v216 と着手列が 1 手も変わらない
+  //   (acc は無重みのまま積み、重み付き累積 accW は別)。根拠: 診断 D27/D27b(MEMO_D27_noMC整合重み_rev2)。再生は 0.74 ms/世界。
+  //   候補世界の goshiHolders は復元した初期手から再導出する(計器と同一)。復元不能(shape)・desync の世界は重み 1(計数のみ)。
+  let ATK_CONS_W = 1;
+  const ATK_CONS_LAMBDA = 0.2, ATK_CONS_MIN_ESS = 4;
+  let ATK_CONS_TRUST = {};
+  const ATK_CONS_DIAG = {worlds: 0, kSum: 0, shape: 0, desync: 0, wMin: 1, decisions: 0, lowEss: 0, goshiDiff: 0, totalMax: 0};
+  function setAtkConsW(n) { ATK_CONS_W = n ? 1 : 0; }
+  function setAtkConsTrust(seat, v) { if (v == null) delete ATK_CONS_TRUST[seat]; else ATK_CONS_TRUST[seat] = Math.max(0, Math.min(1, v)); }
+  function atkConsDiag(reset) {
+    const out = Object.assign({on: ATK_CONS_W, lambda: ATK_CONS_LAMBDA, minEss: ATK_CONS_MIN_ESS, trust: Object.assign({}, ATK_CONS_TRUST)}, ATK_CONS_DIAG);
+    if (reset) { for (const k of Object.keys(ATK_CONS_DIAG)) ATK_CONS_DIAG[k] = 0; ATK_CONS_DIAG.wMin = 1; }
+    return out;
+  }
+  function atkConsFactor(seat) { const t = ATK_CONS_TRUST[seat] !== undefined ? ATK_CONS_TRUST[seat] : 1.0; return 1 - t * (1 - ATK_CONS_LAMBDA); }
+  function atkConsWeight(st, seat, sampled, o) {
+    ATK_CONS_DIAG.worlds++;
+    const meta = worldV2Metadata(sampled); const bi = {N: 0, W: 0, S: 0, E: 0}; const hands = {};
+    for (const x of SEATS) hands[x] = (x === seat ? st.hands[x] : sampled[x]).slice();
+    for (const h of st.history) {
+      if (h.act === "pass") continue;
+      if (h.act === "bury" && h.seat !== seat) {
+        const list = meta && meta.buriedBySeat ? meta.buriedBySeat[h.seat] : null;
+        const k = list ? list[bi[h.seat]++] : undefined;
+        if (k === undefined) { ATK_CONS_DIAG.shape++; return 1; }
+        hands[h.seat].push(k);
+      } else hands[h.seat].push(h.koma);
+    }
+    for (const x of SEATS) { if (hands[x].length !== 8) { ATK_CONS_DIAG.shape++; return 1; } hands[x].sort(); }
+    const r = newGameState(hands, st.parent);
+    r.matchScores = st.matchScores;
+    r.goshiHolders = SEATS.filter(x => hands[x].filter(kk => kk === "し").length === 5);   // 候補世界の初期手から再導出(計器と同一)
+    if (r.goshiHolders.join() !== (st.goshiHolders || []).join()) ATK_CONS_DIAG.goshiDiff++;
+    const oR = Object.assign({}, o, {noMC: true});
+    const bj = {N: 0, W: 0, S: 0, E: 0};   // 他席の伏せは候補世界の割当てで再生する(真の伏せ駒は非公開 — 見ない。cloneStateForRollout と同じ)
+    let logw = 0, k = 0;
+    for (let i = 0; i < st.history.length; i++) {
+      const h = st.history[i];
+      if (r.actor !== h.seat || r.phase === "over") { ATK_CONS_DIAG.desync++; return 1; }
+      const koma = (h.act === "bury" && h.seat !== seat) ? meta.buriedBySeat[h.seat][bj[h.seat]++] : h.koma;
+      if (h.seat !== seat) {
+        const rep = policyAction(r, h.seat, oR);
+        if (!rep || rep.type !== h.act || (rep.koma || null) !== koma) { k++; logw += Math.log(atkConsFactor(h.seat)); }
+      }
+      const a = {type: h.act, koma};
+      if (st.rejShiAt && st.rejShiAt[h.seat] === i) a.intent = {rejectShi: true};
+      advance(r, a);
+    }
+    ATK_CONS_DIAG.kSum += k;
+    const w = Math.exp(logw);
+    if (w < ATK_CONS_DIAG.wMin) ATK_CONS_DIAG.wMin = w;
+    return w;
+  }
   function setAtkDdAdapt(n) { ATK_DD_ADAPT = n ? 1 : 0; }
   function setAtkDdAdaptMax(n) { ATK_DD_ADAPT_MAX = n | 0; }
   function setAtkDdAdaptBlock(n) { ATK_DD_ADAPT_BLOCK = n | 0; }
@@ -6622,7 +6745,8 @@ const G = (() => {
         const rngDD = RNG_MK(0x5dd ^ (st.history.length * 131 + SEATS.indexOf(seat)), "attackMC");
         const acts = candidates.map(k => ({type: "attack", koma: k}));
         const acc = new Map(candidates.map(c => [c, 0]));
-        let nOK = 0, fail = false;
+        let nOK = 0, fail = false, sumW = 0, sumW2 = 0;   // build v218: 整合重みの和と二乗和(ESS 用)。acc は無重みのまま
+        const accW = ATK_CONS_W ? new Map(candidates.map(c => [c, 0])) : null;   // build v218: 重み付き累積(OFF では作らない)
         // build v161(ATK_DD_ADAPT): OFF時はperAdapt=nullで下の既存ループに一切影響しない。
         const perAdapt = ATK_DD_ADAPT ? [] : null;
         // build v199(PackedWorld Phase3C): 同一決定内でstは不変なのでpwCtxは本体・adapt延長で共有する。
@@ -6632,6 +6756,7 @@ const G = (() => {
           const rv = ddRootValuesWorld(st, seat, sampled, evalFn, acts, (o.ddNodeCap || 400000), pwCtx);
           if (rv === null) { fail = true; break; }      // 予算超過 → DD放棄しロールアウトへ
           for (const c of candidates) acc.set(c, acc.get(c) + rv.get(c));
+          if (accW) { const w = atkConsWeight(st, seat, sampled, o); for (const c of candidates) accW.set(c, accW.get(c) + w * rv.get(c)); sumW += w; sumW2 += w * w; if (total > ATK_CONS_DIAG.totalMax) ATK_CONS_DIAG.totalMax = total; }   // build v218
           nOK++;
           if (perAdapt) perAdapt.push(candidates.map(c => rv.get(c)));
         }
@@ -6661,6 +6786,7 @@ const G = (() => {
               const rv = ddRootValuesWorld(st, seat, sampled, evalFn, acts, (o.ddNodeCap || 400000), pwCtx);
               if (rv === null) { fail = true; break; }
               for (const c of candidates) acc.set(c, acc.get(c) + rv.get(c));
+              if (accW) { const w = atkConsWeight(st, seat, sampled, o); for (const c of candidates) accW.set(c, accW.get(c) + w * rv.get(c)); sumW += w; sumW2 += w * w; }   // build v218
               nOK++;
               perAdapt.push(candidates.map(c => rv.get(c)));
             }
@@ -6670,8 +6796,10 @@ const G = (() => {
         }
         if (!fail && nOK > 0) {
           let pick = null, pv = -Infinity;
+          const useW = !!accW && sumW > 0 && (sumW * sumW / sumW2) >= ATK_CONS_MIN_ESS;   // build v218: ESS が足りる決定だけ重み付き平均
+          if (accW) { ATK_CONS_DIAG.decisions++; if (!useW) ATK_CONS_DIAG.lowEss++; }
           for (const c of candidates) {
-            const v = acc.get(c) / nOK;
+            const v = useW ? accW.get(c) / sumW : acc.get(c) / nOK;
             if (v > pv) { pv = v; pick = c; }
           }
           return pick;
@@ -8988,7 +9116,7 @@ const G = (() => {
     }
     return decided ? nsWins / decided : null;
   }
-  return {setDeterminizationV2, worldV2Metadata, diagnosticCloneStateForRollout: cloneStateForRollout, setTblTrust, tblFactorAt, setOuSignal, setOuTrust, detectOuSignals, partnerSignaledOu, partnerSignaledShi, kakariGotae, shiStarted, canShiAttackC, setOppProfile, oppRatesFromCounts, setEvLambdaGate, inferPartnerHoldings, setSigRead, setOuMix, setKyouMix, setShiKyoFix, setShiCommit, setShiCommitReal, setKakariEv, kakariEvidence, setPassMirror, setShiPairEv, shiPairEvidence, setKPairEv, pairAttackEvidence, setKyoNeg, setKyoNegScope, setKyoNegClosed, kyoNegAttackEvidence, _kyClsProbe, setOuKyoRisk, setLedgerCal, calP, setOulessFk, setTakeTurn, setKamizaWait, setKakuSignal, kakuSigEvidence, setKyoCode, kyoCodeEvidence, setKyoBonus, setKyoRetention, kyoBiasOf, setHumanModel, setBeliefSharpen, setFaTemper, setBuryUmaFix, setBuryPairShi, setKeepShiEshi, setKeepShiLastGuard, setShiKeep2, setWidthBury, setBuryCover, buryCoverPick, setUmaKeep, setShiBluff, setCoopSignal, setConvTrust, convTrustOf, moveHint, coopContext, setShiRejectStrong, setShiRideKeep, setFlowbackYield, setFlowbackTh, setFlowbackPreMc, flowbackYieldPass, setShiAtkAvoid, setShiAtkAvoidMin, setUncutAtkAvoid, setUncutFb, setOuSigShiGuard, setKyoR1Conserve, setKyoConsMode, setKyoWeakConserve, strongNonShi, setKyoR1Wait, setKyoCertainRecv, cfrSolve2x2, setRuleLevel, setDiag, setRolloutOpp, modelRespAction, setLeafDd, setLeafDdLimit, setLeafDdCap, matchEquity, ddSolve, ddSolveNaive, ddRootValues, ddParAnalyze, sampleWorldW, makePassEvCache, readingNotes, komaLedger, setCountRead, countWhy, setCountGate, setCountPlanConf, setCountPlanRisk, planRisk, unseenMinusPartnerLedger, sampleWorldC, setCountSample, setCountRecvp, setCountBelief, setCountBeliefMaxHand, setCountBeliefMinHist, setCountBeliefMinEss, minEssDiag, setBeliefEst, beliefEstDiag, ledgerRefine, komaLedgerMaybeRefine, setSoloSig, setOuTakeTurn, setOuTtMaxHand, setOuTtMinChain, setOuTtMargin, setOuTtDets, ouTakeTurnPick, ouChainThroughP, mcDecideReceive, pCanReceive, setRecv8OuVeto, recv8OuVetoDiag, setOukH8, oukH8Diag, setOukH2, oukH2Diag, setOukH6, oukH6Diag, pEnemyReceives, isFirstRound, SEATS, KOMA_COUNT, POINTS, UNCUTTABLE, team, nextSeat, partnerOf, mcEvalReceive, gameEquityMC, countsFor, freshSolverProbe, puzzleTruthProbe, beliefExact, beliefMC,
+  return {setDeterminizationV2, worldV2Metadata, diagnosticCloneStateForRollout: cloneStateForRollout, setTblTrust, tblFactorAt, setOuSignal, setOuTrust, detectOuSignals, partnerSignaledOu, partnerSignaledShi, kakariGotae, shiStarted, canShiAttackC, setOppProfile, oppRatesFromCounts, setEvLambdaGate, inferPartnerHoldings, setSigRead, setOuMix, setKyouMix, setShiKyoFix, setShiCommit, setShiCommitReal, setKakariEv, kakariEvidence, setPassMirror, setShiPairEv, shiPairEvidence, setKPairEv, pairAttackEvidence, setKyoNeg, setKyoNegScope, setKyoNegClosed, kyoNegAttackEvidence, _kyClsProbe, setOuKyoRisk, setLedgerCal, calP, setOulessFk, setTakeTurn, setKamizaWait, setKakuSignal, kakuSigEvidence, setKyoCode, kyoCodeEvidence, setKyoBonus, setKyoRetention, kyoBiasOf, setHumanModel, setBeliefSharpen, setFaTemper, setBuryUmaFix, setBuryPairShi, setKeepShiEshi, setKeepShiLastGuard, setShiKeep2, setWidthBury, setBuryCover, buryCoverPick, setUmaKeep, setShiBluff, setCoopSignal, setConvTrust, convTrustOf, moveHint, coopContext, setShiRejectStrong, setShiRideKeep, setFlowbackYield, setFlowbackTh, setFlowbackPreMc, flowbackYieldPass, setShiAtkAvoid, setShiAtkAvoidMin, setUncutAtkAvoid, setUncutFb, setOuSigShiGuard, setKyoR1Conserve, setKyoConsMode, setKyoWeakConserve, strongNonShi, setKyoR1Wait, setKyoCertainRecv, cfrSolve2x2, setRuleLevel, setDiag, setRolloutOpp, modelRespAction, setLeafDd, setLeafDdLimit, setLeafDdCap, matchEquity, ddSolve, ddSolveNaive, ddRootValues, ddParAnalyze, sampleWorldW, makePassEvCache, readingNotes, komaLedger, setCountRead, countWhy, setCountGate, setCountPlanConf, setCountPlanRisk, planRisk, unseenMinusPartnerLedger, sampleWorldC, setCountSample, setCountRecvp, setCountBelief, setCountBeliefMaxHand, setCountBeliefMinHist, setCountBeliefMinEss, minEssDiag, setBeliefEst, beliefEstDiag, ledgerRefine, komaLedgerMaybeRefine, setSoloSig, setOuTakeTurn, setOuTtMaxHand, setOuTtMinChain, setOuTtMargin, setOuTtDets, ouTakeTurnPick, ouChainThroughP, mcDecideReceive, pCanReceive, setRecv8OuVeto, recv8OuVetoDiag, setOukH8, oukH8Diag, setOukH2, oukH2Diag, setOukH6, oukH6Diag, setAtkConsW, setAtkConsTrust, atkConsDiag, pEnemyReceives, isFirstRound, SEATS, KOMA_COUNT, POINTS, UNCUTTABLE, team, nextSeat, partnerOf, mcEvalReceive, gameEquityMC, countsFor, freshSolverProbe, puzzleTruthProbe, beliefExact, beliefMC,
           mulberry32, shuffle, fullDeck, counter,
           newGameState, advance, canAttackKing, validReceive, legalReceives, legalAttacks,
           maskHistoryFor, makeView, unseenCounts, solveWin, checkKingAtkOk,
@@ -9359,7 +9487,7 @@ const G_B = (() => {
       removeOne(st.hands[st.actor], a.koma);
       st.board[st.actor].push({def: {koma: a.koma, type: "receive"}, atk: null});
       st.history.push({seat: st.actor, koma: a.koma, act: "receive"});
-      if (a.intent && a.intent.rejectShi) { if (!st.rejShi) st.rejShi = {}; st.rejShi[st.actor] = true; }   // [A項] why文字列依存を撤廃しintentで判定
+      if (a.intent && a.intent.rejectShi) { if (!st.rejShi) st.rejShi = {}; st.rejShi[st.actor] = true; if (!st.rejShiAt) st.rejShiAt = {}; if (st.rejShiAt[st.actor] === undefined) st.rejShiAt[st.actor] = st.history.length - 1; }   // [A項] why文字列依存を撤廃しintentで判定 / build v218: 最初に立てた時点の添字(整合再生用)
       // 【受け上がり】最後の1枚で受けて手駒0 → 受けた側の勝ち (得点=攻め駒・2倍なし)
       if (st.hands[st.actor].length === 0) {
         ev.gameOver = {winner: st.actor, pts: POINTS[st.pendingAttack], dbl: false,
@@ -12757,10 +12885,10 @@ const G_B = (() => {
             policyAction, mcDecideReceive, setRecv8OuVeto, recv8OuVetoDiag,
             passEvidence, passFactor, setOukH8, oukH8Diag,   // v212(OUK_H8。passFactorC は連結済み)
             setOukH2, oukH2Diag,   // v214(OUK_H2)
-            setOukH6, oukH6Diag]   // v215(OUK_H6)
+            setOukH6, oukH6Diag, attackMC, atkConsWeight, atkConsFactor, setAtkConsW, setAtkConsTrust, atkConsDiag, advance]   // v218(ATK_CONS_W)
       .map(f => f.toString())
       .concat([PKDD._coreSrc, PKDD._loadWorldSrc, JSON.stringify(BELIEF_EST_C), String(BELIEF_EST_EPS), String(RECV8_OU_VETO_DETS), String(RECV8_OU_VETO_Z),
-               String(OUK_H8_E2_CONT), String(OUK_H8_E2_NOCONT), String(OUK_H8_E3), String(OUK_H6_E2_CONT), String(OUK_H6_E2_NOCONT), String(OUK_H6_E3), String(OUK_H2_E2), String(OUK_H2_E3)])
+               String(OUK_H8_E2_CONT), String(OUK_H8_E2_NOCONT), String(OUK_H8_E3), String(OUK_H6_E2_CONT), String(OUK_H6_E2_NOCONT), String(OUK_H6_E3), String(OUK_H2_E2), String(OUK_H2_E3), String(ATK_CONS_LAMBDA), String(ATK_CONS_MIN_ESS)])
       .join('\n');
   }
   function regsEqual(a, b) {
@@ -13558,6 +13686,64 @@ const G_B = (() => {
   // build v161 mixed-engine A/B(ペア化9,000対=18,000局): 勝率57.35%(95%CI[50.71%,63.98%])で
   // 事前登録基準(CI下限>50%)を満たしたため既定ON。
   let ATK_DD_ADAPT = 1, ATK_DD_ADAPT_MAX = 48, ATK_DD_ADAPT_BLOCK = 8, ATK_DD_ADAPT_Z = 1.96;
+  // build v218(G2c-soft・整合重み): 攻めの DD-PIMC(attackMC の dd 分岐。総手駒 ≤ 16・手駒 ≤ 4)で、候補世界ごとに「他 3 席の履歴上の
+  //   全決定を規則のみ(opts.noMC: MC/DD/refine なし)で再生したときの観測との不一致数 k」を数え、その世界の DD 値に
+  //   Π_席 (1 − ATK_CONS_TRUST[席]·(1 − λ))^{k_席} の重みを掛けて信念平均を取る(λ = ATK_CONS_LAMBDA = 0.2 — v219。v218 の 0.5 は判定帯 SH で条件 3 未達、0.2 は事前登録帯 SH2 で通過。AI 席は trust 未設定 = 1.0 で λ^k、
+  //   対人席は app が表整合性の事後(n ≥ 12 のとき tblTrustVal、それまで 0 = 数えない)を setAtkConsTrust で供給する — dcyT と同じ形の減衰)。
+  //   適応的追加標本(ATK_DD_ADAPT)の停止規則と世界列は無重みのまま(v216 と同じ世界列)。重みは最終の平均にだけ掛け、
+  //   実効標本数 ESS = (Σw)²/Σw² が ATK_CONS_MIN_ESS 未満の決定は無重み(v216 の平均)に退避する。ATK_CONS_W = 0 で v216 と着手列が 1 手も変わらない
+  //   (acc は無重みのまま積み、重み付き累積 accW は別)。根拠: 診断 D27/D27b(MEMO_D27_noMC整合重み_rev2)。再生は 0.74 ms/世界。
+  //   候補世界の goshiHolders は復元した初期手から再導出する(計器と同一)。復元不能(shape)・desync の世界は重み 1(計数のみ)。
+  let ATK_CONS_W = 1;
+  const ATK_CONS_LAMBDA = 0.2, ATK_CONS_MIN_ESS = 4;
+  let ATK_CONS_TRUST = {};
+  const ATK_CONS_DIAG = {worlds: 0, kSum: 0, shape: 0, desync: 0, wMin: 1, decisions: 0, lowEss: 0, goshiDiff: 0, totalMax: 0};
+  function setAtkConsW(n) { ATK_CONS_W = n ? 1 : 0; }
+  function setAtkConsTrust(seat, v) { if (v == null) delete ATK_CONS_TRUST[seat]; else ATK_CONS_TRUST[seat] = Math.max(0, Math.min(1, v)); }
+  function atkConsDiag(reset) {
+    const out = Object.assign({on: ATK_CONS_W, lambda: ATK_CONS_LAMBDA, minEss: ATK_CONS_MIN_ESS, trust: Object.assign({}, ATK_CONS_TRUST)}, ATK_CONS_DIAG);
+    if (reset) { for (const k of Object.keys(ATK_CONS_DIAG)) ATK_CONS_DIAG[k] = 0; ATK_CONS_DIAG.wMin = 1; }
+    return out;
+  }
+  function atkConsFactor(seat) { const t = ATK_CONS_TRUST[seat] !== undefined ? ATK_CONS_TRUST[seat] : 1.0; return 1 - t * (1 - ATK_CONS_LAMBDA); }
+  function atkConsWeight(st, seat, sampled, o) {
+    ATK_CONS_DIAG.worlds++;
+    const meta = worldV2Metadata(sampled); const bi = {N: 0, W: 0, S: 0, E: 0}; const hands = {};
+    for (const x of SEATS) hands[x] = (x === seat ? st.hands[x] : sampled[x]).slice();
+    for (const h of st.history) {
+      if (h.act === "pass") continue;
+      if (h.act === "bury" && h.seat !== seat) {
+        const list = meta && meta.buriedBySeat ? meta.buriedBySeat[h.seat] : null;
+        const k = list ? list[bi[h.seat]++] : undefined;
+        if (k === undefined) { ATK_CONS_DIAG.shape++; return 1; }
+        hands[h.seat].push(k);
+      } else hands[h.seat].push(h.koma);
+    }
+    for (const x of SEATS) { if (hands[x].length !== 8) { ATK_CONS_DIAG.shape++; return 1; } hands[x].sort(); }
+    const r = newGameState(hands, st.parent);
+    r.matchScores = st.matchScores;
+    r.goshiHolders = SEATS.filter(x => hands[x].filter(kk => kk === "し").length === 5);   // 候補世界の初期手から再導出(計器と同一)
+    if (r.goshiHolders.join() !== (st.goshiHolders || []).join()) ATK_CONS_DIAG.goshiDiff++;
+    const oR = Object.assign({}, o, {noMC: true});
+    const bj = {N: 0, W: 0, S: 0, E: 0};   // 他席の伏せは候補世界の割当てで再生する(真の伏せ駒は非公開 — 見ない。cloneStateForRollout と同じ)
+    let logw = 0, k = 0;
+    for (let i = 0; i < st.history.length; i++) {
+      const h = st.history[i];
+      if (r.actor !== h.seat || r.phase === "over") { ATK_CONS_DIAG.desync++; return 1; }
+      const koma = (h.act === "bury" && h.seat !== seat) ? meta.buriedBySeat[h.seat][bj[h.seat]++] : h.koma;
+      if (h.seat !== seat) {
+        const rep = policyAction(r, h.seat, oR);
+        if (!rep || rep.type !== h.act || (rep.koma || null) !== koma) { k++; logw += Math.log(atkConsFactor(h.seat)); }
+      }
+      const a = {type: h.act, koma};
+      if (st.rejShiAt && st.rejShiAt[h.seat] === i) a.intent = {rejectShi: true};
+      advance(r, a);
+    }
+    ATK_CONS_DIAG.kSum += k;
+    const w = Math.exp(logw);
+    if (w < ATK_CONS_DIAG.wMin) ATK_CONS_DIAG.wMin = w;
+    return w;
+  }
   function setAtkDdAdapt(n) { ATK_DD_ADAPT = n ? 1 : 0; }
   function setAtkDdAdaptMax(n) { ATK_DD_ADAPT_MAX = n | 0; }
   function setAtkDdAdaptBlock(n) { ATK_DD_ADAPT_BLOCK = n | 0; }
@@ -13577,7 +13763,8 @@ const G_B = (() => {
         const rngDD = RNG_MK(0x5dd ^ (st.history.length * 131 + SEATS.indexOf(seat)), "attackMC");
         const acts = candidates.map(k => ({type: "attack", koma: k}));
         const acc = new Map(candidates.map(c => [c, 0]));
-        let nOK = 0, fail = false;
+        let nOK = 0, fail = false, sumW = 0, sumW2 = 0;   // build v218: 整合重みの和と二乗和(ESS 用)。acc は無重みのまま
+        const accW = ATK_CONS_W ? new Map(candidates.map(c => [c, 0])) : null;   // build v218: 重み付き累積(OFF では作らない)
         // build v161(ATK_DD_ADAPT): OFF時はperAdapt=nullで下の既存ループに一切影響しない。
         const perAdapt = ATK_DD_ADAPT ? [] : null;
         // build v199(PackedWorld Phase3C): 同一決定内でstは不変なのでpwCtxは本体・adapt延長で共有する。
@@ -13587,6 +13774,7 @@ const G_B = (() => {
           const rv = ddRootValuesWorld(st, seat, sampled, evalFn, acts, (o.ddNodeCap || 400000), pwCtx);
           if (rv === null) { fail = true; break; }      // 予算超過 → DD放棄しロールアウトへ
           for (const c of candidates) acc.set(c, acc.get(c) + rv.get(c));
+          if (accW) { const w = atkConsWeight(st, seat, sampled, o); for (const c of candidates) accW.set(c, accW.get(c) + w * rv.get(c)); sumW += w; sumW2 += w * w; if (total > ATK_CONS_DIAG.totalMax) ATK_CONS_DIAG.totalMax = total; }   // build v218
           nOK++;
           if (perAdapt) perAdapt.push(candidates.map(c => rv.get(c)));
         }
@@ -13616,6 +13804,7 @@ const G_B = (() => {
               const rv = ddRootValuesWorld(st, seat, sampled, evalFn, acts, (o.ddNodeCap || 400000), pwCtx);
               if (rv === null) { fail = true; break; }
               for (const c of candidates) acc.set(c, acc.get(c) + rv.get(c));
+              if (accW) { const w = atkConsWeight(st, seat, sampled, o); for (const c of candidates) accW.set(c, accW.get(c) + w * rv.get(c)); sumW += w; sumW2 += w * w; }   // build v218
               nOK++;
               perAdapt.push(candidates.map(c => rv.get(c)));
             }
@@ -13625,8 +13814,10 @@ const G_B = (() => {
         }
         if (!fail && nOK > 0) {
           let pick = null, pv = -Infinity;
+          const useW = !!accW && sumW > 0 && (sumW * sumW / sumW2) >= ATK_CONS_MIN_ESS;   // build v218: ESS が足りる決定だけ重み付き平均
+          if (accW) { ATK_CONS_DIAG.decisions++; if (!useW) ATK_CONS_DIAG.lowEss++; }
           for (const c of candidates) {
-            const v = acc.get(c) / nOK;
+            const v = useW ? accW.get(c) / sumW : acc.get(c) / nOK;
             if (v > pv) { pv = v; pick = c; }
           }
           return pick;
@@ -15943,7 +16134,7 @@ const G_B = (() => {
     }
     return decided ? nsWins / decided : null;
   }
-  return {setDeterminizationV2, worldV2Metadata, diagnosticCloneStateForRollout: cloneStateForRollout, setTblTrust, tblFactorAt, setOuSignal, setOuTrust, detectOuSignals, partnerSignaledOu, partnerSignaledShi, kakariGotae, shiStarted, canShiAttackC, setOppProfile, oppRatesFromCounts, setEvLambdaGate, inferPartnerHoldings, setSigRead, setOuMix, setKyouMix, setShiKyoFix, setShiCommit, setShiCommitReal, setKakariEv, kakariEvidence, setPassMirror, setShiPairEv, shiPairEvidence, setKPairEv, pairAttackEvidence, setKyoNeg, setKyoNegScope, setKyoNegClosed, kyoNegAttackEvidence, _kyClsProbe, setOuKyoRisk, setLedgerCal, calP, setOulessFk, setTakeTurn, setKamizaWait, setKakuSignal, kakuSigEvidence, setKyoCode, kyoCodeEvidence, setKyoBonus, setKyoRetention, kyoBiasOf, setHumanModel, setBeliefSharpen, setFaTemper, setBuryUmaFix, setBuryPairShi, setKeepShiEshi, setKeepShiLastGuard, setShiKeep2, setWidthBury, setBuryCover, buryCoverPick, setUmaKeep, setShiBluff, setCoopSignal, setConvTrust, convTrustOf, moveHint, coopContext, setShiRejectStrong, setShiRideKeep, setFlowbackYield, setFlowbackTh, setFlowbackPreMc, flowbackYieldPass, setShiAtkAvoid, setShiAtkAvoidMin, setUncutAtkAvoid, setUncutFb, setOuSigShiGuard, setKyoR1Conserve, setKyoConsMode, setKyoWeakConserve, strongNonShi, setKyoR1Wait, setKyoCertainRecv, cfrSolve2x2, setRuleLevel, setDiag, setRolloutOpp, modelRespAction, setLeafDd, setLeafDdLimit, setLeafDdCap, matchEquity, ddSolve, ddSolveNaive, ddRootValues, ddParAnalyze, sampleWorldW, makePassEvCache, readingNotes, komaLedger, setCountRead, countWhy, setCountGate, setCountPlanConf, setCountPlanRisk, planRisk, unseenMinusPartnerLedger, sampleWorldC, setCountSample, setCountRecvp, setCountBelief, setCountBeliefMaxHand, setCountBeliefMinHist, setCountBeliefMinEss, minEssDiag, setBeliefEst, beliefEstDiag, ledgerRefine, komaLedgerMaybeRefine, setSoloSig, setOuTakeTurn, setOuTtMaxHand, setOuTtMinChain, setOuTtMargin, setOuTtDets, ouTakeTurnPick, ouChainThroughP, mcDecideReceive, pCanReceive, setRecv8OuVeto, recv8OuVetoDiag, setOukH8, oukH8Diag, setOukH2, oukH2Diag, setOukH6, oukH6Diag, pEnemyReceives, isFirstRound, SEATS, KOMA_COUNT, POINTS, UNCUTTABLE, team, nextSeat, partnerOf, mcEvalReceive, gameEquityMC, countsFor, freshSolverProbe, puzzleTruthProbe, beliefExact, beliefMC,
+  return {setDeterminizationV2, worldV2Metadata, diagnosticCloneStateForRollout: cloneStateForRollout, setTblTrust, tblFactorAt, setOuSignal, setOuTrust, detectOuSignals, partnerSignaledOu, partnerSignaledShi, kakariGotae, shiStarted, canShiAttackC, setOppProfile, oppRatesFromCounts, setEvLambdaGate, inferPartnerHoldings, setSigRead, setOuMix, setKyouMix, setShiKyoFix, setShiCommit, setShiCommitReal, setKakariEv, kakariEvidence, setPassMirror, setShiPairEv, shiPairEvidence, setKPairEv, pairAttackEvidence, setKyoNeg, setKyoNegScope, setKyoNegClosed, kyoNegAttackEvidence, _kyClsProbe, setOuKyoRisk, setLedgerCal, calP, setOulessFk, setTakeTurn, setKamizaWait, setKakuSignal, kakuSigEvidence, setKyoCode, kyoCodeEvidence, setKyoBonus, setKyoRetention, kyoBiasOf, setHumanModel, setBeliefSharpen, setFaTemper, setBuryUmaFix, setBuryPairShi, setKeepShiEshi, setKeepShiLastGuard, setShiKeep2, setWidthBury, setBuryCover, buryCoverPick, setUmaKeep, setShiBluff, setCoopSignal, setConvTrust, convTrustOf, moveHint, coopContext, setShiRejectStrong, setShiRideKeep, setFlowbackYield, setFlowbackTh, setFlowbackPreMc, flowbackYieldPass, setShiAtkAvoid, setShiAtkAvoidMin, setUncutAtkAvoid, setUncutFb, setOuSigShiGuard, setKyoR1Conserve, setKyoConsMode, setKyoWeakConserve, strongNonShi, setKyoR1Wait, setKyoCertainRecv, cfrSolve2x2, setRuleLevel, setDiag, setRolloutOpp, modelRespAction, setLeafDd, setLeafDdLimit, setLeafDdCap, matchEquity, ddSolve, ddSolveNaive, ddRootValues, ddParAnalyze, sampleWorldW, makePassEvCache, readingNotes, komaLedger, setCountRead, countWhy, setCountGate, setCountPlanConf, setCountPlanRisk, planRisk, unseenMinusPartnerLedger, sampleWorldC, setCountSample, setCountRecvp, setCountBelief, setCountBeliefMaxHand, setCountBeliefMinHist, setCountBeliefMinEss, minEssDiag, setBeliefEst, beliefEstDiag, ledgerRefine, komaLedgerMaybeRefine, setSoloSig, setOuTakeTurn, setOuTtMaxHand, setOuTtMinChain, setOuTtMargin, setOuTtDets, ouTakeTurnPick, ouChainThroughP, mcDecideReceive, pCanReceive, setRecv8OuVeto, recv8OuVetoDiag, setOukH8, oukH8Diag, setOukH2, oukH2Diag, setOukH6, oukH6Diag, setAtkConsW, setAtkConsTrust, atkConsDiag, pEnemyReceives, isFirstRound, SEATS, KOMA_COUNT, POINTS, UNCUTTABLE, team, nextSeat, partnerOf, mcEvalReceive, gameEquityMC, countsFor, freshSolverProbe, puzzleTruthProbe, beliefExact, beliefMC,
           mulberry32, shuffle, fullDeck, counter,
           newGameState, advance, canAttackKing, validReceive, legalReceives, legalAttacks,
           maskHistoryFor, makeView, unseenCounts, solveWin, checkKingAtkOk,
@@ -18312,6 +18503,13 @@ const GOITA_ENGINE_REGISTRY = (() => {
     if (m) GOITA_ENGINE_REGISTRY.invokeAll("setOukH8", +m[1]);
   } catch (e) { /* トグル不可でも対局は継続 */ }
 })();
+/* build v218(ATK_CONS_W): #atkcons=0|1 (既定1 = 攻めの DD-PIMC に規則再生の整合重み)。#recv8 と同一パターン。0 で v216 と同一の打ち筋。 */
+(() => {
+  try {
+    const m = /[#&]atkcons=([01])/.exec(location.hash || "");
+    if (m) GOITA_ENGINE_REGISTRY.invokeAll("setAtkConsW", +m[1]);
+  } catch (e) { /* トグル不可でも対局は継続 */ }
+})();
 /* build v211(RECV8_OU_VETO): #recv8=0|1 (既定1 = 王温存の判断 ON)。#pkdd と同一パターン。0 で v210 と同一の打ち筋。 */
 (() => {
   try {
@@ -18364,6 +18562,9 @@ if (typeof document !== "undefined") (() => {
    * 二重実装の同期漏れが実際に発生していた。ここを唯一の情報源とし、
    * セットアップ画面には起動時にDOM書き換えで反映、調整モーダルは生成時にそのまま埋め込む。
    * ================================================================ */
+  // UI-3(UX-02): 助言フラグ = hinted を立てる 4 つ(renderAdvice / renderHandTray / missGuardConfirm)。counts / reading / hints / cand は含めない。
+  // app 層の先頭近く(SHARED_TOGGLE_DEFS の直前)に置き、初期化中の呼び出し順(TDZ)に依存させない(第二読者 N3)。
+  const ADVICE_FLAGS = ["advice", "assistHi", "readHint", "missGuard"];
   const SHARED_TOGGLE_DEFS = {
     mc: {label: "受けMC評価", desc: "受け/なしをモンテカルロ評価で判断します（「強い」AIに作用・既定ON）。際どい局面の参考用で、明確な受けとは異なる判断をすることがあります。"},
     solver: {label: "終盤Solver", desc: "確実な上がり手順を厳密探索。オフで読み切りをしなくなる。"},
@@ -18374,13 +18575,16 @@ if (typeof document !== "undefined") (() => {
     cand: {label: "候補手・難度バッジ", desc: "受け局面で上位手と「明確／際どい／互角」を表示（推奨手ON時）。"},
     assistHi: {label: "推奨手をハイライト・ゴースト", desc: "おすすめの攻め/受け駒を手駒で光らせ、置き場所を河に半透明で先出し（なし推奨時は「なし」を強調）。表示局は成績集計から除外。"},
     readHint: {label: "読みヒント（通る目安・保有推定）", desc: "あなたの手番のみ表示。攻め候補には「この攻めが通る目安」のバッジ（敵チームが受けられない確率の推定。敵が受けを見送る場合もあるため実際はこれ以上）、受け候補にはAIの推奨バッジ。駒を長押しすると相手の保有推定(pHold)も見られます。数値は推定であり断定ではありません。"},
-    missGuard: {label: "ミスガード", desc: "明確な受けと違う駒を選んだ時だけ軽い確認。誤タップ防止。確認した局は成績集計から除外。"},
+    missGuard: {label: "受けの助言（明確な局面だけ・確認つき）", desc: "明確な最善受けがあるのに別の駒を選んだときだけ、AIの推奨を示して確認します（戦術の助言です。誤タップ防止ではありません）。表示した局は成績集計から除外。"},
     counts: {label: "カウント表（王/香/しを強調）", desc: "自分の視点で場に出ていない駒数を表示します。"},
     sighonest: {label: "符丁の正直さコーチ", desc: "振り返りで、あなたの攻めが相方へ送った合図と手札の整合を点検します（学習向け）。"},
-    autoWorstTour: {label: "終局後に悪手を自動で振り返る", desc: "対局が終わった直後、この局で検出した悪手(⚠読み切り逃し・☆明確局面での逸脱)を悪手度の高い順に自動で巡回表示します（既定ON）。オフでもアクションバーの「悪手を振り返る」から手動で開けます。"},
+    autoWorstTour: {label: "終局後に悪手を自動で振り返る", desc: "対局が終わった直後、この局で検出した悪手(⚠読み切り逃し・☆明確局面での逸脱)を悪手度の高い順に自動で巡回表示します（既定OFF）。オフでもアクションバーの「悪手を振り返る」から手動で開けます。"},
     tempo: {label: "難所で長考（相手の気配）", desc: "AIが難しいと判断した局面では考える間を延ばし、その席を微かに明滅。即断・長考のテンポから相手の迷いを読めます（「最強（NN＠oui2039）」ではこのAI自身の確信度とは独立したルールベース側の目安になります）。"},
     livebar: {label: "形勢バー（対局中の勝率）", desc: "対局中、この局の南北勝率を盤上のバーで表示（将棋の評価バー風）。相手の手札は使わない自視点推定です。"},
     riverseq: {label: "河に手数の番号を表示", desc: "場に出た駒へ「何手目か」の通し番号を小さく重ねます。カウンティングや振り返りの読みに便利（既定OFF）。"},
+    passHist: {label: "直前の「なし」を席カードに表示", desc: "各席が最近「なし」で通した攻め駒を名札の下に小さく並べます（青＝相方の攻め、朱＝敵の攻め。既定OFF）。"},
+    watchReveal: {label: "観戦時に4席の手駒を公開", desc: "観戦（全席AI）のときだけ、全員の手駒と伏せ駒を表向きで表示します。人間が打つ対局では働きません（既定OFF）。"},
+    countsHold: {label: "駒数を長押しで表示", desc: "手駒欄の「駒数」ボタンを押している間だけ、まだ見えていない駒の数（自分の手駒を除く）を盤に重ねて表示します。競技どおりに遊ぶなら「カウント表」と両方OFF（既定OFF）。"},
   };
   function toggleLabelHtml(key) {
     const d = SHARED_TOGGLE_DEFS[key];
@@ -18430,7 +18634,7 @@ if (typeof document !== "undefined") (() => {
   const byPts = (a, b) => G.POINTS[b] - G.POINTS[a];
 
   const app = {
-    cfg: {target: 150, speed: 850, mc: true, solver: true, explain: true, hints: true, counts: false, belief: "off", ouSignal: true, reading: true, advice: false, sighonest: false, cand: false, coach: "std", tempo: true, livebar: false, riverseq: false, passHist: false, watchReveal: false, opMode: "tap", sound: false, haptics: true, cud: false, nashiSide: "right", autoPass: false, theme: "yoai", assistHi: false, missGuard: false, notoAccent: true, srVerbosity: "normal", autoWorstTour: true, wakeLock: true, fxLen: "full", sigEcho: false, readHint: false},
+    cfg: {target: 150, speed: 850, mc: true, solver: true, explain: true, hints: true, counts: false, belief: "off", ouSignal: true, reading: true, advice: false, sighonest: false, cand: false, coach: "std", tempo: true, livebar: false, riverseq: false, passHist: false, watchReveal: false, countsHold: false, opMode: "tap", sound: false, haptics: true, cud: false, nashiSide: "right", autoPass: false, theme: "yoai", assistHi: false, missGuard: false, notoAccent: true, srVerbosity: "normal", autoWorstTour: false, wakeLock: true, fxLen: "full", sigEcho: false, readHint: false},
     tiers: {N: "strong", W: "strong", S: "human", E: "strong"},
     humanSeat: "S",
     scores: {NS: 0, EW: 0}, parent: null, st: null, rng: null,
@@ -18709,7 +18913,7 @@ if (typeof document !== "undefined") (() => {
   }
   function scaffoldStamp() {
     const c = app._scAtStart || app.cfg;
-    return {ah: !!c.assistHi, ad: !!c.advice,  mg: !!c.missGuard, ct: !!c.counts,
+    return {ah: !!c.assistHi, ad: !!c.advice,  mg: !!c.missGuard, ct: !!(c.counts || c.countsHold),
             rq: !!c.riverseq, lb: !!c.livebar, tp: !!c.tempo,     ex: !!c.explain,
             rd: !!c.reading,  ht: !!c.hints};
   }
@@ -18731,7 +18935,7 @@ if (typeof document !== "undefined") (() => {
   const SCAFFOLDS = [
     {key: "assistHi",  sc: "ah", order: 1,  label: "推奨手ハイライト・ゴースト", concept: null,   def: false},
     {key: "advice",    sc: "ad", order: 2,  label: "推奨手の提案・パターンタグ", concept: null,   def: false},
-    {key: "missGuard", sc: "mg", order: 3,  label: "ミスガード",                 concept: "uke",  def: false},
+    {key: "missGuard", sc: "mg", order: 3,  label: "受けの助言（明確な局面だけ・確認つき）",                 concept: "uke",  def: false},
     {key: "counts",    sc: "ct", order: 4,  label: "カウント表",                 concept: "kyo",  def: false},
     {key: "riverseq",  sc: "rq", order: 5,  label: "河に手数の番号",             concept: "kyo",  def: false},
     {key: "livebar",   sc: "lb", order: 6,  label: "形勢バー",                   concept: null,   def: false},
@@ -18751,6 +18955,7 @@ if (typeof document !== "undefined") (() => {
    * phase: "trial"(計測中・keiko-panelには出さない) | "failed_pending"(判定後の戻す/続けるの選択待ち)
    * ================================================================ */
   const GRAD_STORAGE_KEY = "goita_grad_v1";
+  function scafOn(sf) { return !!app.cfg[sf.key] || (sf.key === "counts" && !!app.cfg.countsHold); }   // v219.2 glue G5: 駒数の長押しはカウント表の足場の一部(scaffoldStamp の ct と同じ定義)
   function gradLoad() {
     try {
       const raw = DATA_STORAGE.getItem(GRAD_STORAGE_KEY);
@@ -18785,7 +18990,7 @@ if (typeof document !== "undefined") (() => {
     const g = gradLoad();
     if (g.trial && g.trial.phase === "trial") return null;   // d: 進行中の試行が無い(同時に2つ試さない)
     for (const sf of SCAFFOLDS) {
-      if (!app.cfg[sf.key]) continue;                                       // a: その足場が現在ON
+      if (!scafOn(sf)) continue;                                            // a: その足場が現在ON(v219.2 glue G6: 駒数の長押しを含む)
       const cd = g.cooldown[sf.key];
       if (cd != null && (app.career.length - cd) < 5) continue;             // e: 直近の却下/差し戻しから5局以上経過
       const m = gradMasteryFor(sf);
@@ -18797,14 +19002,17 @@ if (typeof document !== "undefined") (() => {
   }
   // 【3】試行(承諾時): cfg[key]=falseに落として3局の計測を開始する
   function gradTrialStart(sf) {
+    const _prev = sf.key === "counts" ? {counts: !!app.cfg.counts, countsHold: !!app.cfg.countsHold} : null;   // v219.2 glue G7
     app.cfg[sf.key] = false;
+    if (_prev) app.cfg.countsHold = false;
     saveCfgToStorage();
     const g = gradLoad();
     g.trial = {key: sf.key, phase: "trial", at: today(), games: [], threshold: gradThresholdFor(sf)};
+    if (_prev) g.trial.prev = _prev;   // v219.2 glue G7: 「戻す」で試しの前に戻すため
     gradSave(g);
     keikoEvalGradAsync();   // 試行開始でproposal candidateが変わるためキャッシュを再評価
     syncSetupFormFromCfg();   // A-1(v91a): setupフォームをcfgへ追随させる(readSetupの巻き戻り防止)
-    try { toast("「" + sf.label + "」を外して、3局はかります。"); } catch (e) {}   // B-1(v91b): 卒業体験の完全化(事実のみ・圧力表現なし)
+    try { toast(((_prev && [_prev.counts ? "「カウント表」" : "", _prev.countsHold ? "「駒数を長押しで表示」" : ""].filter(Boolean).join("と")) || ("「" + sf.label + "」")) + "を外して、3局はかります。"); } catch (e) {}   // v219.2 glue G7   // B-1(v91b): 卒業体験の完全化(事実のみ・圧力表現なし)
   }
   // 却下(「まだ」): ペナルティなし。5局のクールダウン＋当日の再表示抑制(T-1のdismissedOnを共用・R-b3)
   function gradDismiss(sf) {
@@ -18849,6 +19057,8 @@ if (typeof document !== "undefined") (() => {
   }
   // 「戻す」: 卒業扱いにはせずcfgをONへ戻す。5局のクールダウンの後に再提案されうる。
   function gradTrialRevert(sf) {
+    const _p = (gradLoad().trial || {}).prev;   // v219.2 glue G8: counts の試しは開始前の 2 値へ(prev の無い旧データは従来どおり)
+    if (sf.key === "counts" && _p) { app.cfg.counts = !!_p.counts; app.cfg.countsHold = !!_p.countsHold; } else
     app.cfg[sf.key] = true;
     saveCfgToStorage();
     const g = gradLoad();
@@ -18862,7 +19072,9 @@ if (typeof document !== "undefined") (() => {
   function gradTrialContinue(sf) {
     const g = gradLoad();
     const th = (g.trial && g.trial.threshold) || gradThresholdFor(sf);
+    const _pv = g.trial && g.trial.prev;   // v219.2 glue G11: 試しの前の値を引き継ぐ
     g.trial = {key: sf.key, phase: "trial", at: today(), games: [], threshold: th};
+    if (_pv) g.trial.prev = _pv;
     gradSave(g);
     keikoEvalGradAsync();
     syncSetupFormFromCfg();   // A-1(v91a): setupフォームをcfgへ追随させる(readSetupの巻き戻り防止)
@@ -19723,6 +19935,7 @@ if (typeof document !== "undefined") (() => {
       if (mode === "confirm") {
         if (app.armedKoma === el) { activate(); return; }   // 2度目=確定
         if (app.armedKoma) app.armedKoma.classList.remove("armed");
+        { const ab = document.querySelector("#actionbar .btn.armed"); if (ab) ab.classList.remove("armed"); }   // UI-3(UX-02): 駒を武装したら「なし」の武装は解除
         app.armedKoma = el; el.classList.add("armed");      // 1度目=武装
         haptic("tap"); announce(label + "を選択。もう一度で確定");
         return;
@@ -19772,6 +19985,16 @@ if (typeof document !== "undefined") (() => {
       else if (app._lpFired) { e.stopImmediatePropagation(); app._lpFired = false; }
     }, true);
   }
+  // UI-3(UX-07): .koma は clip-path を持ち擬似要素の拡張がヒットテストに届かないため、輪(#hand .koma-slot::before)は
+  // clip-path を持たない .koma-slot 側に置く。輪(= slot 自身が target)のクリックは内側の対話可能な駒へ渡す(tap/confirm/flick の意味は駒本体と同じ)。
+  // .rh-badge は pointer-events:none なので target にならない。振り返り中は #hand が空。norecv / dis / チュートリアル対象外は role 無しで無効。
+  { const hd = $("hand"); if (hd) hd.addEventListener("click", e => {
+      const t = e.target;
+      if (!(t instanceof Element) || !t.classList.contains("koma-slot")) return;
+      const k = t.querySelector(".koma[role=button]");
+      if (!k || k.classList.contains("dis")) return;
+      k.click();
+    }); }
   // A-4(v89b): 河の駒の長押し。komaEl生成部にリスナーを足さず#boardへの委譲リスナー1組で対応。
   // clip-path適用の内側(.fkoma)ではなく外側ラッパ(.fkoma-pos)を委譲判定に使う(riverseqバッジと同じ理由)。
   (function () {
@@ -20225,6 +20448,7 @@ if (typeof document !== "undefined") (() => {
     tray.innerHTML = "";
     tray.classList.remove("norecv");
     app._recIsPass = false; app._recPat = null;
+    clearPendingSelection();   // UI-3(UX-02 / MUST 7・rev.3): 手駒欄の再描画(手番・局面変更・振り返り)のたびに未確定選択を参照と DOM から解除
     // build v152: 凡例行は毎回まず隠す(早期returnの前に置くことで観戦・振り返り・相手手番でも
     // 確実に消える)。実際に表示するのは_ledgerForHintが立った時のみ(下記)。
     const _rhLegend = $("rh-legend");
@@ -20347,6 +20571,39 @@ if (typeof document !== "undefined") (() => {
       tb.style.setProperty("--sc-shift", (-ratio).toFixed(4) + "em");  // translateYはink上端を詰める向き
     } catch (e) {}
     _scShiftDone = true;
+  }
+  function renderWatchInfo(st) {
+    const el = $("watch-info"); if (!el) return;
+    const show = !app.humanSeat && st && !app.review && st.phase !== "over" && !app.stopped;
+    if (!show) { if (!el.hidden) { el.hidden = true; el.textContent = ""; el.dataset.sig = ""; el.dataset.pre = ""; } return; }
+    const tgt = app.cfg.target || 150;
+    const pre = (st.history ? st.history.length : 0) + "|" + (app.scores.NS || 0) + "|" + (app.scores.EW || 0) + "|" + tgt + "|" + (app._watchReveal ? 1 : 0);
+    if (el.dataset.pre === pre && !el.hidden) return;   // 手が進んでいなければ組み立てない(観戦は毎描画ここを通る)
+    el.dataset.pre = pre;
+    const rem = t => Math.max(0, tgt - (app.scores[t] || 0));
+    const KEY = ["王", "香", "し"];
+    let line2;
+    if (app._watchReveal) {
+      // 席別: 手駒 ＋ その席が伏せた駒(公開 ON では伏せ駒も表向きなので「所在」に含める)
+      line2 = G.SEATS.map(s => { const own = (st.hands[s] || []).slice(); (st.board[s] || []).forEach(cell => { if (cell.def && cell.def.type === "bury" && cell.def.koma) own.push(cell.def.koma); });
+        return SEAT_JA[s] + " " + KEY.map(k => k + own.filter(x => x === k).length).join(" "); }).join("　");
+    } else {
+      const seen = {}; KEY.forEach(k => seen[k] = 0);
+      G.SEATS.forEach(s => (st.board[s] || []).forEach(cell => {
+        if (cell.atk && seen[cell.atk] != null) seen[cell.atk]++;
+        if (cell.def && cell.def.type !== "bury" && cell.def.koma && seen[cell.def.koma] != null) seen[cell.def.koma]++;
+      }));
+      line2 = "未出 " + KEY.map(k => k + " " + Math.max(0, G.KOMA_COUNT[k] - seen[k]) + "/" + G.KOMA_COUNT[k]).join("・");
+    }
+    const line1 = "南北 あと " + rem("NS") + " 点 ／ 東西 あと " + rem("EW") + " 点（目標 " + tgt + "）";
+    const sig = line1 + "|" + line2;
+    if (el.dataset.sig === sig && !el.hidden) return;
+    el.dataset.sig = sig;
+    el.textContent = "";
+    const a = document.createElement("span"); a.className = "wi-pts"; a.textContent = line1;
+    const b = document.createElement("span"); b.className = "wi-key"; b.textContent = line2;
+    el.appendChild(a); el.appendChild(b);
+    el.hidden = false;
   }
   function renderScores() {
     $("round-label").textContent = app.parent ? `親: ${seatDisp(app.parent)}` : "";
@@ -21433,21 +21690,54 @@ if (typeof document !== "undefined") (() => {
     }
   }
   let _countRenderSignature = null;
+  function renderCountGrid(c, big) {
+    const wrap = document.createElement("span");
+    wrap.className = "cgrid" + (big ? " big" : "");
+    const parts = [];
+    COUNT_ORDER.forEach(k => {
+      const total = G.KOMA_COUNT[k] || 0, left = Math.max(0, Math.min(total, c[k] || 0));
+      const row = document.createElement("span");
+      row.className = "cg-row" + ((k === "王" || k === "香" || k === "し") ? " key" : "") + (left ? "" : " z");
+      row.appendChild(komaEl(k, "mini cg-k"));
+      const pips = document.createElement("span"); pips.className = "cg-pips";
+      for (let i = 0; i < total; i++) { const p = document.createElement("i"); p.className = "cg-pip" + (i < left ? " on" : ""); pips.appendChild(p); }
+      row.appendChild(pips);
+      const n = document.createElement("b"); n.className = "cg-n"; n.textContent = String(left); row.appendChild(n);
+      wrap.appendChild(row);
+      parts.push(k + left);
+    });
+    wrap.setAttribute("role", "img");
+    wrap.setAttribute("aria-label", "未見 " + parts.join(" "));
+    return wrap;
+  }
+  function countGridSig(c) { return COUNT_ORDER.map(k => c[k] || 0).join(","); }
+  function countsCanShow() { return !!(app.humanSeat && app.st && !app.review && app.st.phase !== "over"); }
   function renderCountBar() {
-    let html = "";
-    if (app.humanSeat && app.st && app.cfg.counts && !app.review && app.st.phase !== "over") {
-      const c = G.countsFor(app.st, app.humanSeat);
-      html = `<span class="cb-t">未見</span>` +
-        COUNT_ORDER.map(k => `<span class="cb-i${c[k] ? "" : " z"}${(k === "王" || k === "香" || k === "し") ? " key" : ""}">${k}${c[k] || 0}</span>`).join("");
-    }
-    if (_countRenderSignature === html) {
+    const can = countsCanShow();
+    const hb = $("count-hold");
+    if (hb) hb.hidden = !(can && app.cfg.countsHold);
+    if (app._countHold && !(can && app.cfg.countsHold)) hideCountOverlay();
+    let sig = "", c = null;
+    if (can && app.cfg.counts) { c = G.countsFor(app.st, app.humanSeat); sig = "g:" + countGridSig(c); }
+    if (_countRenderSignature === sig) {
       recordRenderWork("count", true);
       return;
     }
     recordRenderWork("count", false);
-    $("count-bar").innerHTML = html;
-    _countRenderSignature = html;
+    const el = $("count-bar");
+    el.textContent = "";
+    if (c) el.appendChild(renderCountGrid(c, false));
+    _countRenderSignature = sig;
   }
+  function renderCountOverlay() {
+    const ov = $("count-overlay"); if (!ov) return;
+    if (!(app._countHold && countsCanShow() && app.cfg.countsHold)) { ov.hidden = true; ov.setAttribute("aria-hidden", "true"); ov.textContent = ""; ov.dataset.sig = ""; return; }
+    const c = G.countsFor(app.st, app.humanSeat), sig = "o:" + countGridSig(c);
+    if (ov.dataset.sig !== sig) { ov.textContent = ""; ov.appendChild(renderCountGrid(c, true)); ov.dataset.sig = sig; }
+    ov.hidden = false; ov.setAttribute("aria-hidden", "false");
+  }
+  function showCountOverlay() { app._countHold = true; renderCountOverlay(); const ov = $("count-overlay"); const g = ov && !ov.hidden ? ov.querySelector(".cgrid") : null; if (g) announce(g.getAttribute("aria-label")); }   // 押している間だけ表示・SR にも読み上げ
+  function hideCountOverlay() { app._countHold = false; const ov = $("count-overlay"); if (ov) { ov.hidden = true; ov.setAttribute("aria-hidden", "true"); ov.textContent = ""; ov.dataset.sig = ""; } }
   function renderAll() {
     const _renderT0 = perfNow();
     _flipCapture();
@@ -21461,8 +21751,10 @@ if (typeof document !== "undefined") (() => {
     G.SEATS.forEach(s => renderCard(s, st, reveal));
     renderStage(st);
     renderScores();
+    renderWatchInfo(st);
     updateLiveBar();
     renderCountBar();
+    if (app._countHold) renderCountOverlay();
     renderPartnerDecl(st);
     renderBelief(st);
     renderReading(st);
@@ -21891,6 +22183,13 @@ if (typeof document !== "undefined") (() => {
     }
   }
   /* PHASE14_MOBILE_A11Y_JS_END */
+  // UI-3(UX-02 / 仕様書 MUST 7・rev.3): 未確定選択(2タップの武装)を参照と DOM の両方から解除する。
+  // 手番・局面変更(renderHandTray)とモード変更を含む設定保存(「調整」の保存)から呼ぶ。humanTurn() は呼ばない
+  // (思考時間の起点 app.turnT0 と自動パスのタイマーが動くため)。
+  function clearPendingSelection() {
+    if (app.armedKoma) { try { app.armedKoma.classList.remove("armed"); } catch (e) {} app.armedKoma = null; }
+    document.querySelectorAll("#hand .koma.armed, #actionbar .btn.armed").forEach(el => el.classList.remove("armed"));
+  }
   function actionbar(html, buttons) {
     const m = $("actionbar");
     m.innerHTML = html ? `<span>${html}</span>` : "";
@@ -21898,7 +22197,17 @@ if (typeof document !== "undefined") (() => {
       const el = document.createElement("button");
       el.className = "btn" + (b.primary ? " primary" : "") + ((b.rec || (app._recIsPass && b.label === "なし")) ? " rec" : "");
       el.textContent = b.label;
-      el.addEventListener("click", b.fn);
+      // UI-3(UX-02): 2タップ確定モードでは confirm:true のボタン(受けられる局面の「なし」)も駒と同じく 1度目=武装 / 2度目=確定。
+      // rev.3: モードは駒側 makeKomaInteractive.onActivate と同じく「押した時点」で読む(対局中に「調整」で変えた直後から効く)。
+      el.addEventListener("click", () => {
+        if (b.confirm && (app.cfg.opMode || "tap") === "confirm" && !el.classList.contains("armed")) {
+          if (app.armedKoma) { app.armedKoma.classList.remove("armed"); app.armedKoma = null; }
+          el.classList.add("armed"); haptic("tap"); announce(b.label + "を選択。もう一度で確定");
+          return;
+        }
+        el.classList.remove("armed");   // 武装済み、または confirm 以外のモード: そのまま確定
+        b.fn();
+      });
       m.appendChild(el);
     });
     renderTurnFocus();
@@ -22098,16 +22407,16 @@ if (typeof document !== "undefined") (() => {
     return best.replace(/^受/, "") !== k;             // 明確な最良受けと違う駒を選んだ
   }
   function missGuardConfirm(st, k, proceed) {
-    if (app.rec && !app.rec.practice && !app.rec.hinted) { app.rec.hinted = true; log("推奨手を確認 — この局は成績集計から除外されます", false, "ai-note"); }
+    if (app.rec && !app.rec.practice && !app.rec.hinted) { app.rec.hinted = true; log("推奨手を表示（受けの助言） — この局は成績の集計から除外されます", false, "ai-note"); }
     let cr = null; try { cr = candidateRanking(st, app.humanSeat); } catch (e) {}
     const best = (cr && cr.list[0]) ? cr.list[0].label : "";
     const bestTxt = best === "なし" ? "「なし」（受けない）" : ("「" + best.replace(/^受/, "") + "」で受け");
     const m = modal(
-      `<h2 class="serif">ちょっと確認</h2>` +
+      `<h2 class="serif">AIの助言 — この受け</h2>` +
       `<p class="mg-p">この局面は <b>${bestTxt}</b> が明確におすすめです。<br>それでも <b>「${k}」で受け</b> ますか？</p>` +
       `<div class="mg-btns"><button class="btn" id="mg-stay">選び直す</button>` +
       `<button class="btn primary" id="mg-go">このまま「${k}」で受ける</button></div>` +
-      `<label class="mg-off"><input type="checkbox" id="mg-never"> 今後この確認を出さない</label>`);
+      `<label class="mg-off"><input type="checkbox" id="mg-never"> 今後この助言を出さない</label>`);
     m.querySelector("#mg-stay").onclick = closeModal;
     m.querySelector("#mg-go").onclick = () => { if (m.querySelector("#mg-never").checked) app.cfg.missGuard = false; closeModal(); proceed(); };
   }
@@ -22186,7 +22495,9 @@ if (typeof document !== "undefined") (() => {
         let left = rect.left, top = rect.top, width = rect.width, height = rect.height;
         if (target === el && el.classList && el.classList.contains("koma")) {
           try {
-            const pseudo = getComputedStyle(el, "::before");
+            // UI-3(UX-07): 輪は .koma-slot 側にあるので、親が .koma-slot ならそちらの ::before を測る(.att-area .koma は従来どおり自身)
+            const host = (el.parentElement && el.parentElement.classList && el.parentElement.classList.contains("koma-slot")) ? el.parentElement : el;
+            const pseudo = getComputedStyle(host, "::before");
             const inset = side => { const n = parseFloat(pseudo[side]); return Number.isFinite(n) ? Math.min(0, n) : 0; };
             const l = inset("left"), r = inset("right"), t = inset("top"), b = inset("bottom");
             left += l; top += t; width -= l + r; height -= t + b;
@@ -22875,7 +23186,7 @@ if (typeof document !== "undefined") (() => {
       const _uncut = app.cfg.hints && G.UNCUTTABLE.has(atk) && st.hands[me].includes("王");
       actionbar(
         `${seatDisp(st.attacker)}の「${atk}」${isPartner && app.cfg.hints ? "（味方の攻め）" : ""}${_uncut ? "　※王では切れません（同じ駒でのみ受け可）" : ""}`,
-        (app.tutorial && app.tutorial.awaiting) ? [] : [{label: "なし", fn: () => {
+        (app.tutorial && app.tutorial.awaiting) ? [] : [{label: "なし", confirm: true, fn: () => {
           const ms = Math.round(performance.now() - app.turnT0);
           actionbar(""); $("hand-hint").textContent = "";
           applyAndLog({type: "pass"}, ms);
@@ -22975,6 +23286,7 @@ if (typeof document !== "undefined") (() => {
   }
 
   function startGame() {
+    restoreSeatSwap();   // 安全網: 席交換の練習を抜けずに次局へ来ても元の席・ティアに戻す(通常は endPractice で復元済み)
     // Fix(v87.1): キリコ持続演出(hold)中は次の局へ遷移できない(演出が新しい盤面へ残留し見づらくなるため)。
     //   完了ボタン(wc-done)で演出を閉じてから進む。.out(解放フェード中)は残留扱いにしない。
     { const kf = document.getElementById("kiriko-fire");
@@ -23728,6 +24040,8 @@ if (typeof document !== "undefined") (() => {
     setOppProfileBoth(app.humanSeat,
       app.oppCounts ? G.oppRatesFromCounts(app.oppCounts) : null);
     setTblTrustBoth(app.humanSeat);
+    // build v218(ATK_CONS_W・裁定 9-1): 人間席の整合重みの因子を専用チャネルへ供給。表整合性の観測が n ≥ 12 なら tblTrustVal()、それまで 0 = 数えない
+    GOITA_ENGINE_REGISTRY.invokeAll("setAtkConsTrust", app.humanSeat, (app.tblTrust && app.tblTrust.n >= 12) ? tblTrustVal() : 0);
     if (KYO_RETENTION_LEARN) setKyoRetentionBoth(app.humanSeat);   // 提案D: 既定OFF
   }
   // 提案D(PLAN_信頼値学習系統ブラッシュアップ_Fable5.md §3-D): 配線済み・供給ゼロだった
@@ -23769,6 +24083,7 @@ if (typeof document !== "undefined") (() => {
     GOITA_ENGINE_REGISTRY.invokeAll("setOuTrust", seat, null);
     GOITA_ENGINE_REGISTRY.invokeAll("setConvTrust", seat, null);
     GOITA_ENGINE_REGISTRY.invokeAll("setTblTrust", seat, null);
+    GOITA_ENGINE_REGISTRY.invokeAll("setAtkConsTrust", seat, null);   // build v218: 席が AI に戻るので既定(1.0 = 全額数える)へ
   }
   // M-5(v92a): setTblTrustBothと同型。coop(G_B)の相方AIも人間プロフィールを見て打てるようミラーする
   // (従来G_Bへの反映が無く、対人協調ティアの相方AIが素の既定値のまま打っていた)。
@@ -24190,6 +24505,7 @@ if (typeof document !== "undefined") (() => {
     step();
   }
   function endPractice() {
+    const _swapped = restoreSeatSwap();
     app.drill = null;
     app.bannerBase = null;
     modeBanner(null);
@@ -24199,6 +24515,7 @@ if (typeof document !== "undefined") (() => {
       ? [{label: "結果を見る", primary: true, fn: showMatchEnd}]
       : [{label: "次の局へ", primary: true, fn: startGame}]);
     status("練習を終えました。対局を続けられます。");
+    if (_swapped) renderAll();   // 席交換の復元後、席カード／手駒トレイを元の視点で描き直す
   }
   function onPracticeOver(res) {
     renderAll();
@@ -24223,6 +24540,7 @@ if (typeof document !== "undefined") (() => {
       kirikoBurn(res);
     }
     let verdict = "";
+    if (d && d.seatSwap) { verdict = seatSwapVerdict(d, res); log(`判定: ${verdict}`, true); bannerVerdict(verdict); }
     if (d && !d.judged) { d.judged = true; d.pendingOutcome = true; }
     if (d && d.pendingOutcome) {
       const ok = youFinished;
@@ -24247,6 +24565,8 @@ if (typeof document !== "undefined") (() => {
       btns.push(d.srsCard
         ? {label: "次のカードへ", primary: true, fn: () => srsReviewNext()}
         : {label: "次の問題", primary: true, fn: () => openPuzzle(d.band)});
+    } else if (d && d.seatSwap) {
+      btns.push({label: "もう一度同じ席で", fn: () => startSeatSwapPractice(d.idx, d.label)});
     } else if (d) {
       btns.push({label: "逃し復習へ", fn: () => { openMissDrill(); }});
     }
@@ -24800,6 +25120,64 @@ if (typeof document !== "undefined") (() => {
     ctx.textAlign = "left";
     return cv;
   }
+  function summaryHighlights(rec) {
+    const out = [], mv = rec.moves || [], hands = {};
+    G.SEATS.forEach(s => hands[s] = (rec.initialHands && rec.initialHands[s]) ? rec.initialHands[s].slice() : null);
+    G.SEATS.forEach(s => { const n = hands[s] ? hands[s].filter(k => k === "し").length : 0; if (n >= 5) out.push({t: "五し", text: SEAT_JA[s] + " の配牌に し " + n + " 枚（五し）"}); });
+    let cur = null, miss = null, missPts = 0;
+    mv.forEach((m, i) => {
+      if (!m || !m.action) return;
+      const a = m.action, s = m.seat, h = hands[s];
+      if (a.type === "attack") cur = {seat: s, koma: a.koma};
+      if (a.type === "receive" && a.koma === "王") out.push({t: "王受け", text: "第" + (i + 1) + "手 " + SEAT_JA[s] + " 王で受け（攻め " + (cur ? cur.koma : "?") + "）"});
+      if (a.type === "pass" && cur && h && G.team(cur.seat) !== G.team(s) && h.includes("王") && cur.koma !== "王" && !G.UNCUTTABLE.has(cur.koma) && !h.includes(cur.koma))
+        out.push({t: "王温存", text: "第" + (i + 1) + "手 " + SEAT_JA[s] + " 王を温存して通す（攻め " + cur.koma + "）"});
+      if (m.cf && m.cf.agree === false && m.cf.src === "solver") { const p = solverProofScore(m); if (p > missPts) { missPts = p; miss = {i, s, m}; } }
+      if (h && a.koma && (a.type === "bury" || a.type === "attack" || a.type === "receive")) { const j = h.indexOf(a.koma); if (j >= 0) h.splice(j, 1); }
+    });
+    if (miss) out.push({t: "最大の逃し", text: "第" + (miss.i + 1) + "手 " + SEAT_JA[miss.s] + " " + (ACT_JA[miss.m.action.type] || "") + (miss.m.action.koma || "") + " → AIなら " + (ACT_JA[miss.m.cf.type] || "") + (miss.m.cf.koma || "") + "（" + missPts + "点）"});
+    const r = rec.result, last = mv[mv.length - 1];
+    if (r && !r.draw && r.winner) out.push({t: "上がり", text: "第" + mv.length + "手 " + SEAT_JA[r.winner] + " " + (last && last.action && last.action.type === "receive" ? "受け上がり" : "上がり") + "「" + ((last && last.action && last.action.koma) || "") + "」 " + (r.pts || 0) + "点" + (r.dbl ? "（同駒 2 倍）" : "")});
+    else if (r && r.draw) out.push({t: "流局", text: "流局（無得点）"});
+    return out;
+  }
+  function drawSummaryCard(rec) {
+    const cs = getComputedStyle(document.documentElement);
+    const v = (n, d) => { const x = (cs.getPropertyValue(n) || "").trim(); return x || d; };
+    const C = { bg: v("--ink1", "#1b211c"), line: v("--line", "#3a463b"), hair: v("--hair", "#2a332b"), fg: v("--fg", "#e7e2d4"), gin: v("--gin", "#b9b4a3"), gind: v("--gin-d", "#8a8576"),
+      kinari: v("--kinari", "#e8dcc0"), kin: v("--kin", "#c2a35d"), shu: v("--shu", "#c0563a"), aoi: v("--aoi", "#5b7aa8"), ink: "#1b140f" };
+    const SC = 2, W = 1200, H = 630, F = '"Hiragino Mincho ProN", serif';
+    const cv = document.createElement("canvas"); cv.width = W * SC; cv.height = H * SC;
+    const ctx = cv.getContext("2d"); ctx.scale(SC, SC);
+    const fit = (t, maxW) => { if (ctx.measureText(t).width <= maxW) return t; let s = t; while (s.length > 1 && ctx.measureText(s + "…").width > maxW) s = s.slice(0, -1); return s + "…"; };
+    ctx.fillStyle = C.bg; ctx.fillRect(0, 0, W, H);
+    ctx.textBaseline = "middle"; ctx.textAlign = "left";
+    ctx.fillStyle = C.kin; ctx.font = "700 30px " + F; ctx.fillText("ごいた", 36, 44);
+    const r = rec.result, res = r ? (r.draw ? "流局" : (SEAT_JA[r.winner] || "") + " " + (r.pts || 0) + "点") : "";
+    const sb = rec.scoresBefore || {NS: 0, EW: 0};
+    ctx.fillStyle = C.gin; ctx.font = "15px sans-serif";
+    const _d = new Date(), _p = n => String(n).padStart(2, "0"), today = _d.getFullYear() + "-" + _p(_d.getMonth() + 1) + "-" + _p(_d.getDate());   // 端末のローカル日付
+    ctx.fillText(fit("第" + (rec.gameNo || 1) + "局　親 " + (SEAT_JA[rec.parent] || "-") + "　開始時 南北 " + (sb.NS || 0) + " – " + (sb.EW || 0) + " 東西" + (res ? "　結果 " + res : "") + "　" + today, W - 170), 134, 44);
+    ctx.fillStyle = C.gind; ctx.font = "13px sans-serif"; ctx.fillText("配牌", 36, 86);
+    const kw = 30, kh = 36;
+    G.SEATS.forEach((s, si) => {
+      const y = 104 + si * 46;
+      ctx.fillStyle = (s === "N" || s === "S") ? C.aoi : C.shu; ctx.font = "700 16px " + F; ctx.textAlign = "left"; ctx.textBaseline = "middle";
+      ctx.fillText(SEAT_JA[s] || s, 36, y + kh / 2);
+      let x = 70;
+      ((rec.initialHands && rec.initialHands[s]) || []).slice().sort(byPts).forEach(k => { _drawKoma(ctx, x, y, kw, kh, k, "up", C); x += kw + 4; });
+      ctx.textAlign = "left"; ctx.textBaseline = "middle";
+      if (rec.parent === s) { ctx.fillStyle = C.kin; ctx.font = "12px sans-serif"; ctx.fillText("親", x + 6, y + kh / 2); }
+    });
+    const hl = summaryHighlights(rec);
+    ctx.fillStyle = C.gind; ctx.font = "13px sans-serif"; ctx.textAlign = "left"; ctx.textBaseline = "middle"; ctx.fillText("勝負どころ", 36, 312);
+    ctx.font = "15px sans-serif";
+    if (!hl.length) { ctx.fillStyle = C.gind; ctx.fillText("（特筆なし）", 36, 338); }
+    hl.slice(0, 6).forEach((h, i) => { ctx.fillStyle = h.t === "上がり" ? C.kin : (h.t === "最大の逃し" ? C.shu : C.fg); ctx.fillText(fit("・" + h.text, 500), 36, 338 + i * 26); });
+    try { const b = drawBoard(rebuildState(rec, rec.moves.length), {gameNo: rec.gameNo, scoresBefore: rec.scoresBefore, ply: rec.moves.length}); ctx.drawImage(b, 560, 80, 600, 487); } catch (e) {}
+    ctx.fillStyle = C.gind; ctx.font = "12px sans-serif"; ctx.textAlign = "right"; ctx.textBaseline = "middle"; ctx.fillText("ごいた（能登・宇出津の伝承遊戯）— 検討用サマリー", W - 30, H - 22); ctx.textAlign = "left";
+    return cv;
+  }
   function boardToCanvas(rec, idx) {
     return drawBoard(rebuildState(rec, idx), {gameNo: rec.gameNo, scoresBefore: rec.scoresBefore, ply: idx + 1});
   }
@@ -24957,15 +25335,18 @@ if (typeof document !== "undefined") (() => {
       '<h3 class="serif">局面を共有</h3>' +
       (dataUrl ? '<img src="' + dataUrl + '" alt="盤面" style="width:100%;border:1px solid var(--line);border-radius:8px;margin:6px 0">'
                : '<p class="note">画像を生成できませんでした。</p>') +
-      '<div class="row" style="gap:8px;flex-wrap:wrap;margin-top:2px">' +
+      '<div class="row sm-r1" style="gap:8px;flex-wrap:wrap;margin-top:2px">' +
         '<button class="btn small primary" id="sm-both">画像＋棋譜をコピー</button>' +
-        '<button class="btn small" id="sm-x">Xで共有</button>' +
         (o.blob ? '<button class="btn small" id="sm-imgsave">画像を保存</button>' : "") +
+        (o.rec && o.rec.initialHands && o.rec.moves ? '<button class="btn small" id="sm-summary">サマリー画像を保存</button>' : "") +
+        (canOsShare ? '<button class="btn small" id="sm-os">他のアプリで共有</button>' : "") +
+      '</div>' +
+      '<div class="row sm-r2" style="gap:8px;flex-wrap:wrap;margin-top:6px">' +
         '<button class="btn small" id="sm-kifu">棋譜だけコピー</button>' +
         '<button class="btn small" id="sm-url">URLをコピー</button>' +
         (code ? '<button class="btn small" id="sm-code">局面コードをコピー</button>' : "") +
-        (canOsShare ? '<button class="btn small" id="sm-os">他のアプリで共有</button>' : "") +
         (o.rec ? '<button class="btn small" id="sm-qr">QRコードで共有</button>' : "") +
+        '<button class="btn small" id="sm-x">Xで共有</button>' +
       '</div>' +
       (o.rec ? '<div id="sm-qrwrap" style="display:none;text-align:center;margin-top:8px"></div>' : "") +
       '<details style="margin-top:8px"><summary class="note" style="cursor:pointer">棋譜・URLを表示</summary>' +
@@ -24998,6 +25379,15 @@ if (typeof document !== "undefined") (() => {
     q("#sm-kifu").onclick = async () => { const ok = await copyText(o.kifu); toast(ok ? "棋譜をコピーしました" : "コピーできませんでした"); };
     q("#sm-url").onclick = async () => { const ok = await copyText(o.url); toast(ok ? "URLをコピーしました" : "コピーできませんでした"); };
     if (code && q("#sm-code")) q("#sm-code").onclick = async () => { const ok = await copyText(code); toast(ok ? "局面コードをコピーしました" : "コピーできませんでした"); };
+    if (q("#sm-summary")) q("#sm-summary").onclick = () => {
+      let cvs = null; try { cvs = drawSummaryCard(o.rec); } catch (e) { cvs = null; }
+      if (!cvs) { toast("サマリー画像を作れませんでした"); return; }
+      cvs.toBlob(bl => {
+        if (!bl) { toast("サマリー画像を作れませんでした"); return; }
+        const a = document.createElement("a"); a.href = URL.createObjectURL(bl); a.download = "goita_summary.png"; a.click();
+        setTimeout(() => URL.revokeObjectURL(a.href), 1000); toast("サマリー画像を保存しました");
+      }, "image/png");
+    };
     if (canOsShare && q("#sm-os")) q("#sm-os").onclick = async () => {
       try { const file = new File([o.blob], "goita.png", {type: "image/png"}); await navigator.share({files: [file], text: (o.desc || "") + "\n" + o.url, title: o.title || "ごいたの局面"}); }
       catch (e) { if (!(e && e.name === "AbortError")) toast("共有できませんでした"); }
@@ -25550,6 +25940,7 @@ if (typeof document !== "undefined") (() => {
         (mv.human && mv.cf && !mv.cf.agree && mv.cf.src === "solver" && !mv.lineNote
           ? `<button class="rv-resume" data-line="${i}">手順</button>` : "") +
           (!mv.parNote ? `<button class="rv-resume" data-par="${i}" title="全手駒を公開した事後の答え合わせ。悪手判定には使いません">全公開</button>` : "") +
+        (app.reviewRec.initialHands && seatSwapTarget(mv) ? `<button class="rv-resume" data-swap="${i}">${seatSwapLabel(mv.seat)}</button>` : "") +
         `<button class="rv-resume" data-i="${i}">▶ ここから再プレイ</button></span></span>`;
       item.addEventListener("click", ev => {
         if (ev.target.dataset.mc !== undefined) {
@@ -25562,6 +25953,10 @@ if (typeof document !== "undefined") (() => {
         }
         if (ev.target.dataset.line !== undefined) {
           traceLine(+ev.target.dataset.line);
+          return;
+        }
+        if (ev.target.dataset.swap !== undefined && ev.target.classList.contains("rv-resume")) {
+          startSeatSwapPractice(+ev.target.dataset.swap);
           return;
         }
         if (ev.target.dataset.i !== undefined && ev.target.classList.contains("rv-resume")) {
@@ -25714,8 +26109,48 @@ if (typeof document !== "undefined") (() => {
     ev.preventDefault();
     closeReviewToGame();
   });
+  // 席交換の基準は「本当の自席」= 振り返りに入る前の humanSeat(振り返り中は視点切替や共有読込で app.humanSeat が変わるため)
+  function seatSwapReal() { return app._humanSeatBeforeReview !== undefined ? app._humanSeatBeforeReview : app.humanSeat; }
+  function seatSwapTarget(mv) { if (!mv || !mv.seat) return null; const r = seatSwapReal(); return r ? (mv.seat === G.partnerOf(r) ? mv.seat : null) : mv.seat; }
+  function seatSwapLabel(seat) { const r = seatSwapReal(); return (r && r !== seat && app.humanSeat === r) ? "相方の席で打ち直す" : SEAT_JA[seat] + "の席で打ち直す"; }
+  function teamPts(result, team) { if (!result || result.draw || !result.winner) return 0; return (G.team(result.winner) === team ? 1 : -1) * (result.pts || 0); }
+  function startSeatSwapPractice(i, label) {
+    const rec = app.reviewRec; if (!rec || !rec.moves || !rec.moves[i]) return;
+    if (!rec.initialHands) { toast("この記録には配牌が無いので打ち直せません"); return; }
+    const seat = rec.moves[i].seat, prev = seatSwapReal();
+    try { rebuildState(rec, i); } catch (e) { toast("この記録からは局面を組み立てられません"); return; }   // 席・ティアを触る前に、失敗しうる処理を先に済ませる
+    if (!label) label = seatSwapLabel(seat) + "（第" + (i + 1) + "手から・あなたは" + SEAT_JA[seat] + "の席。盤は回りません）";
+    app._humanSeatBeforeReview = undefined;   // startPractice → closeReview で視点を戻させない(復元は restoreSeatSwap が担う)
+    if (!app._swap) app._swap = {humanSeat: prev, tiers: Object.assign({}, app.tiers)};
+    app.tiers = Object.assign({}, app.tiers);
+    if (prev && prev !== seat) app.tiers[prev] = (app._swap.tiers[seat] && app._swap.tiers[seat] !== "human") ? app._swap.tiers[seat] : "strong";
+    app.tiers[seat] = "human";
+    app.humanSeat = seat;
+    $("handarea").classList.add("show");
+    try {
+      startPractice(rec, i, {seatSwap: true, idx: i, judged: true, orig: rec.result || null, team: G.team(seat), seat, label}, label);
+    } catch (e) {   // 席・ティアを書き換えた後で失敗したら必ず元に戻す
+      restoreSeatSwap(); try { renderAll(); } catch (e2) {}
+      toast("打ち直しを始められませんでした");
+    }
+  }
+  function seatSwapVerdict(d, res) {
+    const t = d.team, tj = t === "NS" ? "南北" : "東西";
+    const a = teamPts(d.orig, t), b = teamPts(res, t), diff = b - a;
+    const sg = n => (n > 0 ? "+" : "") + n;
+    return "元の局 " + tj + " " + sg(a) + " → 打ち直し " + tj + " " + sg(b) + "（" + (diff > 0 ? Math.abs(diff) + " 点よくなった" : diff < 0 ? Math.abs(diff) + " 点わるくなった" : "同じ") + "）" + (d.orig ? "" : "※元の局の結果が記録に無いので 0 として比較");
+  }
+  function restoreSeatSwap() {
+    const w = app._swap; if (!w) return false;
+    app._swap = null;
+    app.humanSeat = w.humanSeat; app.tiers = Object.assign({}, w.tiers);
+    $("handarea").classList.toggle("show", !!app.humanSeat);
+    if (app.humanSeat) { setOuTrustBoth(app.humanSeat); applyOppProfile(); }
+    return true;
+  }
   // 巻き戻し: 選んだ手の「直前」の局面に戻し、そこから対局を再開する
   function resumeFromMove(i) {
+    restoreSeatSwap();
     const rec = app.reviewRec;
     if (rec.imported || rec.practice) {
       // 読込局面の再プレイは現行マッチを汚さない練習として実施
@@ -25990,6 +26425,7 @@ if (typeof document !== "undefined") (() => {
     startGame();
   }
   function stopToSetup() {
+    restoreSeatSwap();
     app.stopped = true;
     wakeLockRelease();   // A-2(v89b)
     app.drill = null;
@@ -26048,6 +26484,7 @@ if (typeof document !== "undefined") (() => {
     const badge = document.getElementById(prefix + "-coachbadge");
     if (badge) badge.style.display = tier === "custom" ? "" : "none";
     if (tier !== "custom") app.cfg.coach = tier;
+    if (prefix === "cfg") renderSetupSummary();   // UI-3(UX-01): 濃度ボタン・プリセット・syncSetupFormFromCfg からの変更(change は飛ばない)を要約へ
   }
   function wireCoachTier(prefix) {
     const box = document.getElementById(prefix + "-coachtier");
@@ -26083,6 +26520,7 @@ if (typeof document !== "undefined") (() => {
     setChk("cfg-riverseq", app.cfg.riverseq);
     setChk("cfg-passHist", app.cfg.passHist);
     setChk("cfg-watchReveal", app.cfg.watchReveal);
+    setChk("cfg-countsHold", app.cfg.countsHold);
     syncCoachTierUI("cfg");
   }
   function readSetup(watch) {
@@ -26108,6 +26546,7 @@ if (typeof document !== "undefined") (() => {
     app.cfg.riverseq = $("cfg-riverseq") ? $("cfg-riverseq").checked : app.cfg.riverseq;
     app.cfg.passHist = $("cfg-passHist") ? $("cfg-passHist").checked : app.cfg.passHist;
     app.cfg.watchReveal = $("cfg-watchReveal") ? $("cfg-watchReveal").checked : app.cfg.watchReveal;
+    app.cfg.countsHold = $("cfg-countsHold") ? $("cfg-countsHold").checked : app.cfg.countsHold;
     const sSel = $("cfg-S").value;
     app.tiers = {
       S: sSel === "human" ? (watch ? "strong" : "human") : sSel,
@@ -26128,14 +26567,77 @@ if (typeof document !== "undefined") (() => {
     $("main-screen").classList.add("show");
     $("handarea").classList.toggle("show", !!app.humanSeat);
   }
+  // ===== UI-3(UX-01 / UX-02): 設定要約・保存対局のガード(助言フラグ ADVICE_FLAGS は SHARED_TOGGLE_DEFS の直前で定義) =====
+  // 設定要約: readSetup と同じ要素から読むので、要約と実際に開始する設定は常に一致する。
+  function renderSetupSummary() {
+    const el = $("setup-summary"); if (!el) return;
+    const v = id => { const e = $(id); return e ? e.value : ""; };
+    const on = id => { const e = $(id); return !!(e && e.checked); };
+    const who = v("cfg-S") === "human" ? "あなたが南で打つ" : "全席AI";
+    const ew = TIER_LABEL[v("cfg-EW")] || v("cfg-EW"), n = TIER_LABEL[v("cfg-N")] || v("cfg-N");
+    // rev.3: 成績除外に関わる助言 4 つと、それ以外の補助表示(読み筋・カウント等)を分ける(「操作ヒントのみ」は読み筋 ON でも出て実態と違った)。
+    const HELP = ["hints", "reading", "cand", "counts", "countsHold", "livebar", "riverseq", "explain", "sighonest"];   // v219.2 glue G1: UI-2 の駒数長押しも補助
+    const adv = ADVICE_FLAGS.some(k => on("cfg-" + k)) ? "助言あり（表示した局は成績対象外）"
+      : (HELP.some(k => on("cfg-" + k)) ? "推奨手なし（ヒント・読み筋などの補助あり）" : "補助なし");
+    el.textContent = `${who}／相手 ${ew}・相方 ${n}／先取 ${v("cfg-target")} 点／${adv}。目的を選んだだけでは始まりません。「対局をはじめる」で開始。`;
+  }
+  // 保存対局のガード: newMatch() は保存を無言で消すため、開始/観戦/出場前チェックリストの「開始」の前に確認を挟む。
+  // 先頭ボタンは「新しく始める」(計器 n3_page.js は未知モーダルの先頭ボタンを押すため)。
+  function guardNewMatch(go) {
+    const d = loadMatchProgress();
+    if (!d) { go(); return; }
+    const m = modal(
+      `<h2 class="serif">保存された対局があります</h2>` +
+      `<p class="mg-p">${matchResumeDesc(d)}<br>新しく始めると、この保存は消えます。</p>` +
+      `<div class="mg-btns"><button class="btn primary" id="gm-new">新しく始める</button>` +
+      `<button class="btn" id="gm-resume">再開する</button>` +
+      `<button class="btn" id="gm-cancel">やめる</button></div>`);
+    m.querySelector("#gm-new").onclick = () => { closeModal(); go(); };
+    m.querySelector("#gm-resume").onclick = () => { closeModal(); resumeSavedMatch(d); };
+    m.querySelector("#gm-cancel").onclick = closeModal;
+  }
   function enterGame(watch) {
+    app._swap = null;   // 設定画面からの開始は readSetup が humanSeat / tiers を決め直すので退避は捨てる
     readSetup(watch);
+    // UI-3(UX-02): 助言が ON のまま人間が対局を始めるときは、マッチ開始時に 1 回だけ「成績集計の対象外」を案内し、
+    // その場で助言を切って始める選択肢を出す(裁定 8)。観戦・チュートリアル・練習・#m-new(もう一勝負)では出ない。
+    if (!watch && app.humanSeat && ADVICE_FLAGS.some(k => app.cfg[k])) {
+      const m = modal(
+        `<h2 class="serif">助言が ON です</h2>` +
+        `<p class="mg-p">推奨手・ハイライト・読みヒント・受けの助言のいずれかが ON です。<br>助言が表示された局は成績集計の対象外になります（過去の成績は変わりません）。</p>` +
+        `<div class="mg-btns"><button class="btn primary" id="an-go">このまま始める</button>` +
+        `<button class="btn" id="an-off">助言を切って始める</button>` +
+        `<button class="btn" id="an-cancel">やめる</button></div>`);
+      m.querySelector("#an-go").onclick = () => { closeModal(); ensureGameScreen(); newMatch(); };
+      m.querySelector("#an-cancel").onclick = closeModal;   // Escape / 背景タップと同じ「設定画面に留まる」を見える形に(第二読者 S4)
+      m.querySelector("#an-off").onclick = () => {
+        for (const k of ADVICE_FLAGS) app.cfg[k] = false;
+        document.body.classList.toggle("readHint", false);
+        syncSetupFormFromCfg();
+        app.cfg.coach = detectCoachTier("cfg");   // readSetup と同じ式で濃度を追随(残りが custom でも保存値を古い段のままにしない)
+        saveCfgToStorage();
+        closeModal(); ensureGameScreen(); newMatch();
+      };
+      return;
+    }
     ensureGameScreen();
     newMatch();
   }
-  $("btn-start").addEventListener("click", () => enterGame(false));
-  $("btn-watch").addEventListener("click", () => enterGame(true));
+  $("btn-start").addEventListener("click", () => guardNewMatch(() => enterGame(false)));   // UI-3(UX-01)
+  $("btn-watch").addEventListener("click", () => guardNewMatch(() => enterGame(true)));   // UI-3(UX-01)
+  { const hb = $("count-hold"); if (hb) {
+      const isKey = ev => ev.key === " " || ev.key === "Enter" || ev.key === "Spacebar";
+      hb.addEventListener("pointerdown", ev => { ev.preventDefault(); try { hb.setPointerCapture(ev.pointerId); } catch (e) {} showCountOverlay(); });
+      ["pointerup", "pointercancel", "lostpointercapture", "blur"].forEach(t => hb.addEventListener(t, hideCountOverlay));
+      hb.addEventListener("keydown", ev => { if (!isKey(ev)) return; ev.preventDefault(); if (!ev.repeat) showCountOverlay(); });
+      hb.addEventListener("keyup", ev => { if (isKey(ev)) hideCountOverlay(); });
+      hb.addEventListener("click", ev => ev.preventDefault());
+      hb.addEventListener("contextmenu", ev => ev.preventDefault());
+      ["pointerup", "pointercancel"].forEach(t => document.addEventListener(t, () => { if (app._countHold) hideCountOverlay(); }, true));   // 安全網: キャプチャが取れずボタン外で離しても必ず閉じる
+      window.addEventListener("blur", () => { if (app._countHold) hideCountOverlay(); });
+  } }
   wireCoachTier("cfg"); syncSetupFormFromCfg();
+  $("setup-screen").addEventListener("change", renderSetupSummary); renderSetupSummary();   // UI-3(UX-01): select/checkbox の操作で要約を更新
   initMatchResumeUI();   // A-1(v89b): 保存された対局があれば復帰カードを表示
   // A-3(v91a): #keiko-dismissの恒久addEventListenerを廃止(keikoRenderCardが全カード種で
   // onclickを明示設定するため併存不要。grad_failedで「このまま続ける」と当日抑制が同時発火していた不具合の修正)。
@@ -26176,7 +26678,7 @@ if (typeof document !== "undefined") (() => {
       // C案(改訂3版・Sonar承認): explainは既定ONでCOACH_FLAG外のため実際は表示されている。「だけ」を削り実態に合わせる。
       note: "標準AI（Solver）が相手です。コーチは「標準」で、ヒントと読み筋を表示します。腕試しにどうぞ。"},
     tournament: {EW: "strong", N: "strong", coach: "off", livebar: false, target: 150,
-      explain: false, tempo: false, riverseq: false,
+      explain: false, tempo: false, riverseq: false, countsHold: false,   // v219.2 glue G2: 全補助なし
       // C案: 切る対象(AIの思考表示・気配演出)を明記。当日の所作の記述はF-17(1)の出典範囲を超えないため無変更。
       note: "強いAIが相手・コーチなしの、実際の宇出津の大会に近い設定です。AIの思考表示や気配の演出も切ります。大会では対局中の相談は原則禁止で、駒に気持ちを込めて打ちます。"},
   };
@@ -26191,8 +26693,10 @@ if (typeof document !== "undefined") (() => {
     if (p.explain  != null && $("cfg-explain"))  $("cfg-explain").checked  = p.explain;
     if (p.tempo    != null && $("cfg-tempo"))    $("cfg-tempo").checked    = p.tempo;
     if (p.riverseq != null && $("cfg-riverseq")) $("cfg-riverseq").checked = p.riverseq;
+    if (p.countsHold != null && $("cfg-countsHold")) $("cfg-countsHold").checked = p.countsHold;   // v219.2 glue G3
     const note = $("ladder-note"); if (note) note.textContent = p.note;
     document.querySelectorAll(".ladder-btn").forEach(b => b.classList.toggle("on", b.dataset.ladder === kind));
+    renderSetupSummary();   // UI-3(UX-01): EW/N/target の代入後に要約を更新
   }
   document.querySelectorAll(".ladder-btn").forEach(b => b.addEventListener("click", () => applyLadderPreset(b.dataset.ladder)));
   $("btn-back").addEventListener("click", stopToSetup);
@@ -27419,7 +27923,7 @@ if (typeof document !== "undefined") (() => {
     const g = gradLoad();
     const rows = SCAFFOLDS.map(sf => {
       let mark, statusTxt, markStyle = "";
-      if (app.cfg[sf.key]) {
+      if (scafOn(sf)) {   // v219.2 glue G9
         mark = "─"; statusTxt = "使用中";
       } else if (g.graduated[sf.key]) {
         mark = "✓"; statusTxt = fmtMonthDay(g.graduated[sf.key].at) + "に外した"; markStyle = "color:var(--aoi)";
@@ -27438,7 +27942,7 @@ if (typeof document !== "undefined") (() => {
       }
       return row;
     }).join("");
-    const remain = SCAFFOLDS.filter(sf => app.cfg[sf.key]).length;
+    const remain = SCAFFOLDS.filter(sf => scafOn(sf)).length;   // v219.2 glue G9
     // B-3(v91b): 10/10到達時に出場前チェックリストへの接続文言+ボタンを追加(G-3→D-2の連結。従来は文言のみで行き止まり)。
     const remainTxt = remain === 0
       ? "大会仕様（全て無し）に到達しています。出場前チェックリストで確かめられます。"
@@ -27518,7 +28022,7 @@ if (typeof document !== "undefined") (() => {
     } catch (e) { /* 黙って諦める(対局を妨げない) */ }
   }
   function readinessChecklistHtml() {
-    const remain = SCAFFOLDS.filter(sf => app.cfg[sf.key]).length;   // G-3と同じ算出
+    const remain = SCAFFOLDS.filter(sf => scafOn(sf)).length;   // G-3と同じ算出(v219.2 glue G9)
     const item1 = remain === 0;
     const tw = tourWinLoad();
     // A-5(v91a): 「勝ち越せる」の判定をwins>0(1勝でも✓)からwins>losses(勝ち越し)へ是正し、
@@ -27599,8 +28103,83 @@ if (typeof document !== "undefined") (() => {
     if (go) go.onclick = () => {
       applyLadderPreset("tournament");
       closeModal();
-      enterGame(false);
+      guardNewMatch(() => enterGame(false));   // UI-3(UX-01): enterGame の第 3 の呼び出し元にも保存対局のガード
     };
+  }
+  function playStyleRecs() {
+    return [...(app.matchRecs || []), ...(app.importedRecs || [])].filter(r => r && !r.practice && r.moves && r.moves.length && r.initialHands && r.moves.some(m => m && m.human));
+  }
+  function playStyleStats(recs) {
+    recs = recs || playStyleRecs();
+    const S = {games: 0, broken: 0, atkMe: 0, atkP: 0, rcvMe: 0, rcvP: 0, bothResp: 0, bothPass: 0, ouOpp: 0, ouKeep: 0, winMe: 0, winP: 0, rideOpp: 0, ridePass: 0, think: []};
+    for (const rec of recs) {
+      const hm = rec.moves.find(m => m && m.human); if (!hm) continue;
+      const me = hm.seat, P = G.partnerOf(me), myTeam = G.team(me);
+      const ih = rec.initialHands && rec.initialHands[me];
+      if (!ih || ih.length !== 8) { S.broken++; continue; }
+      const hand = ih.slice();
+      let ok = true, chain = null;
+      const T = {atkMe: 0, atkP: 0, rcvMe: 0, rcvP: 0, bothResp: 0, bothPass: 0, ouOpp: 0, ouKeep: 0, rideOpp: 0, ridePass: 0, think: []};
+      const closeChain = () => { if (chain && G.team(chain.seat) !== myTeam && chain.resp[me] && chain.resp[P]) { T.bothResp++; if (chain.resp[me] === "pass" && chain.resp[P] === "pass") T.bothPass++; } };
+      for (const mv of rec.moves) {
+        if (!mv || !mv.action) { ok = false; break; }
+        const a = mv.action, s = mv.seat;
+        if (a.type === "attack") { closeChain(); chain = {seat: s, koma: a.koma, resp: {}}; if (s === me) T.atkMe++; else if (s === P) T.atkP++; }
+        else if (a.type === "receive" || a.type === "pass") {
+          if (chain) chain.resp[s] = a.type;
+          if (s === me && chain) {
+            if (chain.seat === P) { T.rideOpp++; if (a.type === "pass") T.ridePass++; }
+            if (G.team(chain.seat) !== myTeam && hand.includes("王") && chain.koma !== "王" && !G.UNCUTTABLE.has(chain.koma) && !hand.includes(chain.koma)) { T.ouOpp++; if (a.type === "pass") T.ouKeep++; }
+          }
+          if (a.type === "receive") { if (s === me) T.rcvMe++; else if (s === P) T.rcvP++; }
+        }
+        if (s === me && a.koma && (a.type === "bury" || a.type === "attack" || a.type === "receive")) { const j = hand.indexOf(a.koma); if (j < 0) { ok = false; break; } hand.splice(j, 1); }
+        if (s === me && mv.human && typeof mv.thinkMs === "number" && mv.thinkMs > 0) T.think.push(mv.thinkMs);
+      }
+      if (!ok) { S.broken++; continue; }
+      closeChain();
+      S.games++;
+      for (const k in T) { if (k === "think") S.think.push(...T.think); else S[k] += T[k]; }
+      const w = rec.result && !rec.result.draw ? rec.result.winner : null;
+      if (w === me) S.winMe++; else if (w === P) S.winP++;
+    }
+    return S;
+  }
+  function playStyleAxes(s) {
+    const pct = (a, b) => b ? Math.round(a / b * 100) : null;
+    return [
+      {k: "攻め", l: "攻めの分担", v: pct(s.atkMe, s.atkMe + s.atkP), n: s.atkMe + "/" + (s.atkMe + s.atkP)},
+      {k: "受け", l: "受けの分担", v: pct(s.rcvMe, s.rcvMe + s.rcvP), n: s.rcvMe + "/" + (s.rcvMe + s.rcvP)},
+      {k: "協調", l: "通しの協調", v: pct(s.bothPass, s.bothResp), n: s.bothPass + "/" + s.bothResp},
+      {k: "王温存", l: "王の温存", v: pct(s.ouKeep, s.ouOpp), n: s.ouKeep + "/" + s.ouOpp},
+      {k: "上がり", l: "上がりの分担", v: pct(s.winMe, s.winMe + s.winP), n: s.winMe + "/" + (s.winMe + s.winP)},
+    ];
+  }
+  function radarSvg(ax) {
+    const n = ax.length, cx = 95, cy = 95, R = 64;
+    const pt = (i, r) => { const a = -Math.PI / 2 + i * 2 * Math.PI / n; return [cx + r * Math.cos(a), cy + r * Math.sin(a)]; };
+    const f = x => x.toFixed(1);
+    const poly = r => Array.from({length: n}, (_, i) => pt(i, r).map(f).join(",")).join(" ");
+    let s = `<svg class="radar" viewBox="0 0 190 190" role="img" aria-label="プレイスタイル: ${ax.map(a => a.l + " " + (a.v == null ? "—" : a.v + "%")).join("、")}">`;
+    [25, 50, 75, 100].forEach(p => { s += `<polygon class="rg" points="${poly(R * p / 100)}"/>`; });
+    for (let i = 0; i < n; i++) { const [x, y] = pt(i, R); s += `<line class="ra" x1="${cx}" y1="${cy}" x2="${f(x)}" y2="${f(y)}"/>`; }
+    const vals = ax.map(a => a.v == null ? 0 : a.v);
+    s += `<polygon class="rp" points="${vals.map((v, i) => pt(i, R * v / 100).map(f).join(",")).join(" ")}"/>`;
+    vals.forEach((v, i) => { const [x, y] = pt(i, R * v / 100); s += `<circle class="rm${ax[i].v == null ? " na" : ""}" cx="${f(x)}" cy="${f(y)}" r="4"/>`; });
+    ax.forEach((a, i) => { const [x, y] = pt(i, R + 18); s += `<text class="rl" x="${f(x)}" y="${f(y)}" text-anchor="middle" dominant-baseline="middle">${a.k}</text>`; });
+    return s + "</svg>";
+  }
+  function playStyleHtml() {
+    const s = playStyleStats();
+    const ex = s.broken ? "・記録不整合 " + s.broken + " 局は除外" : "";
+    if (s.games < 5) return `<div class="pstyle"><div class="note">プレイスタイル — 人間が打った局（読み込んだ記録を含む）が5局たまると表示します（現在 ${s.games} 局${ex}）</div></div>`;
+    const ax = playStyleAxes(s);
+    const med = arr => { if (!arr.length) return null; const a = arr.slice().sort((x, y) => x - y); const m = a.length >> 1; return a.length % 2 ? a[m] : (a[m - 1] + a[m]) / 2; };
+    const think = med(s.think), ride = s.rideOpp ? Math.round(s.ridePass / s.rideOpp * 100) : null;
+    const bars = ax.map(a => `<div class="tbar"><span class="tl">${a.k}</span><span class="tt"><span class="tf" style="width:${a.v == null ? 0 : a.v}%"></span></span><span class="tn">${a.v == null ? "—" : a.v + "%"} <span class="dim">(${a.n})</span></span></div>`).join("");
+    return `<div class="pstyle"><div class="note">プレイスタイル — 相方との分担と傾向（人間が打った ${s.games} 局${ex}）</div>` +
+      `<div class="ps-body">${radarSvg(ax)}<div class="ps-bars">${bars}` +
+      `<p class="note">思考時間の中央値 ${think == null ? "—" : (think / 1000).toFixed(1) + " 秒"}・相方の攻めに乗った率 ${ride == null ? "—" : ride + "%"}（${s.ridePass}/${s.rideOpp}）。攻め・受け・上がりは「あなた÷ペア」、協調は敵の攻めに二人とも応答した回数のうち二人とも「なし」だった割合、王温存は王でしか切れない敵の攻めを通した割合。</p></div></div></div>`;
   }
   function openCareer() {
     const cs = app.career;
@@ -27665,6 +28244,7 @@ if (typeof document !== "undefined") (() => {
         (cs.length > SHOW ? `<span class="cgr">…ほか${cs.length - SHOW}局</span>` : "") + `</div>`;
       body = rankHtml + grid + bars + trend + hist;
     }
+    body += playStyleHtml();
     body += gradLedgerHtml();   // G-3(v90b): 卒業帳(局数の有無に関わらず現在の足場状態を表示)
     body += tempoHtml();        // D-1(v90e): テンポ計(sc全OFF局のみ母数)
     body += pastEntryHtml();    // R-1(v90d): 14日以上前のピンがあれば「過去の自分」の入口を表示
@@ -27930,6 +28510,23 @@ if (typeof document !== "undefined") (() => {
    * tag: fix=不具合修正 / fast=速くなった / read=読みが良くなった / ui=使いやすくなった(v212.1 新設) / (無印)=内部のみ
    * ================================================================ */
   const APP_CHANGELOG = [
+    {v: "v219.2", d: "2026-09-16", tag: "ui", tagJa: "使いやすくなった", t: "開始画面を整理し、駒数の長押し表示・席の交換・サマリー画像などを加えました", p: [
+      "開始画面を整理しました（再開 → ガイド → 対局プリセット → 要約＋開始。細かい設定は「詳しい設定」に）。保存中の対局があるときは、新しく始める前に確認します。",
+      "終局後の自動振り返りは、新しく使う方はOFFが既定です（設定でONにできます）。",
+      "「ミスガード」を「受けの助言」に改名し、助言がONのときは、助言が表示された局が成績集計の対象外になることを案内します。",
+      "2タップ確定を、受けられる手番の「なし」にも適用しました。対局中に操作モードを変えても、その場から効きます。",
+      "手駒のタップ領域を実際に44pxにしました（これまで拡張が効いていませんでした。フリックの開始は駒そのものです）。",
+      "設定「駒数を長押しで表示」をONにすると、手駒欄の「駒数」ボタンを押している間だけ、まだ見えていない駒の数（自分の手駒を除く）を盤に重ねて表示します。既定はOFFで、大会仕様では切れます。",
+      "カウント表を、駒ごとの残り枚数を丸印で示す表示に変えました（王・香・しは強調）。",
+      "観戦（全席AI）のとき、両チームがあと何点で目標に届くかと、まだ場に出ていない王・香・しの数を表示します（「観戦時に4席の手駒を公開」がONなら席ごとの王・香・し）。",
+      "「成績」にプレイスタイルを加えました。人間が打った局が5局たまると、攻め・受け・通しの協調・王の温存・上がりの分担を図で表示します。",
+      "振り返りの手の一覧に「相方の席で打ち直す」を加えました（観戦の振り返りでは各席）。その手からその席で打ち直し、元の局と得点を比べられます。",
+      "「局面を共有」に「サマリー画像を保存」を加えました（配牌・勝負どころ・最後の局面を1枚に）。ボタンは2段に並べ直しました。",
+      "「盤面の記号」に直前の「なし」の見方を加え、対局中の「調整」からも「直前の「なし」を席カードに表示」「観戦時に4席の手駒を公開」「駒数を長押しで表示」を切り替えられるようにしました。",
+      "AIの打ち筋は変えていません。"]},
+    {v: "v219", d: "2026-09-10", tag: "read", tagJa: "読みが良くなった", t: "終盤の攻めの読みを直しました", p: [
+      "手駒が少ない終盤の攻めで、相手の打ち筋と辻褄の合う手の割り当てを重く読むようにしました。人間の席は、表どおりに打つ人だと分かるまでは数えません。",
+      "URL 末尾に #atkcons=0 を付けて開くと前の版（v216）と同じ読みになります。"]},
     {v: "v216", d: "2026-09-07", tag: "read", tagJa: "読みが良くなった", t: "読みの安定性を直しました", p: [
       "相手の手の読みが不安定になる局面で、読みを粗い近似に戻していた処理をやめ、常に詳しい推定を使うようにしました。"]},
     {v: "v215", d: "2026-09-06", tag: "read", tagJa: "読みが良くなった", t: "手駒が減ってから敵の攻めを通した席の王の読みを直しました", p: [
@@ -28030,7 +28627,7 @@ if (typeof document !== "undefined") (() => {
               <button type="button" data-tier="std">標準</button>
               <button type="button" data-tier="full">詳しい</button>
             </div>
-            <div class="desc" style="margin-top:7px">オフ＝案内なし／標準（既定）＝ヒントと読み筋／詳しい＝推奨手ハイライト・パターンタグ・候補手・カウント・ミスガードまで。<b class="kin-em">はじめての方は「詳しい」がおすすめ。</b></div>
+            <div class="desc" style="margin-top:7px">オフ＝案内なし／標準（既定）＝ヒントと読み筋／詳しい＝推奨手ハイライト・パターンタグ・候補手・カウント・受けの助言まで。<b class="kin-em">はじめての方は「詳しい」がおすすめ。</b></div>
             <details class="coach-adv">
               <summary>詳細（個別に調整）</summary>
               <label class="toggle"><input type="checkbox" id="s-hints" ${app.cfg.hints ? "checked" : ""}>
@@ -28096,6 +28693,12 @@ if (typeof document !== "undefined") (() => {
             <span>${toggleLabelHtml("livebar")}</span></label>
           <label class="toggle"><input type="checkbox" id="s-riverseq" ${app.cfg.riverseq ? "checked" : ""}>
             <span>${toggleLabelHtml("riverseq")}</span></label>
+          <label class="toggle"><input type="checkbox" id="s-passHist" ${app.cfg.passHist ? "checked" : ""}>
+            <span>${toggleLabelHtml("passHist")}</span></label>
+          <label class="toggle"><input type="checkbox" id="s-watchReveal" ${app.cfg.watchReveal ? "checked" : ""}>
+            <span>${toggleLabelHtml("watchReveal")}</span></label>
+          <label class="toggle"><input type="checkbox" id="s-countsHold" ${app.cfg.countsHold ? "checked" : ""}>
+            <span>${toggleLabelHtml("countsHold")}</span></label>
         </div>
       </details>
       <details class="settings-group" open>
@@ -28103,7 +28706,7 @@ if (typeof document !== "undefined") (() => {
         <div class="sg-body">
           <label class="toggle"><input type="checkbox" id="s-autopass" ${app.cfg.autoPass ? "checked" : ""}>
             <span>受けられない時は自動で「なし」<span class="desc">オフ（既定）＝受けられない局面でも自分で「なし」を押して確認します（天鳳のパス操作と同じ）。オン＝受け駒が無い時は自動でパスします。</span></span></label>
-          <label class="toggle"><span>操作モード<span class="desc">1タップ=即座に出す（現状）。2タップ=選んでからもう一度で確定（誤操作防止）。フリックのみ=駒を上にはじいて出す。</span>
+          <label class="toggle"><span>操作モード<span class="desc">1タップ=即座に出す（現状）。2タップ=駒も「なし」も選んでからもう一度で確定（誤操作防止）。フリックのみ=駒を上にはじいて出す。</span>
             <select id="s-opmode" style="margin-top:4px">
               <option value="tap" ${app.cfg.opMode === "tap" ? "selected" : ""}>1タップ（即）</option>
               <option value="confirm" ${app.cfg.opMode === "confirm" ? "selected" : ""}>2タップ（確定）</option>
@@ -28156,6 +28759,7 @@ if (typeof document !== "undefined") (() => {
       <div class="row"><button class="btn primary" id="s-close">閉じる</button></div>`);
     wireCoachTier("s"); syncCoachTierUI("s");
     m.querySelector("#s-close").onclick = () => {
+      const _advBefore = {advice: app.cfg.advice, assistHi: app.cfg.assistHi, readHint: app.cfg.readHint, missGuard: app.cfg.missGuard};   // UI-3(UX-02): 助言 OFF→ON の判定用(保存前の値)
       app.cfg.mc = m.querySelector("#s-mc").checked;
       app.cfg.ouSignal = m.querySelector("#s-ousig").checked;
       GOITA_ENGINE_REGISTRY.invokeAll("setOuSignal", app.cfg.ouSignal);
@@ -28174,6 +28778,9 @@ if (typeof document !== "undefined") (() => {
       app.cfg.tempo = m.querySelector("#s-tempo") ? m.querySelector("#s-tempo").checked : app.cfg.tempo;
       app.cfg.livebar = m.querySelector("#s-livebar") ? m.querySelector("#s-livebar").checked : app.cfg.livebar;
       app.cfg.riverseq = m.querySelector("#s-riverseq") ? m.querySelector("#s-riverseq").checked : app.cfg.riverseq;
+      app.cfg.passHist = m.querySelector("#s-passHist") ? m.querySelector("#s-passHist").checked : app.cfg.passHist;
+      app.cfg.watchReveal = m.querySelector("#s-watchReveal") ? m.querySelector("#s-watchReveal").checked : app.cfg.watchReveal;
+      app.cfg.countsHold = m.querySelector("#s-countsHold") ? m.querySelector("#s-countsHold").checked : app.cfg.countsHold;
       app._lbKey = null;
       app.cfg.opMode = m.querySelector("#s-opmode").value;
       app.cfg.haptics = m.querySelector("#s-haptics").checked;
@@ -28201,12 +28808,13 @@ if (typeof document !== "undefined") (() => {
       app.cfg.cand = m.querySelector("#s-cand") ? m.querySelector("#s-cand").checked : app.cfg.cand;
       app.cfg.sighonest = m.querySelector("#s-sighonest") ? m.querySelector("#s-sighonest").checked : app.cfg.sighonest;
       app.cfg.autoWorstTour = m.querySelector("#s-autoWorstTour") ? m.querySelector("#s-autoWorstTour").checked : app.cfg.autoWorstTour;
-      app.armedKoma = null;
+      clearPendingSelection();   // UI-3(UX-02 / MUST 7・rev.3): モード変更を含む設定保存で未確定選択を解除(参照と DOM の両方)
+      if (ADVICE_FLAGS.some(k => !_advBefore[k] && app.cfg[k])) { try { toast("助言をONにしました — 助言が表示された局は成績集計の対象外になります"); } catch (e) {} }   // UI-3(UX-02): 設定変更時に 1 回
       // T-0(v90a): 「調整」で足場をONへ変更した場合は安全側(=「使った」)に倒し_scAtStartを引き上げる。
       // OFFへの変更は引き下げない(終盤だけONにしてすぐ戻す抜け道を塞ぐ)。app._scAtStartが無い
       // (対局が始まっていない)時は何もしない。
       if (app._scAtStart) {
-        for (const k of ["assistHi", "advice", "missGuard", "counts", "riverseq", "livebar", "tempo", "explain", "reading", "hints"]) {
+        for (const k of ["assistHi", "advice", "missGuard", "counts", "countsHold", "riverseq", "livebar", "tempo", "explain", "reading", "hints"]) {
           if (app.cfg[k]) app._scAtStart[k] = true;
         }
       }
