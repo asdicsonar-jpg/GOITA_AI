@@ -4,6 +4,21 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>ごいた — 能登の伝承遊戯</title>
+  <!-- build: v219.5「対局プリセットの AI を一段ずつ上げる（はじめて＝標準AI・腕試し＝強いAI・大会仕様＝最強AI。大会仕様は相方も最強AI）」base=v219.4（未配信・B6待ち）。
+       計画: docs/PLAN_v219.5_プリセットAI段_rev1_Fable5.1.md（B1〜B3・P1〜P3・N1〜N3・C1〜C3）。
+       変更: 対局プリセットの設定値・出場前チェックリストの記録条件・表示文言のみ（apply_v219_5_presets.py・15 置換）→ apply_ui_release.py（版数・CHANGELOG・バッジ・sw.js）。
+       エンジン: G / G_B / T1 を含むエンジン区画は v219.2/v219.3/v219.4 と byte 同一（verify_chain_v219_5.py の区画照合で機械確認）。AIの打ち筋は変えていない。
+       CACHE_NAME: goita-v219.4 → goita-v219.5. -->
+  <!-- build: v219.4「開始画面の『初心者向け・完全ガイド』を同じ位置で1行に折りたたむ（押すと今までどおり開く。進行度は畳んだままでも見える）」base=v219.3（未配信・B6待ち）。
+       計画: docs/PLAN_v219.4_ガイド枠折りたたみ_rev1_Fable5.1.md（M1・M2・J1）。
+       変更: マークアップと CSS・JS の表示制御のみ（apply_v219_4_guide.py・3 置換）→ apply_ui_release.py（版数・CHANGELOG・バッジ・sw.js）。
+       エンジン: G / G_B / T1 を含むエンジン区画は v219.2/v219.3 と byte 同一（verify_chain_v219_4.py の区画照合で機械確認）。
+       CACHE_NAME: goita-v219.3 → goita-v219.4. -->
+  <!-- build: v219.3「席の呼び方を自分・相方・上家・下家に統一（観戦・サマリー画像・練習の帯・保存する棋譜・設定画面の席の構成も。組はあなた組・相手組）」base=v219.2（配信中）。
+       計画: docs/PLAN_v219.3_席名相対呼称_rev2_Fable5.1.md（A1〜A2・B1〜B28・B29a〜f）。
+       変更: UI 層とマークアップのみ（apply_v219_3_seatnames.py・42 置換）→ apply_ui_release.py（版数・CHANGELOG・バッジ・sw.js）。表示文字列のみを変更し、内部表現（席コード N/E/S/W・保存 JSON・QR/局面コード・career）は不変。
+       エンジン: G / G_B / T1 を含むエンジン区画は v219.2 と byte 同一（verify_chain_v219_3.py の区画照合・make_block_raw 計装 sha 一致・着手列 SHA 一致で機械確認）。
+       CACHE_NAME: goita-v219.2 → goita-v219.3. -->
   <!-- build: v219.2「UI-2（駒数の長押し表示 / 観戦の残り点 / プレイスタイル / 席の交換 / サマリー画像）＋ UI-3 第 1 便（開始画面 / 受けの助言 / 2 タップ確定 / タップ領域 / 自動振り返り既定 OFF）」base=v219（配信中）。
        v219.1（UI-2 単独）は未配信のまま本版に含む。計画: PLAN_v219.2_UI2UI3まとめ配信物化_rev1_Opus5.md ＋ PLAN_UI3_第1便_UX05_UX02_UX07_UX01_rev3_Fable5.1.md（裁定 1〜16）
        変更: UI 層のみ。apply_ui2.py（35 置換）→ apply_ui3.py（39 置換）→ apply_v219_2_glue.py（15 置換・駒数の長押しを補助として要約・大会仕様・卒業帳・稽古札の試し・出場前チェックリストに揃える）→ apply_ui_release.py（版数・CHANGELOG・バッジ・sw.js）。新設定 countsHold は既定 OFF・既定 opMode は tap のまま。
@@ -1191,6 +1206,25 @@ body.sheet-open{overflow:hidden}
 .tutorial-btn .btn-sub-txt{font-size:.68rem;opacity:.78}
 .tutorial-actions-row{display:flex;gap:8px;width:100%}
 .tutorial-actions-row .btn{flex:1}
+.tutorial-summary{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:44px;cursor:pointer;list-style:none}
+.tutorial-summary::-webkit-details-marker{display:none}
+.tutorial-card[open] .tutorial-summary{margin-bottom:10px}
+.tutorial-card .tutorial-header{margin-bottom:0;align-items:center;flex:1}
+.tut-tag{font-size:.62rem;padding:1px 7px;border-radius:999px;border:1px solid var(--kin);color:var(--kin);white-space:nowrap}
+.tut-toggle{font-size:.72rem;color:var(--gin);white-space:nowrap}
+.tut-toggle::after{content:"▸"}
+.tutorial-card[open] .tut-toggle::after{content:"▾"}
+.tutorial-card.tut-started .tut-tag{display:none}
+.tutorial-card.tut-done .tut-tag{display:inline-block}
+.tutorial-card{padding:10px 14px}
+.tutorial-card[open]{padding:16px 16px 14px}
+.tutorial-summary h2{letter-spacing:.06em}
+.tutorial-summary .tutorial-progress-wrap{min-width:0}
+.tutorial-summary .progress-bar{width:64px}
+.tutorial-card:not([open]) .tutorial-summary .progress-bar{display:none}
+.tutorial-card.tut-done .tutorial-summary .tutorial-progress-wrap{display:none!important}
+.tutorial-summary{flex-wrap:wrap}
+body.theme-kinari .tut-tag,body.theme-kinari .tut-toggle{color:#7a6221}
 /* T1(v69): 巻マップ(全11巻から選ぶモーダル) */
 .tut-map-list{display:flex;flex-direction:column;gap:6px;max-height:52vh;overflow-y:auto;margin:10px 0}
 .tut-map-row{display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:9px 12px}
@@ -1781,7 +1815,7 @@ body.noto #wincut.show .wc-label{animation:wcFude .62s cubic-bezier(.2,.9,.3,1.2
 <div id="setup-screen">
   <!-- build v208: 版数表示は APP_CHANGELOG[0] から起動時に上書きされる(JS が動かない場合の保険としてここにも同じ版数を書いておく)。 -->
   <button type="button" class="setup-version" id="btn-version"
-          aria-label="バージョン v219.2 — 更新内容を見る" title="更新内容を見る"><span id="btn-version-num">v219.2</span><span class="sv-i" aria-hidden="true">ⓘ</span></button>
+          aria-label="バージョン v219.5 — 更新内容を見る" title="更新内容を見る"><span id="btn-version-num">v219.5</span><span class="sv-i" aria-hidden="true">ⓘ</span></button>
   <div class="title-block">
     <h1 class="serif">ごいた</h1>
     <div class="title-sub">能登・宇出津に伝わる竹駒の伝承遊戯</div>
@@ -1820,17 +1854,23 @@ body.noto #wincut.show .wc-label{animation:wcFude .62s cubic-bezier(.2,.9,.3,1.2
       <button type="button" class="btn" id="resume-discard">破棄</button>
     </div>
   </div>
-  <div class="panel setup-card tutorial-card" id="tutorial-panel">
-    <div class="tutorial-header">
-      <h2 class="serif">初心者向け・完全ガイド</h2>
-      <div class="tutorial-progress-wrap" id="tut-progress-wrap" style="display:none">
-        <span class="progress-text" id="tut-progress-text">進行度 0%</span>
-        <div class="progress-bar"><span class="progress-fill" id="tut-progress-fill" style="width:0%"></span></div>
+  <details class="panel setup-card tutorial-card" id="tutorial-panel">
+    <summary class="tutorial-summary">
+      <div class="tutorial-header">
+        <h2 class="serif">初心者向け・完全ガイド</h2>
+        <div class="tutorial-progress-wrap" id="tut-progress-wrap" style="display:none">
+          <span class="progress-text" id="tut-progress-text">進行度 0%</span>
+          <div class="progress-bar"><span class="progress-fill" id="tut-progress-fill" style="width:0%"></span></div>
+        </div>
       </div>
+      <span class="tut-tag" id="tut-tag">はじめての方へ</span>
+      <span class="tut-toggle" aria-hidden="true"></span>
+    </summary>
+    <div class="tutorial-body">
+      <p class="tutorial-desc" id="tut-desc">盤面の情報量をしぼり、一歩ずつ操作しながら基本を学べる体験型ガイドです。ルールを知らなくても大丈夫。</p>
+      <div class="tutorial-actions" id="tut-actions"></div>
     </div>
-    <p class="tutorial-desc" id="tut-desc">盤面の情報量をしぼり、一歩ずつ操作しながら基本を学べる体験型ガイドです。ルールを知らなくても大丈夫。</p>
-    <div class="tutorial-actions" id="tut-actions"></div>
-  </div>
+  </details>
 
   <!-- T-1(v90a): 稽古札 — 学習提案の共通出口(憲章§5「情報の節度」・同時提示は常に1件)。
        計画書はresume-panelとladder-panelの「間」(直接隣接)を指示していたが、実際は両者の間に
@@ -1849,13 +1889,13 @@ body.noto #wincut.show .wc-label{animation:wcFude .62s cubic-bezier(.2,.9,.3,1.2
     <h2>対局プリセット</h2>
     <div class="ladder-btns">
       <button type="button" class="btn ladder-btn" data-ladder="beginner">
-        <span class="btn-main-txt serif">はじめて</span><span class="btn-sub-txt">初心者AI相手・コーチ「詳しい」</span>
+        <span class="btn-main-txt serif">はじめて</span><span class="btn-sub-txt">標準AI相手・コーチ「詳しい」</span>
       </button>
       <button type="button" class="btn ladder-btn" data-ladder="practice">
-        <span class="btn-main-txt serif">腕試し</span><span class="btn-sub-txt">標準AI相手・コーチ「標準」</span>
+        <span class="btn-main-txt serif">腕試し</span><span class="btn-sub-txt">強いAI相手・コーチ「標準」</span>
       </button>
       <button type="button" class="btn ladder-btn" data-ladder="tournament">
-        <span class="btn-main-txt serif">大会仕様</span><span class="btn-sub-txt">強いAI相手・コーチなし</span>
+        <span class="btn-main-txt serif">大会仕様</span><span class="btn-sub-txt">最強AI相手・コーチなし</span>
       </button>
     </div>
     <p class="desc" id="ladder-note" style="margin-top:9px">まずは「はじめて」から。慣れてきたら「腕試し」、実際の宇出津の大会に近い感覚をつかみたくなったら「大会仕様」をどうぞ。下の「席の構成」で個別に調整することもできます。</p>
@@ -1877,8 +1917,8 @@ body.noto #wincut.show .wc-label{animation:wcFude .62s cubic-bezier(.2,.9,.3,1.2
   <details class="panel setup-card" id="seat-detail">
     <summary>席の構成（細かく選ぶ）</summary>
     <div class="seatcfg">
-      <span class="lbl"><b>南</b>（手前）</span>
-      <select id="cfg-S" aria-label="南（手前）">
+      <span class="lbl"><b>自分</b>（手前）</span>
+      <select id="cfg-S" aria-label="自分（手前）">
         <option value="human" selected>あなたが打つ</option>
         <option value="strong">AI: 強い（Solver・受けMC）</option>
         <option value="t1">AI: 最強（NN＠oui2039）</option>
@@ -1886,16 +1926,16 @@ body.noto #wincut.show .wc-label{animation:wcFude .62s cubic-bezier(.2,.9,.3,1.2
         <option value="basic">AI: 定石のみ</option>
         <option value="naive">AI: 初心者</option>
       </select>
-      <span class="lbl"><b>北</b>（相方）</span>
-      <select id="cfg-N" aria-label="北（相方）">
+      <span class="lbl"><b>相方</b>（正面）</span>
+      <select id="cfg-N" aria-label="相方（正面）">
         <option value="strong" selected>AI: 強い（Solver・受けMC）</option>
         <option value="t1">AI: 最強（NN＠oui2039）</option>
         <option value="solver">AI: 標準 (Solver)</option>
         <option value="basic">AI: 定石のみ</option>
         <option value="naive">AI: 初心者</option>
       </select>
-      <span class="lbl"><b>東</b>・<b>西</b>（相手組）</span>
-      <select id="cfg-EW" aria-label="東・西（相手組）">
+      <span class="lbl"><b>上家</b>・<b>下家</b>（相手組）</span>
+      <select id="cfg-EW" aria-label="上家・下家（相手組）">
         <option value="strong" selected>AI: 強い（Solver・受けMC）</option>
         <option value="t1">AI: 最強（NN＠oui2039）</option>
         <option value="solver">AI: 標準 (Solver)</option>
@@ -1967,7 +2007,7 @@ body.noto #wincut.show .wc-label{animation:wcFude .62s cubic-bezier(.2,.9,.3,1.2
     <label class="toggle"><input type="checkbox" id="cfg-tempo" checked>
       <span>難所で長考（相手の気配）<span class="desc">AIが難しいと判断した局面では考える間を延ばし、その席を微かに明滅。即断・長考のテンポから相手の迷いを読めます。</span></span></label>
     <label class="toggle"><input type="checkbox" id="cfg-livebar">
-      <span>形勢バー（対局中の勝率）<span class="desc">対局中、この局の南北勝率を盤上のバーで表示（将棋の評価バー風）。相手の手札は使わない自視点推定です。</span></span></label>
+      <span>形勢バー（対局中の勝率）<span class="desc">対局中、この局のあなた組の勝率を盤上のバーで表示（将棋の評価バー風）。相手の手札は使わない自視点推定です。</span></span></label>
     <label class="toggle"><input type="checkbox" id="cfg-riverseq">
       <span>河に手数の番号を表示<span class="desc">場に出た駒へ「何手目か」の通し番号を小さく重ねます。カウンティングや振り返りの読みに便利（既定OFF）。</span></span></label>
     <label class="toggle"><input type="checkbox" id="cfg-passHist">
@@ -2016,7 +2056,7 @@ body.noto #wincut.show .wc-label{animation:wcFude .62s cubic-bezier(.2,.9,.3,1.2
     <button class="btn small ghost" id="btn-back">設定へ</button>
   </div>
 
-  <div id="equity-bar" role="img" aria-label="形勢バー（この局の南北勝率・自視点推定）"></div>
+  <div id="equity-bar" role="img" aria-label="形勢バー（この局のあなた組の勝率・自視点推定）"></div>
 
   <div class="sr-only" id="statusline" role="status" aria-live="polite"><span id="status-text">準備中…</span></div>
   <div id="sr-live" class="sr-only" aria-live="polite" aria-atomic="true"></div>
@@ -2102,7 +2142,7 @@ body.noto #wincut.show .wc-label{animation:wcFude .62s cubic-bezier(.2,.9,.3,1.2
       </div>
     </section>
     <div id="rv-tour" role="region" aria-label="悪手ツアー"></div>
-    <div id="rv-graph" role="region" aria-label="形勢（南北勝率）推移グラフ。学習ピンはタップまたはEnterキーで解き直し"></div>
+    <div id="rv-graph" role="region" aria-label="形勢（あなた組の勝率）推移グラフ。学習ピンはタップまたはEnterキーで解き直し"></div>
     <div id="rv-seek-row">
       <button class="btn small" type="button" id="rv-back" aria-label="前の手へ">◀</button>
       <input type="range" id="rv-seek" min="0" max="0" value="0" step="1" aria-label="手数シークバー（ドラッグで局面を再現）">
@@ -2118,8 +2158,8 @@ body.noto #wincut.show .wc-label{animation:wcFude .62s cubic-bezier(.2,.9,.3,1.2
     <span class="lg"><i class="sw recv"></i>受け駒（奥段）</span>
     <span class="lg"><i class="sw bury"></i>伏せ駒</span>
     <span class="lg"><i class="sw now"></i>最新の攻め</span>
-    <span class="lg"><i class="dot ally"></i>味方（南北）</span>
-    <span class="lg"><i class="dot foe"></i>敵（東西）</span>
+    <span class="lg"><i class="dot ally"></i>味方（自分・相方）</span>
+    <span class="lg"><i class="dot foe"></i>敵（上家・下家）</span>
     <span class="lg"><i class="sw atkseat"></i>名札の「攻」＋席の淡い光＝今の攻め手</span>
     <span class="lg"><i class="sw turntoken"></i>真鍮の番札＝今の手番</span>
     <span class="lg"><span class="pc-lg p">飛×</span>相方の攻めを通した　<span class="pc-lg e">飛×</span>敵の攻めを通した（設定「直前の「なし」を席カードに表示」ON時・名札の下）</span>
@@ -18580,7 +18620,7 @@ if (typeof document !== "undefined") (() => {
     sighonest: {label: "符丁の正直さコーチ", desc: "振り返りで、あなたの攻めが相方へ送った合図と手札の整合を点検します（学習向け）。"},
     autoWorstTour: {label: "終局後に悪手を自動で振り返る", desc: "対局が終わった直後、この局で検出した悪手(⚠読み切り逃し・☆明確局面での逸脱)を悪手度の高い順に自動で巡回表示します（既定OFF）。オフでもアクションバーの「悪手を振り返る」から手動で開けます。"},
     tempo: {label: "難所で長考（相手の気配）", desc: "AIが難しいと判断した局面では考える間を延ばし、その席を微かに明滅。即断・長考のテンポから相手の迷いを読めます（「最強（NN＠oui2039）」ではこのAI自身の確信度とは独立したルールベース側の目安になります）。"},
-    livebar: {label: "形勢バー（対局中の勝率）", desc: "対局中、この局の南北勝率を盤上のバーで表示（将棋の評価バー風）。相手の手札は使わない自視点推定です。"},
+    livebar: {label: "形勢バー（対局中の勝率）", desc: "対局中、この局のあなた組の勝率を盤上のバーで表示（将棋の評価バー風）。相手の手札は使わない自視点推定です。"},
     riverseq: {label: "河に手数の番号を表示", desc: "場に出た駒へ「何手目か」の通し番号を小さく重ねます。カウンティングや振り返りの読みに便利（既定OFF）。"},
     passHist: {label: "直前の「なし」を席カードに表示", desc: "各席が最近「なし」で通した攻め駒を名札の下に小さく並べます（青＝相方の攻め、朱＝敵の攻め。既定OFF）。"},
     watchReveal: {label: "観戦時に4席の手駒を公開", desc: "観戦（全席AI）のときだけ、全員の手駒と伏せ駒を表向きで表示します。人間が打つ対局では働きません（既定OFF）。"},
@@ -18607,7 +18647,7 @@ if (typeof document !== "undefined") (() => {
   // build v169: 席の相対呼称(自分/相方/上家/下家)をmeを明示指定して求められる版。
   // 既存のseatDisp(app.humanSeat基準)はこれのラッパーとして再定義し、呼び出し側は無変更のまま動く。
   const seatDispFor = (me, s) => {
-    if (!me) return SEAT_JA[s];
+    me = me || "S";   // v219.3 A1: 観戦(app.humanSeat 未設定)は南を自分とみなす
     if (s === me) return "自分";
     if (s === G.partnerOf(me)) return "相方";
     if (s === G.nextSeat(me)) return "下家";       // 実測: 南の次==東
@@ -18626,8 +18666,7 @@ if (typeof document !== "undefined") (() => {
     sel.innerHTML = order.map((s, i) => `<option value="${s}">${labels[i]}</option>`).join("");
     sel.value = me;
   }
-  const teamDisp = t => !app.humanSeat ? (t === "NS" ? "南北" : "東西")
-                                       : (t === G.team(app.humanSeat) ? "あなた組" : "相手組");
+  const teamDisp = t => { const me = app.humanSeat || "S"; return t === G.team(me) ? "あなた組" : "相手組"; };   // v219.3 A2
   const TIER_LABEL = {strong: "AI・強い", solver: "AI・標準", basic: "AI・定石", naive: "AI・初心者", t1: "AI・最強（NN＠oui2039）"};   /* GOITA-T1 移植 */
   const ACT_JA = {bury: "伏せ", attack: "攻め", receive: "受け", pass: "なし"};
   const cardOf = {N: $("card-n"), W: $("card-w"), S: $("card-s"), E: $("card-e")};
@@ -19107,7 +19146,7 @@ if (typeof document !== "undefined") (() => {
     } catch (e) { deleteMatchProgress(); return null; }   // 破損JSON(壊れた保存)は削除して通常起動にフォールバック
   }
   function matchResumeDesc(d) {
-    return `第${Math.max(1, d.gameNo)}局・南北${d.scores.NS}点/東西${d.scores.EW}点` +
+    return `第${Math.max(1, d.gameNo)}局・${teamDisp("NS")}${d.scores.NS}点/${teamDisp("EW")}${d.scores.EW}点` +
       (d.phase === "live" && d.rec && d.rec.moves ? `（第${d.rec.moves.length + 1}手目から）` : "（局間）");
   }
   function initMatchResumeUI() {
@@ -20586,7 +20625,7 @@ if (typeof document !== "undefined") (() => {
     if (app._watchReveal) {
       // 席別: 手駒 ＋ その席が伏せた駒(公開 ON では伏せ駒も表向きなので「所在」に含める)
       line2 = G.SEATS.map(s => { const own = (st.hands[s] || []).slice(); (st.board[s] || []).forEach(cell => { if (cell.def && cell.def.type === "bury" && cell.def.koma) own.push(cell.def.koma); });
-        return SEAT_JA[s] + " " + KEY.map(k => k + own.filter(x => x === k).length).join(" "); }).join("　");
+        return seatDisp(s) + " " + KEY.map(k => k + own.filter(x => x === k).length).join(" "); }).join("　");
     } else {
       const seen = {}; KEY.forEach(k => seen[k] = 0);
       G.SEATS.forEach(s => (st.board[s] || []).forEach(cell => {
@@ -20595,7 +20634,7 @@ if (typeof document !== "undefined") (() => {
       }));
       line2 = "未出 " + KEY.map(k => k + " " + Math.max(0, G.KOMA_COUNT[k] - seen[k]) + "/" + G.KOMA_COUNT[k]).join("・");
     }
-    const line1 = "南北 あと " + rem("NS") + " 点 ／ 東西 あと " + rem("EW") + " 点（目標 " + tgt + "）";
+    const line1 = teamDisp("NS") + " あと " + rem("NS") + " 点 ／ " + teamDisp("EW") + " あと " + rem("EW") + " 点（目標 " + tgt + "）";
     const sig = line1 + "|" + line2;
     if (el.dataset.sig === sig && !el.hidden) return;
     el.dataset.sig = sig;
@@ -20937,7 +20976,7 @@ if (typeof document !== "undefined") (() => {
       const my = G.team(hs) === "NS" ? app.scores.NS : app.scores.EW;
       const op = G.team(hs) === "NS" ? app.scores.EW : app.scores.NS;
       parts.push(`点数 あなた組${my} 対 相手組${op}（${app.cfg.target}先取）`);
-    } else parts.push(`点数 南北${app.scores.NS} 対 東西${app.scores.EW}`);
+    } else parts.push(`点数 ${teamDisp("NS")}${app.scores.NS} 対 ${teamDisp("EW")}${app.scores.EW}`);
     parts.push("残り " + G.SEATS.map(s => seatDisp(s) + st.hands[s].length).join("・"));
     if (detail) {
       for (const s of G.SEATS) {
@@ -22227,10 +22266,8 @@ if (typeof document !== "undefined") (() => {
     app.st.goshiHolders = G.SEATS.filter(s => hands[s].filter(k => k === "し").length === 5);
     if (!app.st.goshiHolders.length) return;
     const names = app.st.goshiHolders.map(s => {
-      const rel = app.humanSeat
-        ? (G.team(s) === G.team(app.humanSeat) ? "あなた組" : "相手組")
-        : (G.team(s) === "NS" ? "南北組" : "東西組");
-      return `${SEAT_JA[s]}（${rel}）`;
+      const rel = G.team(s) === G.team(app.humanSeat || "S") ? "あなた組" : "相手組";   // v219.3 B5
+      return `${seatDisp(s)}（${rel}）`;
     }).join("・");
     const msg = `【5し続行】${names}が「し」5枚を宣言 — 続行で開始`;
     log(msg, true, "goshi");
@@ -22772,7 +22809,7 @@ if (typeof document !== "undefined") (() => {
       scoresBefore: {NS: app.scores.NS, EW: app.scores.EW}, moves: []
     };
     R.curDeal = {seed, parent, condition: R.condition, moves: [], result: null};
-    status(`研究 [${R.condition}] ブロック ${R.blockIdx + 1}/${R.blockOrder.length} ・ 局 ${idx + 1}/${R.dealsPerBlock}（あなた=南／相方=北）`);
+    status(`研究 [${R.condition}] ブロック ${R.blockIdx + 1}/${R.blockOrder.length} ・ 局 ${idx + 1}/${R.dealsPerBlock}`);
     actionbar("");
     renderAll();
     step();
@@ -22979,7 +23016,7 @@ if (typeof document !== "undefined") (() => {
     if (app.research && app.research.active && app.research.curDeal)   // [研究] 局の手をログ
       app.research.curDeal.moves.push({seat, act: a.type, koma: a.koma || null});
     if (!app.rec.practice)
-      kifu(`第${app.gameNo}局 #${app.rec.moves.length} ${SEAT_JA[seat]} ${ACT_JA[a.type]}${kStr}` +
+      kifu(`第${app.gameNo}局 #${app.rec.moves.length} ${seatDisp(seat)} ${ACT_JA[a.type]}${kStr}` +
            (isHuman(seat) ? (thinkMs != null ? ` ⏱${(thinkMs / 1000).toFixed(1)}秒` : "")
                           : (a.why ? ` ［${srcJa(a.src)}］${a.why}` : ` ［${srcJa(a.src)}］`)));
     return ev;
@@ -23348,8 +23385,8 @@ if (typeof document !== "undefined") (() => {
                  scoresBefore: {NS: app.scores.NS, EW: app.scores.EW}, moves: [],
                  matchSeed: app.matchSeed, dealSeq: app.dealSeq};   // build v166: QR共有用(3.5節参照、dealSeqは1-indexed呼び出し回数)
       log(`―― 第${app.gameNo}局（親: ${seatDisp(app.parent)}）――`, true);
-      kifu(`―― 第${app.gameNo}局 親:${SEAT_JA[app.parent]} ――`);   // F-2(v90.2): kifu(棋譜)系は方位名のまま不変
-      for (const s of G.SEATS) kifu(`配牌 ${SEAT_JA[s]}: ${hands[s].join("")}`);
+      kifu(`―― 第${app.gameNo}局 親:${seatDisp(app.parent)} ――`);   // F-2(v90.2): kifu(棋譜)系は方位名のまま不変
+      for (const s of G.SEATS) kifu(`配牌 ${seatDisp(s)}: ${hands[s].join("")}`);
       declareGoshi(hands);
       actionbar("");
       dealAnimStart();   // C-1(v89c): 局開始の所作(fx().dealMs=0や練習/チュートリアル/研究モードでは無効)
@@ -23994,7 +24031,7 @@ if (typeof document !== "undefined") (() => {
     const teamJa = teamDisp(sp.team);   // F-2(v90.2): あなた組/相手組(または観戦時は南北/東西)に統一
     log(`―― 第${app.gameNo}局 配牌手役 ――`, true);
     log(`${sp.reason} ${sp.pts}点 → ${teamJa}`, true);
-    kifu(`―― 第${app.gameNo}局 手役 ${sp.reason} ${sp.pts}点  [南北${app.scores.NS} 東西${app.scores.EW}] ――`);
+    kifu(`―― 第${app.gameNo}局 手役 ${sp.reason} ${sp.pts}点  [${teamDisp("NS")}${app.scores.NS} ${teamDisp("EW")}${app.scores.EW}] ――`);
     showYakuSplash(sp);
     status(`配牌手役: ${sp.reason}。`);
     app.parent = sp.seat;
@@ -24408,7 +24445,7 @@ if (typeof document !== "undefined") (() => {
     const tourBtn = km ? {label: "悪手を振り返る", fn: () => tourLaunch(finishedRec)} : null;
     if (res.draw) {
       log("流局 — 攻めが流れ、伏せと攻めに必要な2枚が残っていません（無得点）", true);
-      kifu(`流局（無得点）  [南北${app.scores.NS} 東西${app.scores.EW}]`);
+      kifu(`流局（無得点）  [${teamDisp("NS")}${app.scores.NS} ${teamDisp("EW")}${app.scores.EW}]`);
       $("stamp-pts").textContent = 0;
       $("stamp-txt").textContent = "流局";
       $("stamp").classList.add("show");
@@ -24431,7 +24468,7 @@ if (typeof document !== "undefined") (() => {
     const teamJa = teamDisp(t);   // F-2(v90.2): あなた組/相手組(または観戦時は南北/東西)に統一
     const agari = res.recvFinish ? "受け上がり" : "上がり";
     log(`${seatDisp(res.winner)} ${agari}「${res.koma}」${res.dbl ? "（同駒2倍）" : ""} ${res.pts}点 → ${teamJa}`, true);
-    kifu(`${agari} ${SEAT_JA[res.winner]}「${res.koma}」${res.dbl ? "×2" : ""} ${res.pts}点  [南北${app.scores.NS} 東西${app.scores.EW}]`);   // F-2(v90.2): kifuのスコア行は不変
+    kifu(`${agari} ${seatDisp(res.winner)}「${res.koma}」${res.dbl ? "×2" : ""} ${res.pts}点  [${teamDisp("NS")}${app.scores.NS} ${teamDisp("EW")}${app.scores.EW}]`);   // F-2(v90.2): kifuのスコア行は不変
     $("stamp").classList.remove("show");   // v55: 中央の朱丸(点数+上がり駒)は廃止
     // 悪手ツアー(v87): over/winSpecialをshowWinCut呼び出し前に確定(旧位置から移動)。
     // special時はwincutの_close後に遅延起動(既存opts.onCloseフローに1フック追加。showWinCut本体は無変更)
@@ -24603,12 +24640,12 @@ if (typeof document !== "undefined") (() => {
     // D-2(v90e): 出場前チェックリストの項目2「最強AI相手に150点先取で勝ち越せる」用の記録。
     // 計画は新規の永続化を明示していないが、この項目を実データで示すには最低限の勝敗記録が要る
     // (既存app.puzzleStats={tried,solved}と同型の軽量カウンタ、連続日数等は一切持たない)。
-    // 条件: 人間参加・最強AI(EW=strong)・150点以上先取の設定。
+    // 条件: 人間参加・強いAI以上(EW が strong または t1。v219.5: 大会仕様プリセットが t1 になったため t1 も数える)・150点以上先取の設定。
     // A-5(v91a): 一回性ガード。終局後の「結果を見る」はendPractice/Escで閉じた後も再度押せるため、
     // ガードが無いと同一マッチが複数回記録されてしまう(newMatch()/readSetup起点の新マッチ開始・
     // resumeSavedMatchでリセットする)。
-    if (!app._tourWinRecorded && app.humanSeat && app.tiers.W === "strong" && app.tiers.E === "strong" && app.cfg.target >= 150) {
-      tourWinRecord(!!youWin);   // app.tiersは席(N/W/S/E)キー。EWチームは両席がstrongであることで判定(修正: app.tiers.EWは存在しない)
+    if (!app._tourWinRecorded && app.humanSeat && TOURWIN_TIERS.includes(app.tiers.W) && TOURWIN_TIERS.includes(app.tiers.E) && app.cfg.target >= 150) {
+      tourWinRecord(!!youWin);   // app.tiersは席(N/W/S/E)キー。EWチームは両席が strong/t1 であることで判定(修正: app.tiers.EWは存在しない)
       app._tourWinRecorded = true;
     }
     const winTeam = nsWin ? "NS" : "EW";   // F-2(v90.2): teamDisp()はhumanSeat基準で自動的に「あなた組/相手組」化する
@@ -25037,7 +25074,7 @@ if (typeof document !== "undefined") (() => {
   // 盤面を実画面と同じ配置(北=上 / 西・東=中段左右 / 南=下 / 中央=攻め表示)で描く。
   function drawBoard(st, opts) {
     opts = opts || {}; const redact = opts.redactSeat || null;
-    const me = opts.me || app.humanSeat || null;   // build v169: 相対呼称の基準席(未指定ならapp.humanSeat)
+    const me = opts.me || app.humanSeat || "S";   // build v169: 相対呼称の基準席(未指定ならapp.humanSeat)。v219.3 B12: 観戦は南を自分とみなす(L25041-42/25057-58の!me分岐は到達しなくなる)
     const seatLabel = seat => me ? seatDispFor(me, seat) : (SEAT_JA[seat] || seat);
     const teamLabel = seat => me ? (G.team(seat) === G.team(me) ? "あなた組" : "相手組") : ((seat === "N" || seat === "S") ? "南北" : "東西");
     const cs = getComputedStyle(document.documentElement);
@@ -25123,21 +25160,21 @@ if (typeof document !== "undefined") (() => {
   function summaryHighlights(rec) {
     const out = [], mv = rec.moves || [], hands = {};
     G.SEATS.forEach(s => hands[s] = (rec.initialHands && rec.initialHands[s]) ? rec.initialHands[s].slice() : null);
-    G.SEATS.forEach(s => { const n = hands[s] ? hands[s].filter(k => k === "し").length : 0; if (n >= 5) out.push({t: "五し", text: SEAT_JA[s] + " の配牌に し " + n + " 枚（五し）"}); });
+    G.SEATS.forEach(s => { const n = hands[s] ? hands[s].filter(k => k === "し").length : 0; if (n >= 5) out.push({t: "五し", text: seatDisp(s) + " の配牌に し " + n + " 枚（五し）"}); });
     let cur = null, miss = null, missPts = 0;
     mv.forEach((m, i) => {
       if (!m || !m.action) return;
       const a = m.action, s = m.seat, h = hands[s];
       if (a.type === "attack") cur = {seat: s, koma: a.koma};
-      if (a.type === "receive" && a.koma === "王") out.push({t: "王受け", text: "第" + (i + 1) + "手 " + SEAT_JA[s] + " 王で受け（攻め " + (cur ? cur.koma : "?") + "）"});
+      if (a.type === "receive" && a.koma === "王") out.push({t: "王受け", text: "第" + (i + 1) + "手 " + seatDisp(s) + " 王で受け（攻め " + (cur ? cur.koma : "?") + "）"});
       if (a.type === "pass" && cur && h && G.team(cur.seat) !== G.team(s) && h.includes("王") && cur.koma !== "王" && !G.UNCUTTABLE.has(cur.koma) && !h.includes(cur.koma))
-        out.push({t: "王温存", text: "第" + (i + 1) + "手 " + SEAT_JA[s] + " 王を温存して通す（攻め " + cur.koma + "）"});
+        out.push({t: "王温存", text: "第" + (i + 1) + "手 " + seatDisp(s) + " 王を温存して通す（攻め " + cur.koma + "）"});
       if (m.cf && m.cf.agree === false && m.cf.src === "solver") { const p = solverProofScore(m); if (p > missPts) { missPts = p; miss = {i, s, m}; } }
       if (h && a.koma && (a.type === "bury" || a.type === "attack" || a.type === "receive")) { const j = h.indexOf(a.koma); if (j >= 0) h.splice(j, 1); }
     });
-    if (miss) out.push({t: "最大の逃し", text: "第" + (miss.i + 1) + "手 " + SEAT_JA[miss.s] + " " + (ACT_JA[miss.m.action.type] || "") + (miss.m.action.koma || "") + " → AIなら " + (ACT_JA[miss.m.cf.type] || "") + (miss.m.cf.koma || "") + "（" + missPts + "点）"});
+    if (miss) out.push({t: "最大の逃し", text: "第" + (miss.i + 1) + "手 " + seatDisp(miss.s) + " " + (ACT_JA[miss.m.action.type] || "") + (miss.m.action.koma || "") + " → AIなら " + (ACT_JA[miss.m.cf.type] || "") + (miss.m.cf.koma || "") + "（" + missPts + "点）"});
     const r = rec.result, last = mv[mv.length - 1];
-    if (r && !r.draw && r.winner) out.push({t: "上がり", text: "第" + mv.length + "手 " + SEAT_JA[r.winner] + " " + (last && last.action && last.action.type === "receive" ? "受け上がり" : "上がり") + "「" + ((last && last.action && last.action.koma) || "") + "」 " + (r.pts || 0) + "点" + (r.dbl ? "（同駒 2 倍）" : "")});
+    if (r && !r.draw && r.winner) out.push({t: "上がり", text: "第" + mv.length + "手 " + seatDisp(r.winner) + " " + (last && last.action && last.action.type === "receive" ? "受け上がり" : "上がり") + "「" + ((last && last.action && last.action.koma) || "") + "」 " + (r.pts || 0) + "点" + (r.dbl ? "（同駒 2 倍）" : "")});
     else if (r && r.draw) out.push({t: "流局", text: "流局（無得点）"});
     return out;
   }
@@ -25153,17 +25190,17 @@ if (typeof document !== "undefined") (() => {
     ctx.fillStyle = C.bg; ctx.fillRect(0, 0, W, H);
     ctx.textBaseline = "middle"; ctx.textAlign = "left";
     ctx.fillStyle = C.kin; ctx.font = "700 30px " + F; ctx.fillText("ごいた", 36, 44);
-    const r = rec.result, res = r ? (r.draw ? "流局" : (SEAT_JA[r.winner] || "") + " " + (r.pts || 0) + "点") : "";
+    const r = rec.result, res = r ? (r.draw ? "流局" : (seatDisp(r.winner) || "") + " " + (r.pts || 0) + "点") : "";
     const sb = rec.scoresBefore || {NS: 0, EW: 0};
     ctx.fillStyle = C.gin; ctx.font = "15px sans-serif";
     const _d = new Date(), _p = n => String(n).padStart(2, "0"), today = _d.getFullYear() + "-" + _p(_d.getMonth() + 1) + "-" + _p(_d.getDate());   // 端末のローカル日付
-    ctx.fillText(fit("第" + (rec.gameNo || 1) + "局　親 " + (SEAT_JA[rec.parent] || "-") + "　開始時 南北 " + (sb.NS || 0) + " – " + (sb.EW || 0) + " 東西" + (res ? "　結果 " + res : "") + "　" + today, W - 170), 134, 44);
+    ctx.fillText(fit("第" + (rec.gameNo || 1) + "局　親 " + (seatDisp(rec.parent) || "-") + "　開始時 " + teamDisp("NS") + " " + (sb.NS || 0) + " – " + (sb.EW || 0) + " " + teamDisp("EW") + (res ? "　結果 " + res : "") + "　" + today, W - 170), 134, 44);
     ctx.fillStyle = C.gind; ctx.font = "13px sans-serif"; ctx.fillText("配牌", 36, 86);
     const kw = 30, kh = 36;
     G.SEATS.forEach((s, si) => {
       const y = 104 + si * 46;
       ctx.fillStyle = (s === "N" || s === "S") ? C.aoi : C.shu; ctx.font = "700 16px " + F; ctx.textAlign = "left"; ctx.textBaseline = "middle";
-      ctx.fillText(SEAT_JA[s] || s, 36, y + kh / 2);
+      ctx.fillText(seatDisp(s) || s, 36, y + kh / 2);
       let x = 70;
       ((rec.initialHands && rec.initialHands[s]) || []).slice().sort(byPts).forEach(k => { _drawKoma(ctx, x, y, kw, kh, k, "up", C); x += kw + 4; });
       ctx.textAlign = "left"; ctx.textBaseline = "middle";
@@ -25282,7 +25319,7 @@ if (typeof document !== "undefined") (() => {
     const kifu = recToKifu(rec);
     let canvas = null, blob = null;
     try { canvas = boardToCanvas(rec, idx); blob = await new Promise(r => canvas.toBlob(r, "image/png")); } catch (e) {}
-    const res = rec.result ? (rec.result.draw ? "（流局）" : "（" + (SEAT_JA[rec.result.winner] || "") + " " + rec.result.pts + "点）") : "";
+    const res = rec.result ? (rec.result.draw ? "（流局）" : "（" + (seatDisp(rec.result.winner) || "") + " " + rec.result.pts + "点）") : "";
     const desc = "能登・宇出津の伝承遊戯「ごいた」 第" + (rec.gameNo || 1) + "局" + res + " 第" + (idx + 1) + "手の局面";
     showShareModal({canvas, blob, url, kifu, desc, title: "ごいたの局面", rec, idx});
   }
@@ -25304,7 +25341,7 @@ if (typeof document !== "undefined") (() => {
   }
   function openMatchGameSharePicker(games) {
     const rows = games.map(r => {
-      const res = r.result ? (r.result.draw ? "（流局）" : "（" + (SEAT_JA[r.result.winner] || "") + " " + r.result.pts + "点）") : "";
+      const res = r.result ? (r.result.draw ? "（流局）" : "（" + (seatDisp(r.result.winner) || "") + " " + r.result.pts + "点）") : "";
       return '<button type="button" class="btn small mg-row" data-g="' + r.gameNo + '" ' +
         'style="display:block;width:100%;text-align:left;margin-bottom:6px">第' + r.gameNo + '局' + res + '</button>';
     }).join("");
@@ -26112,14 +26149,14 @@ if (typeof document !== "undefined") (() => {
   // 席交換の基準は「本当の自席」= 振り返りに入る前の humanSeat(振り返り中は視点切替や共有読込で app.humanSeat が変わるため)
   function seatSwapReal() { return app._humanSeatBeforeReview !== undefined ? app._humanSeatBeforeReview : app.humanSeat; }
   function seatSwapTarget(mv) { if (!mv || !mv.seat) return null; const r = seatSwapReal(); return r ? (mv.seat === G.partnerOf(r) ? mv.seat : null) : mv.seat; }
-  function seatSwapLabel(seat) { const r = seatSwapReal(); return (r && r !== seat && app.humanSeat === r) ? "相方の席で打ち直す" : SEAT_JA[seat] + "の席で打ち直す"; }
+  function seatSwapLabel(seat) { const r = seatSwapReal(); return (r && r !== seat && app.humanSeat === r) ? "相方の席で打ち直す" : seatDispFor(r || "S", seat) + "の席で打ち直す"; }   // v219.3 B18
   function teamPts(result, team) { if (!result || result.draw || !result.winner) return 0; return (G.team(result.winner) === team ? 1 : -1) * (result.pts || 0); }
   function startSeatSwapPractice(i, label) {
     const rec = app.reviewRec; if (!rec || !rec.moves || !rec.moves[i]) return;
     if (!rec.initialHands) { toast("この記録には配牌が無いので打ち直せません"); return; }
     const seat = rec.moves[i].seat, prev = seatSwapReal();
     try { rebuildState(rec, i); } catch (e) { toast("この記録からは局面を組み立てられません"); return; }   // 席・ティアを触る前に、失敗しうる処理を先に済ませる
-    if (!label) label = seatSwapLabel(seat) + "（第" + (i + 1) + "手から・あなたは" + SEAT_JA[seat] + "の席。盤は回りません）";
+    if (!label) label = seatSwapLabel(seat) + "（第" + (i + 1) + "手から・あなたは" + seatDispFor(prev || "S", seat) + "の席。盤は回りません）";   // v219.3 B19
     app._humanSeatBeforeReview = undefined;   // startPractice → closeReview で視点を戻させない(復元は restoreSeatSwap が担う)
     if (!app._swap) app._swap = {humanSeat: prev, tiers: Object.assign({}, app.tiers)};
     app.tiers = Object.assign({}, app.tiers);
@@ -26135,7 +26172,7 @@ if (typeof document !== "undefined") (() => {
     }
   }
   function seatSwapVerdict(d, res) {
-    const t = d.team, tj = t === "NS" ? "南北" : "東西";
+    const t = d.team, tj = teamDisp(t);
     const a = teamPts(d.orig, t), b = teamPts(res, t), diff = b - a;
     const sg = n => (n > 0 ? "+" : "") + n;
     return "元の局 " + tj + " " + sg(a) + " → 打ち直し " + tj + " " + sg(b) + "（" + (diff > 0 ? Math.abs(diff) + " 点よくなった" : diff < 0 ? Math.abs(diff) + " 点わるくなった" : "同じ") + "）" + (d.orig ? "" : "※元の局の結果が記録に無いので 0 として比較");
@@ -26420,7 +26457,7 @@ if (typeof document !== "undefined") (() => {
     $("log").innerHTML = "";
     $("handarea").classList.toggle("show", !!app.humanSeat);
     log(`新しい勝負（先取${app.cfg.target}点）— 最初の親: ${seatDisp(app.parent)}`, true);
-    kifu(`ごいた棋譜  先取${app.cfg.target}点  席: ${G.SEATS.map(s => SEAT_JA[s] + "=" + (isHuman(s) ? "人間" : TIER_LABEL[app.tiers[s]])).join(" ")}`);   // F-2(v90.2): kifuヘッダは方位名のまま不変
+    kifu(`ごいた棋譜  先取${app.cfg.target}点  席: ${G.SEATS.map(s => seatDisp(s) + "=" + (isHuman(s) ? "人間" : TIER_LABEL[app.tiers[s]])).join(" ")}`);   // F-2(v90.2): kifuヘッダは方位名のまま不変
     renderScores();
     startGame();
   }
@@ -26573,7 +26610,7 @@ if (typeof document !== "undefined") (() => {
     const el = $("setup-summary"); if (!el) return;
     const v = id => { const e = $(id); return e ? e.value : ""; };
     const on = id => { const e = $(id); return !!(e && e.checked); };
-    const who = v("cfg-S") === "human" ? "あなたが南で打つ" : "全席AI";
+    const who = v("cfg-S") === "human" ? "あなたが打つ" : "全席AI";
     const ew = TIER_LABEL[v("cfg-EW")] || v("cfg-EW"), n = TIER_LABEL[v("cfg-N")] || v("cfg-N");
     // rev.3: 成績除外に関わる助言 4 つと、それ以外の補助表示(読み筋・カウント等)を分ける(「操作ヒントのみ」は読み筋 ON でも出て実態と違った)。
     const HELP = ["hints", "reading", "cand", "counts", "countsHold", "livebar", "riverseq", "explain", "sighonest"];   // v219.2 glue G1: UI-2 の駒数長押しも補助
@@ -26670,17 +26707,17 @@ if (typeof document !== "undefined") (() => {
   const LADDER_PRESETS = {
     // T-5(v90a): 大会仕様(tournament)にexplain/tempo/riverseqを追加(欠陥3是正・Sonar決定A案)。
     // beginner/practiceはnull(=既存のlivebar: nullと同じ意味論。触らない)で既存挙動を1ビットも変えない。
-    beginner: {EW: "naive", N: "strong", coach: "full", livebar: null, target: null,
+    beginner: {EW: "solver", N: "strong", coach: "full", livebar: null, target: null,
       explain: null, tempo: null, riverseq: null,
-      note: "初心者AIが相手です。コーチは「詳しい」で、推奨手やパターンタグまで全部表示します。まずは基本の流れをつかみましょう。"},
-    practice: {EW: "solver", N: "strong", coach: "std", livebar: null, target: null,
+      note: "標準AI（Solver）が相手です。コーチは「詳しい」で、推奨手やパターンタグまで全部表示します。まずは基本の流れをつかみましょう。"},
+    practice: {EW: "strong", N: "strong", coach: "std", livebar: null, target: null,
       explain: null, tempo: null, riverseq: null,
       // C案(改訂3版・Sonar承認): explainは既定ONでCOACH_FLAG外のため実際は表示されている。「だけ」を削り実態に合わせる。
-      note: "標準AI（Solver）が相手です。コーチは「標準」で、ヒントと読み筋を表示します。腕試しにどうぞ。"},
-    tournament: {EW: "strong", N: "strong", coach: "off", livebar: false, target: 150,
+      note: "強いAI（Solver・受けMC）が相手です。コーチは「標準」で、ヒントと読み筋を表示します。腕試しにどうぞ。"},
+    tournament: {EW: "t1", N: "t1", coach: "off", livebar: false, target: 150,
       explain: false, tempo: false, riverseq: false, countsHold: false,   // v219.2 glue G2: 全補助なし
       // C案: 切る対象(AIの思考表示・気配演出)を明記。当日の所作の記述はF-17(1)の出典範囲を超えないため無変更。
-      note: "強いAIが相手・コーチなしの、実際の宇出津の大会に近い設定です。AIの思考表示や気配の演出も切ります。大会では対局中の相談は原則禁止で、駒に気持ちを込めて打ちます。"},
+      note: "相手も相方も最強AI（NN＠oui2039）・コーチなしの、実際の宇出津の大会に近い設定です。AIの思考表示や気配の演出も切ります。大会では対局中の相談は原則禁止で、駒に気持ちを込めて打ちます。"},
   };
   function applyLadderPreset(kind) {
     const p = LADDER_PRESETS[kind]; if (!p) return;
@@ -26982,6 +27019,9 @@ if (typeof document !== "undefined") (() => {
     const cleared = (p.cleared || []).filter(k => TUT_ORDER.includes(k));
     if (cleared.length) { wrap.style.display = "flex"; $("tut-progress-fill").style.width = tutPct(p) + "%"; $("tut-progress-text").textContent = "進行度 " + tutPct(p) + "%"; }
     else wrap.style.display = "none";
+    const tp = $("tutorial-panel");   // v219.4 J1: 折りたたみの開閉状態は保存しない(details のデフォルト挙動のまま)
+    if (tp) { tp.classList.toggle("tut-started", cleared.length > 0); tp.classList.toggle("tut-done", !tutNextKey(p)); }
+    const tag = $("tut-tag"); if (tag) tag.textContent = tutNextKey(p) ? "はじめての方へ" : "免許皆伝";
     acts.innerHTML = "";
     const nk = tutNextKey(p);
     if (nk) {
@@ -27419,7 +27459,7 @@ if (typeof document !== "undefined") (() => {
       '<button type="button" data-diff="easy">やさしい</button>' +
       '<button type="button" data-diff="normal">ふつう</button>' +
       '<button type="button" data-diff="hard">つよい</button></div>' +
-      '<div class="desc" style="margin-top:6px">相方は基本手(naive)、連携ヒントでサポートします。相手組（東西）の強さが変わります。型を学ぶドリルは相手の手順が固定のため、この設定は「実戦」表示のドリル（五し攻め・終盤・読み）にのみ効きます。</div></div>') : '';
+      '<div class="desc" style="margin-top:6px">相方は基本手(naive)、連携ヒントでサポートします。相手組（上家・下家）の強さが変わります。型を学ぶドリルは相手の手順が固定のため、この設定は「実戦」表示のドリル（五し攻め・終盤・読み）にのみ効きます。</div></div>') : '';
     const m = modal('<h2 class="serif">' + title + '</h2>' +
       '<p class="note">相方は基本手(naive)、連携ヒントでサポートします。合図を送り合い読み合う練習ができます。得点・成績には影響しません。</p>' +
       diffCtl + mixCard +
@@ -28005,6 +28045,7 @@ if (typeof document !== "undefined") (() => {
    * 憲章§6追記: 支部等の静的列挙禁止)。リンクは既存#h-ushitsu-link等と同じパターンを踏襲。
    * ================================================================ */
   const TOURWIN_STORAGE_KEY = "goita_tourwin_v1";
+  const TOURWIN_TIERS = ["strong", "t1"];   // v219.5: 出場前チェックリスト項目2「勝ち越し」を数える相手(東西)の段。強い(Solver・受けMC)と最強(NN)
   function tourWinLoad() {
     try {
       const raw = DATA_STORAGE.getItem(TOURWIN_STORAGE_KEY);
@@ -28059,7 +28100,7 @@ if (typeof document !== "undefined") (() => {
     return '<h2 class="serif">宇出津へ出るまえに</h2>' +
       '<p class="note"><b>アプリで確かめられること</b></p>' +
       row(item1, "全ての補助を外して打てる", item1Sub) +
-      row(item2, "強いAI相手に150点先取で勝ち越せる", item2Sub) +
+      row(item2, "強いAI以上の相手に150点先取で勝ち越せる", item2Sub) +
       row(item3, "速く打っても手が落ちない", item3Sub) +
       nextStep +
       // C-1(v91c): 大会仕様の通し稽古への入口。
@@ -28095,7 +28136,7 @@ if (typeof document !== "undefined") (() => {
    * ================================================================ */
   function openTourThroughConfirm() {
     const m = modal('<h2 class="serif">大会仕様で一局とおす</h2>' +
-      '<p class="note">150点先取・強いAI・全補助なしの大会仕様に設定を変えて対局を始めます。設定はこのあとも大会仕様のままです。</p>' +
+      '<p class="note">150点先取・最強AI（相手も相方も）・全補助なしの大会仕様に設定を変えて対局を始めます。設定はこのあとも大会仕様のままです。</p>' +
       '<div class="row"><button type="button" class="btn" id="rts-cancel">やめる</button>' +
       '<button type="button" class="btn primary" id="rts-go">開始</button></div>');
     const cancel = m.querySelector("#rts-cancel"); if (cancel) cancel.onclick = closeModal;
@@ -28510,6 +28551,16 @@ if (typeof document !== "undefined") (() => {
    * tag: fix=不具合修正 / fast=速くなった / read=読みが良くなった / ui=使いやすくなった(v212.1 新設) / (無印)=内部のみ
    * ================================================================ */
   const APP_CHANGELOG = [
+    {v: "v219.5", d: "2026-09-18", tag: "", tagJa: "プリセットの変更", t: "対局プリセットの相手AIを一段ずつ上げました", p: [
+      "対局プリセットの相手AIを一段ずつ上げました。「はじめて」は標準AI、「腕試し」は強いAI、「大会仕様」は最強AI（NN）が相手です（大会仕様は相方も最強AI）。今までどおり「詳しい設定 → 席の構成」で個別に選べます。",
+      "出場前チェックリストの「勝ち越し」は、強いAI以上（強い・最強）の相手で数えるようにしました。これまでの記録はそのまま残ります。",
+      "AIの打ち筋は変えていません。"]},
+    {v: "v219.4", d: "2026-09-18", tag: "ui", tagJa: "使いやすくなった", t: "開始画面の「初心者向け・完全ガイド」を1行に畳みました", p: [
+      "開始画面の「初心者向け・完全ガイド」を1行に畳みました。押すと今までどおり開きます（進行度は畳んだままでも見えます）。",
+      "AIの打ち筋は変えていません。"]},
+    {v: "v219.3", d: "2026-09-18", tag: "ui", tagJa: "使いやすくなった", t: "席の呼び方を「自分・相方・上家・下家」に統一しました", p: [
+      "席の呼び方を「自分・相方・上家・下家」に統一しました（観戦・サマリー画像・練習の帯・保存する棋譜・設定画面の席の構成も。組は「あなた組・相手組」）。",
+      "AIの打ち筋は変えていません。"]},
     {v: "v219.2", d: "2026-09-16", tag: "ui", tagJa: "使いやすくなった", t: "開始画面を整理し、駒数の長押し表示・席の交換・サマリー画像などを加えました", p: [
       "開始画面を整理しました（再開 → ガイド → 対局プリセット → 要約＋開始。細かい設定は「詳しい設定」に）。保存中の対局があるときは、新しく始める前に確認します。",
       "終局後の自動振り返りは、新しく使う方はOFFが既定です（設定でONにできます）。",
