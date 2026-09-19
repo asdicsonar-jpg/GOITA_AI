@@ -4,6 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>ごいた — 能登の伝承遊戯</title>
+  <!-- build: v220.0「し攻め中に王攻めなど別の駒へ逸れる読みを直す（し攻めプロトコル v1.2 第 1 便: C-06・C-16・C-07・C-13 例外・C-17・C-10）」base=v219.5（未配信・B6待ち）。
+       計画: docs/PLAN_v220.0_し攻めプロトコル適合_rev1_Fable5.1.md。規範: docs/PROTOCOL_し攻め_v1.2.md（条文 C-01〜C-18・K-1〜K-17）。監査: docs/AUDIT_し攻め適合_v1.1.md（M1〜M9）。
+       変更: G / G_B の attackChoice・buryChoice・receiveChoice・policyAction(bury/respond) に SHI_PROTO 機序を追加（harness/apply_v220_0.py・E1〜E13。G/G_B 各 2 箇所）＋ app 層トグル #shiproto=0|1|2（A3）→ apply_ui_release.py（版数・CHANGELOG・バッジ・sw.js）。
+       機序: (1) コミット中は非確定 Solver プラン(solverDom/Read/Team/KyoP)を し攻めに整合するものだけ採用 (2) 確定 Solver(worst-case)は敵リーチまたは確定点が手駒の最高点駒以上のときだけ し攻め・し温存から逸れる (3) 敵の し攻めで即刻中止し以後 し は受け駒 (4) コミット中の敵の非し攻めは し以外の駒で受けて手番を取り返す。SHI_PROTO 既定 2・#shiproto=0 で v219.5 と着手列が 1 手も変わらない（400 局で機械確認）。
+       CACHE_NAME: goita-v219.5 → goita-v220.0. -->
   <!-- build: v219.5「対局プリセットの AI を一段ずつ上げる（はじめて＝標準AI・腕試し＝強いAI・大会仕様＝最強AI。大会仕様は相方も最強AI）」base=v219.4（未配信・B6待ち）。
        計画: docs/PLAN_v219.5_プリセットAI段_rev1_Fable5.1.md（B1〜B3・P1〜P3・N1〜N3・C1〜C3）。
        変更: 対局プリセットの設定値・出場前チェックリストの記録条件・表示文言のみ（apply_v219_5_presets.py・15 置換）→ apply_ui_release.py（版数・CHANGELOG・バッジ・sw.js）。
@@ -1815,7 +1820,7 @@ body.noto #wincut.show .wc-label{animation:wcFude .62s cubic-bezier(.2,.9,.3,1.2
 <div id="setup-screen">
   <!-- build v208: 版数表示は APP_CHANGELOG[0] から起動時に上書きされる(JS が動かない場合の保険としてここにも同じ版数を書いておく)。 -->
   <button type="button" class="setup-version" id="btn-version"
-          aria-label="バージョン v219.5 — 更新内容を見る" title="更新内容を見る"><span id="btn-version-num">v219.5</span><span class="sv-i" aria-hidden="true">ⓘ</span></button>
+          aria-label="バージョン v220.0 — 更新内容を見る" title="更新内容を見る"><span id="btn-version-num">v220.0</span><span class="sv-i" aria-hidden="true">ⓘ</span></button>
   <div class="title-block">
     <h1 class="serif">ごいた</h1>
     <div class="title-sub">能登・宇出津に伝わる竹駒の伝承遊戯</div>
@@ -2706,7 +2711,7 @@ const G = (() => {
     // この保護の対象外になり、伏せでしを捨てる発端バグと同型の穴が残っていたため巡目非依存に統一)。
     // ただし最後の1枚のしは攻めに使うため温存し、非し駒を伏せる(し攻め継続のバグ修正 v952-19)。
     // 旧実装は最後のしも伏せて消費し、攻めが非しに逸れてし攻めを放棄していた。
-    if (rl >= 1 && (shiStarted(hist, seat) || shouldShiAttack(hist, seat, c, view, st)) &&
+    if (rl >= 1 && !shiCommitReleased(hist, seat) && (shiStarted(hist, seat) || shouldShiAttack(hist, seat, c, view, st)) &&
         !(st.rejShi && st.rejShi[seat])) {
       const nShi0 = c["し"] || 0;
       // 残り攻め回数(この伏せ以降に自分が打つ攻めの数)= 手駒数/2。し攻めは毎回しで攻めるのが本則。
@@ -2744,7 +2749,7 @@ const G = (() => {
       enemyLikelyHoldsUncut(hist, seat, c, "し") && !enemyShiExhausted(hist, seat, c);
     const enemyShiActive = KEEP_SHI_ESHI &&
       (_eShiAtkCnt >= 2 || _eShiLastGuard) &&
-      !shiStarted(hist, seat) &&
+      !(shiStarted(hist, seat) && !shiCommitReleased(hist, seat)) &&   // build v220.0: C-17 中止後は敵し攻め中の し温存へ
       !shiImmune(hist, seat, c);   // 自しで受け切れる(し免疫)なら温存不要→香を伏せず香連打ルールへ
     // し温存時の伏せ駒選択
     if (enemyShiActive && (c["し"] || 0) >= 1) {
@@ -2856,7 +2861,7 @@ const G = (() => {
     // 例外(b)しを打つと敵が確実に受け上がりする時のみ続行しない。
     // コミットは「本物のし攻め」shiStartedで判定する(不具合修正2026-06)。旧iAttackedShiはごめんなさいのし
     // 単発や相方の非し拒否(shiStarted=false)でも誤コミットしていた。
-    const _shiCommitted = SHI_COMMIT_REAL ? shiStarted(hist, seat) : iAttackedShi(hist, seat);
+    const _shiCommitted = (SHI_COMMIT_REAL ? shiStarted(hist, seat) : iAttackedShi(hist, seat)) && !shiCommitReleased(hist, seat);   // build v220.0: C-17 の中止
     if (rl >= 1 && SHI_KYO_FIX && SHI_COMMIT && _shiCommitted && (c["し"] || 0) >= 1 &&
         !(st.rejShi && st.rejShi[seat]) && legalAttacks(hand, hist, seat).includes("し") &&
         !shiUkiagariCertain(view))
@@ -2876,10 +2881,10 @@ const G = (() => {
     if (rl >= 2 && (c["王"] || 0) === 2 && !isFirstRound(hist))
       return {koma: "王", why: "王ペア — 2巡目以降は王連打で上がりに行く"};
     // し攻めスタート確定
-    if (rl >= 1 && shiStarted(hist, seat) && (c["し"] || 0) >= 1 && !(st.rejShi && st.rejShi[seat]))
+    if (rl >= 1 && shiStarted(hist, seat) && (c["し"] || 0) >= 1 && !(st.rejShi && st.rejShi[seat]) && !shiCommitReleased(hist, seat))
       return {koma: "し", why: "し攻め進行中 — 続行"};
     // 味方し合図への応答 (し3枚での参加拡張つき)
-    if (rl >= 1 && partnerSignaledShi(hist, seat) && isFirstAttackForMe(hist, seat)) {
+    if (rl >= 1 && partnerSignaledShi(hist, seat) && isFirstAttackForMe(hist, seat) && !shiCommitReleased(hist, seat)) {   // build v220.0: C-17 中止後は参加しない
       const teamOkSig = shouldShiAttack(hist, seat, c, view, st);
       if (teamOkSig || canShiAttackC(c))
         return {koma: "し", why: (teamOkSig && !canShiAttackC(c))
@@ -2890,7 +2895,7 @@ const G = (() => {
     }
     // 【し攻め継続】自陣のし攻め確定 かつ 敵のし枯渇(信念推定)時のみ、し枚数不問でし攻めを継続。
     // 勝っているし攻めだけ継続し、勝っていない局面では非し切替の余地を残す。
-    if (rl >= 1 && shiStarted(hist, seat) && (c["し"] || 0) >= 1 && enemyShiExhausted(hist, seat, c) &&
+    if (rl >= 1 && shiStarted(hist, seat) && !shiCommitReleased(hist, seat) && (c["し"] || 0) >= 1 && enemyShiExhausted(hist, seat, c) &&
         [...new Set(legalAttacks(hand, hist, seat))].includes("し"))
       return {koma: "し", why: "し攻め継続 — 敵のし枯渇(信念推定)で確定勝ち筋、しで攻め続ける"};
     // し攻め拒否の二段: 拒否の受け直後は非しで攻めて「し薄」を確定させる
@@ -2913,7 +2918,7 @@ const G = (() => {
     // 直後の自発し攻め(既存canShiAttackC判定)に委ね、ここでは対象外にして重複発火を避ける。
     // レビューM-2対応: 既存の「し攻め継続(コミット)」と同様、敵が残り1枚でしを受けて確実に
     // 上がる局面(shiUkiagariCertain)ではしを打たないガードを追加(1手で局を献上するのを防ぐ)。
-    if (rl >= 1 && !isFirstAttackForMe(hist, seat) && !(st.rejShi && st.rejShi[seat]) &&
+    if (rl >= 1 && !isFirstAttackForMe(hist, seat) && !(st.rejShi && st.rejShi[seat]) && !shiCommitReleased(hist, seat) &&
         shouldShiAttack(hist, seat, c, view, st) &&
         [...new Set(legalAttacks(hand, hist, seat))].includes("し") &&
         !shiUkiagariCertain(view)) {
@@ -2922,7 +2927,7 @@ const G = (() => {
         "枚(自" + (c["し"] || 0) + "+相方推定" + pShiT2 + ")で継続"};
     }
     // 自発し攻め
-    if (rl >= 1 && isFirstAttackForMe(hist, seat) &&
+    if (rl >= 1 && isFirstAttackForMe(hist, seat) && !shiCommitReleased(hist, seat) &&   // build v220.0: C-17 中止後は発動しない
         (canShiAttackC(c) || (view.parent === seat && canShiAttackAfterBuryC(c))))
       return {koma: "し", why: "し攻め発動 — し4枚・ペアなしで局面支配"};
     // 【拡張符丁】王持ち合図のし (送り手)
@@ -2949,7 +2954,7 @@ const G = (() => {
     // v151: 下段の !(ouOn && 王なし && …) 節は恒真(到達不能)。shouldGomenShiがisFirstAttackForMe
     // かつisFirstRound(totalAttackCount<=4)を要求するため next<=5 で3巡目枝は不成立、
     // 自分の攻めが履歴に無いためfirstAttackKyouR1も常にfalse。Phase0-Eで発火0件を実測確認済み。
-    if (rl >= 1 && shouldGomenShi(view, c) && !(ouOn(seat) && partnerSignaledOu(hist, partnerOf(seat))) &&
+    if (rl >= 1 && shouldGomenShi(view, c) && !shiCommitReleased(hist, seat) && !(ouOn(seat) && partnerSignaledOu(hist, partnerOf(seat))) &&   // build v220.0: C-17 中止後は送らない
         !(ouOn(seat) && !(c["王"] || 0) && ouSigAvoidNow(hist, seat)))
       return {koma: "し", why: "ごめんなさいのし — バラバラの手を味方に誤読させない"};
     // ペア信号 (1巡目): 金銀馬ペアを持つ1巡目は、通りやすい単騎(角・飛等)でなくペアを攻めて「ペアあり」を
@@ -2963,6 +2968,7 @@ const G = (() => {
     // ペアワイズ反事実+UCB1層 (手駒2〜4枚・候補2つ以上)
     if (o && o.attackMC && !o.noMC && hand.length >= 2 && (hand.length <= 4 || rl < 2)) {
       let cands = attackCandidates(view, c);
+      if (shiCommitReleased(hist, seat)) { const nz = cands.filter(k => k !== "し"); if (nz.length && nz.length < cands.length) { SHI_PROTO_DIAG.atkFilter++; cands = nz; } }   // build v220.0: C-17 中止後は し で攻めない
       // [UNCUT除外を撤廃] 敵保有の香/し除外はDD/MCの最適手(テンポ捨て・同駒上がり布石等)を粗いハードルールで奪い勝率を下げるため削除（本番head-to-head検証: 撤廃で +1.9点/deal, z=4.28）
       if (ouOn(seat) && (c["し"] || 0) < 4 && cands.includes("し") &&
           (partnerSignaledOu(hist, partnerOf(seat)) ||
@@ -2983,6 +2989,7 @@ const G = (() => {
     if (!nonOu.length) return {koma: "王", why: "王のみ — 王で攻める"};
     let cfb = [...new Set(nonOu)].filter(k => !(k === "し" && (c[k] || 0) === 1));
     if (!cfb.length) cfb = [...new Set(nonOu)];
+    if (shiCommitReleased(hist, seat)) { const nz = cfb.filter(k => k !== "し"); if (nz.length && nz.length < cfb.length) { SHI_PROTO_DIAG.atkFilter++; cfb = nz; } }   // build v220.0: C-17 中止後は し で攻めない
     // [UNCUT除外を撤廃 (旧 #2修正 をリバート)] enemyLikelyHoldsUncut は「敵が一度でも露呈+未見>0」で発火する
     // 粗い述語で過剰除外し、実枚数を見る占有率スコア(m/(m+o)·1.3)の判断を上書きして損なう。本番head-to-head検証で
     // 撤廃が有益と確認 (per-deal +1.9点 z=4.28 / 150点先取マッチ 53.8% z=2.41)。コスト: NPS約20%低下。
@@ -3970,6 +3977,75 @@ const G = (() => {
   let SHI_COMMIT = true;
   function setShiCommit(on) { SHI_COMMIT = !!on; }
   let SHI_COMMIT_REAL = true;   // コミット判定を「本物のし攻め」shiStarted(チーム最初の2攻めがし-し&相方非拒否)に限定。
+  // ===== build v220.0: し攻めプロトコル v1.2(docs/PROTOCOL_し攻め_v1.2.md)への適合(第 1 便) =====
+  //   C-06/C-16: コミット中(本物のし攻め・拒否なし・C-17 の中止なし)は Solver の非確定プランを し攻めに従属させる。
+  //   C-07/C-13 例外: 確定上がり(worst-case)が し攻め継続 / し温存から逸れるときは (a) 敵の誰かがリーチ(残 2 枚以下)
+  //                   または (b) 確定点 ≥ 手駒の し以外の最高点駒(K-14) のときだけ採用する。
+  //   C-17: コミット後に敵が し で攻めたら即刻中止(以後 し は受け駒)。C-10: コミット中の敵の非し攻めは し以外の駒で受ける。
+  //   SHI_PROTO: 0 = v219.5 と着手列が 1 手も変わらない / 1 = C-06・C-16・C-07・C-13 例外・C-17 / 2(既定) = 1 ＋ C-10 の受け規則。
+  //   監査: docs/AUDIT_し攻め適合_v1.1.md(M1〜M9)。切り戻し: setShiProto(0) / #shiproto=0。
+  let SHI_PROTO = 2;
+  function setShiProto(n) { SHI_PROTO = Math.max(0, Math.min(2, n | 0)); }
+  const SHI_PROTO_DIAG = {planGate: 0, defendPlanGate: 0, certainGate: 0, certainPass: 0, recvRule: 0, atkFilter: 0};
+  function shiProtoDiag(reset) {
+    const out = Object.assign({level: SHI_PROTO}, SHI_PROTO_DIAG);
+    if (reset) for (const k of Object.keys(SHI_PROTO_DIAG)) SHI_PROTO_DIAG[k] = 0;
+    return out;
+  }
+  // コミットの起点 = チームの 2 攻め目(本物のし攻め: shiStarted と同じ前提)の履歴添字。無ければ -1
+  function shiCommitStartIdx(hist, seat) {
+    if (!shiStarted(hist, seat)) return -1;
+    let n = 0;
+    for (let i = 0; i < hist.length; i++) { const h = hist[i]; if (h.act === "attack" && team(h.seat) === team(seat) && ++n === 2) return i; }
+    return -1;
+  }
+  // C-17: コミット後に敵が し で攻めた → し攻めは中止(以後 shiCommitLive は false。し は受け駒として扱う)
+  function shiCommitReleased(hist, seat) {
+    if (!SHI_PROTO) return false;
+    const i0 = shiCommitStartIdx(hist, seat);
+    if (i0 < 0) return false;
+    for (let i = i0 + 1; i < hist.length; i++) { const h = hist[i]; if (h.act === "attack" && h.koma === "し" && team(h.seat) !== team(seat)) return true; }
+    return false;
+  }
+  // C-06 のコミット中: 本物のし攻め ∧ し攻め拒否なし ∧ C-17 の中止なし
+  function shiCommitLive(hist, seat, st) {
+    return !!SHI_PROTO && shiStarted(hist, seat) && !(st && st.rejShi && st.rejShi[seat]) && !shiCommitReleased(hist, seat);
+  }
+  // 受け側(C-13): 敵チームの本物のし攻め中で、自軍は し攻めしていない
+  function shiDefending(hist, seat) { return shiStarted(hist, nextSeat(seat)) && !shiStarted(hist, seat); }
+  // Solver プラン {first, second, score} が条文から逸れるか。0 = 逸れない / 1 = コミット中に し攻めから逸れる(C-06・C-11) / 2 = 受け側で し を伏せる(C-13)
+  //   phase "bury": first = 伏せ駒・second = 攻め駒 / "respond": first = 受け駒・second = 攻め駒。し を持たない手・非し を持たない手には適用しない。
+  function shiProtoDeviation(view, plan, phase, st) {
+    if (!SHI_PROTO || !plan) return 0;
+    const hand = view.hand, hist = view.hist, seat = view.seat;
+    const nShi = hand.filter(k => k === "し").length;
+    if (!nShi || nShi === hand.length) return 0;
+    if (shiCommitLive(hist, seat, st)) {
+      if (phase === "bury") {
+        const surplus = nShi > Math.floor(hand.length / 2);   // 余剰の し は伏せて消費してよい(buryChoice「し攻め進行中」と同じ)
+        return ((plan.first !== "し" || surplus) && plan.second === "し") ? 0 : 1;
+      }
+      return (plan.second === "し" || (plan.first === "し" && nShi === 1)) ? 0 : 1;
+    }
+    if (phase === "bury" && plan.first === "し" && shiDefending(hist, seat)) return 2;
+    return 0;
+  }
+  // 非確定プラン(solverTeam / solverRead / solverDom / solverKyoP): 逸れるなら採用しない(C-16)
+  function shiProtoPlanOk(view, plan, phase, st) {
+    const d = shiProtoDeviation(view, plan, phase, st);
+    if (d === 1) SHI_PROTO_DIAG.planGate++; else if (d === 2) SHI_PROTO_DIAG.defendPlanGate++;
+    return d === 0;
+  }
+  // 確定プラン(worst-case の solveWin): 逸れるときは (a) 敵の誰かが残 2 枚以下 または (b) 確定点 ≥ 手駒の し以外の最高点駒(K-14) でだけ採用(C-07・C-13 例外)
+  function shiProtoCertainOk(view, plan, phase, st) {
+    if (shiProtoDeviation(view, plan, phase, st) === 0) return true;
+    const seat = view.seat, sizes = view.sizes || {};
+    const enemyReach = SEATS.some(s => team(s) !== team(seat) && (sizes[s] != null ? sizes[s] : 8) <= 2);
+    const line = Math.max(POINTS["し"], ...view.hand.filter(k => k !== "し").map(k => POINTS[k] || 0));
+    if (enemyReach || plan.score >= line) { SHI_PROTO_DIAG.certainPass++; return true; }
+    SHI_PROTO_DIAG.certainGate++;
+    return false;
+  }
   function setShiCommitReal(on) { SHI_COMMIT_REAL = !!on; }   // false=旧iAttackedShi(ごめんなさいのし1枚で誤コミット)
   // 相方のし攻めへの応答時、非し手が強ければし攻めに乗らず拒否(非し攻めへ)。ユーザー提案(2026-06)。
   let SHI_REJECT_STRONG = true;   // ユーザー戦術・検証でマッチ中立(z=-0.30)・既定ON
@@ -5907,7 +5983,8 @@ const G = (() => {
             policyAction, mcDecideReceive, setRecv8OuVeto, recv8OuVetoDiag,
             passEvidence, passFactor, setOukH8, oukH8Diag,   // v212(OUK_H8。passFactorC は連結済み)
             setOukH2, oukH2Diag,   // v214(OUK_H2)
-            setOukH6, oukH6Diag, attackMC, atkConsWeight, atkConsFactor, setAtkConsW, setAtkConsTrust, atkConsDiag, advance]   // v218(ATK_CONS_W)
+            setOukH6, oukH6Diag, attackMC, atkConsWeight, atkConsFactor, setAtkConsW, setAtkConsTrust, atkConsDiag, advance,   // v218(ATK_CONS_W)
+            setShiProto, shiProtoDiag, shiCommitStartIdx, shiCommitReleased, shiCommitLive, shiDefending, shiProtoDeviation, shiProtoPlanOk, shiProtoCertainOk, buryChoice, receiveChoice]   // v220.0(SHI_PROTO。可変トグルは連結しない。attackChoice は G_B の M-13 差分のため載せない)
       .map(f => f.toString())
       .concat([PKDD._coreSrc, PKDD._loadWorldSrc, JSON.stringify(BELIEF_EST_C), String(BELIEF_EST_EPS), String(RECV8_OU_VETO_DETS), String(RECV8_OU_VETO_Z),
                String(OUK_H8_E2_CONT), String(OUK_H8_E2_NOCONT), String(OUK_H8_E3), String(OUK_H6_E2_CONT), String(OUK_H6_E2_NOCONT), String(OUK_H6_E3), String(OUK_H2_E2), String(OUK_H2_E3), String(ATK_CONS_LAMBDA), String(ATK_CONS_MIN_ESS)])
@@ -7148,7 +7225,7 @@ const G = (() => {
       // 最後の1枚で乗ると受けでし切れ→直後の攻めが非しに逸れ、相方のリードを切るだけで継続不能になる。
       // し1枚のときは下のルールも !iAttackedShi で不発 → 既定の「手番を奪わない(パス)」に落ち相方のリード温存。
       if (attack === "し" && (c["し"] || 0) >= 1 + SHI_RIDE_KEEP &&
-          shiStarted(hist, view.seat) && enemyShiExhausted(hist, view.seat, c))
+          shiStarted(hist, view.seat) && !shiCommitReleased(hist, view.seat) && enemyShiExhausted(hist, view.seat, c))
         return {koma: "し", why: "し攻め継続 — 敵のし枯渇(信念推定で受け不能)、受け後も継続可(し2枚以上)で乗る"};
       if (attack === "し" && (c["し"] || 0) >= 4 && (canShiAttackC(c) || (c["し"] || 0) >= 5))
         return {koma: "し", why: "味方のし攻めに乗る — " + ((c["し"] || 0) >= 5 ? "し5枚は強ペアでも乗る" : "し4枚でし攻め発動")};
@@ -7456,14 +7533,14 @@ const G = (() => {
             const unseenD = Object.assign({}, unseenW);
             for (const X of safe) unseenD[X] = 0;
             let srD = solveWin(view.hand, true, null, unseenD, checkKingAtkOk(view.hand, unseenD));
-            if (srD && view.hand.includes(srD.first) && (!srW || srD.score > srW.score)) {
+            if (srD && view.hand.includes(srD.first) && (!srW || srD.score > srW.score) && shiProtoPlanOk(view, srD, "bury", st)) {
               st.solverCache[seat] = {k: srD.second, c: false};
               return {type: "bury", koma: srD.first, src: "solverDom",
                       why: "支配局面 — 敵は" + [...safe].join("") + "を受けられない公算大。王王を温存し" + srD.score + "点狙い（ほぼ確実）"};
             }
           }
         }
-        if (srW && view.hand.includes(srW.first)) {
+        if (srW && view.hand.includes(srW.first) && shiProtoCertainOk(view, srW, "bury", st)) {
           st.solverCache[seat] = {k: srW.second, c: true};
           return {type: "bury", koma: srW.first, src: "solver",
                   why: "Solver — " + srW.score + "点の確実な上がり手順を読み切り"};
@@ -7475,7 +7552,7 @@ const G = (() => {
           let srR = solveWin(view.hand, true, null, unseenR, kingOkR);
           srR = hideOuLead(srR, view.hand, view.hist, f => view.hand.includes(f),
                            ban => solveWin(view.hand, true, null, unseenR, kingOkR, ban));
-          if (srR && view.hand.includes(srR.first)) {
+          if (srR && view.hand.includes(srR.first) && shiProtoPlanOk(view, srR, "bury", st)) {
             st.solverCache[seat] = {k: srR.second, c: true};
             return {type: "bury", koma: srR.first, src: "solverRead",
                     why: "Solver — " + srR.score + "点の上がり手順を読み切り（敵の受け筋から駒位置を特定・定石受けなら確定）"};
@@ -7496,7 +7573,7 @@ const G = (() => {
             else if (risk > COUNT_PLAN_RISK) sr = null;
           }
         }
-        if (sr && view.hand.includes(sr.first)) {
+        if (sr && view.hand.includes(sr.first) && shiProtoPlanOk(view, sr, "bury", st)) {
           st.solverCache[seat] = {k: sr.second, c: false};
           const pTxt = COUNT_GATE
             ? "（相方の" + sr.second + "保持推定" + Math.round((((LBury.pHold[partnerOf(seat)] || {})[sr.second]) || 0) * 100) + "%・敵の受け確率" + Math.round((planRisk(LBury, seat, sr)) * 100) + "%・枚数読み）"
@@ -7517,7 +7594,7 @@ const G = (() => {
             unseenP["し"] = 0;
           }
           const srP = solveWin(view.hand, true, null, unseenP, checkKingAtkOk(view.hand, unseenP));
-          if (srP && view.hand.includes(srP.first)) {
+          if (srP && view.hand.includes(srP.first) && shiProtoPlanOk(view, srP, "bury", st)) {
             const riskP = planRisk(LBury, seat, srP);
             const firstNeedsCheck = srP.first === "香" || (KYO_UNBLOCK_P >= 2 && srP.first === "し");
             const firstOk = !firstNeedsCheck || pEnemyReceives(LBury, seat, srP.first) <= KYO_UNBLOCK_TH;
@@ -7641,7 +7718,7 @@ const G = (() => {
         let srW = solveWin(view.hand, false, attack, unseenW, kingOkRW);
         srW = hideOuLead(srW, view.hand, view.hist, f => lr.includes(f),
                          ban => solveWin(view.hand, false, attack, unseenW, kingOkRW, ban));
-        if (srW && lr.includes(srW.first)) {
+        if (srW && lr.includes(srW.first) && shiProtoCertainOk(view, srW, "respond", st)) {
           st.solverCache[seat] = {k: srW.second, c: true};
           return {type: "receive", koma: srW.first, src: "solver",
                   why: "Solver — 受けて" + srW.score + "点の確実な上がり手順"};
@@ -7652,7 +7729,7 @@ const G = (() => {
           let srRR = solveWin(view.hand, false, attack, unseenRR, kingOkRR);
           srRR = hideOuLead(srRR, view.hand, view.hist, f => lr.includes(f),
                             ban => solveWin(view.hand, false, attack, unseenRR, kingOkRR, ban));
-          if (srRR && lr.includes(srRR.first)) {
+          if (srRR && lr.includes(srRR.first) && shiProtoPlanOk(view, srRR, "respond", st)) {
             st.solverCache[seat] = {k: srRR.second, c: true};
             return {type: "receive", koma: srRR.first, src: "solverRead",
                     why: "Solver — 受けて" + srRR.score + "点の上がり手順（敵の受け筋から駒位置を特定・定石受けなら確定）"};
@@ -7671,7 +7748,7 @@ const G = (() => {
             else if (risk > COUNT_PLAN_RISK) sr = null;
           }
         }
-        if (sr && lr.includes(sr.first)) {
+        if (sr && lr.includes(sr.first) && shiProtoPlanOk(view, sr, "respond", st)) {
           st.solverCache[seat] = {k: sr.second, c: false};
           const pTxt = COUNT_GATE
             ? "（相方の" + sr.second + "保持推定" + Math.round((((LResp.pHold[partnerOf(seat)] || {})[sr.second]) || 0) * 100) + "%・敵の受け確率" + Math.round((planRisk(LResp, seat, sr)) * 100) + "%・枚数読み）"
@@ -7692,7 +7769,7 @@ const G = (() => {
             unseenP["し"] = 0;
           }
           const srP = solveWin(view.hand, false, attack, unseenP, checkKingAtkOk(view.hand, unseenP));
-          if (srP && lr.includes(srP.first)) {
+          if (srP && lr.includes(srP.first) && shiProtoPlanOk(view, srP, "respond", st)) {
             const riskP = planRisk(LResp, seat, srP);
             const firstNeedsCheck = srP.first === "香" || (KYO_UNBLOCK_P >= 2 && srP.first === "し");
             const firstOk = !firstNeedsCheck || pEnemyReceives(LResp, seat, srP.first) <= KYO_UNBLOCK_TH;
@@ -7705,6 +7782,14 @@ const G = (() => {
             }
           }
         }
+      }
+      // build v220.0(C-10・SHI_PROTO ≥ 2): コミット中の敵の非し攻めは、し以外の受け駒があれば受けて手番を取り返し し で攻め続ける
+      //   (受けMC の「なし」より上位・C-16)。同駒(非王)を優先し、他に無ければ王で受ける(王の出し惜しみをしない・K-6)。
+      //   確定 Solver(受けて N 点の確実)と (1) を通った solverTeam はこの規則より上位。し攻め中でない席・し を持たない席では不発。
+      if (SHI_PROTO >= 2 && !isPartnerAtk && attack !== "し" && view.hand.includes("し") && shiCommitLive(view.hist, seat, st)) {
+        const pick = lr.find(k => k !== "王") || lr[0];
+        SHI_PROTO_DIAG.recvRule++;
+        return {type: "receive", koma: pick, src: "rule", why: "し攻め中の受け(C-10) — し以外の" + pick + "で受けて手番を取り返し、しで攻め続ける"};
       }
       // 受けMC (検証済み構成の軽量版): 敵の攻め×手駒6枚以下×候補2つ以上
       // v96: 相方し攻めは定石パスをMC評価で覆せるようにする(検証報告の主因13件対応)
@@ -9156,7 +9241,7 @@ const G = (() => {
     }
     return decided ? nsWins / decided : null;
   }
-  return {setDeterminizationV2, worldV2Metadata, diagnosticCloneStateForRollout: cloneStateForRollout, setTblTrust, tblFactorAt, setOuSignal, setOuTrust, detectOuSignals, partnerSignaledOu, partnerSignaledShi, kakariGotae, shiStarted, canShiAttackC, setOppProfile, oppRatesFromCounts, setEvLambdaGate, inferPartnerHoldings, setSigRead, setOuMix, setKyouMix, setShiKyoFix, setShiCommit, setShiCommitReal, setKakariEv, kakariEvidence, setPassMirror, setShiPairEv, shiPairEvidence, setKPairEv, pairAttackEvidence, setKyoNeg, setKyoNegScope, setKyoNegClosed, kyoNegAttackEvidence, _kyClsProbe, setOuKyoRisk, setLedgerCal, calP, setOulessFk, setTakeTurn, setKamizaWait, setKakuSignal, kakuSigEvidence, setKyoCode, kyoCodeEvidence, setKyoBonus, setKyoRetention, kyoBiasOf, setHumanModel, setBeliefSharpen, setFaTemper, setBuryUmaFix, setBuryPairShi, setKeepShiEshi, setKeepShiLastGuard, setShiKeep2, setWidthBury, setBuryCover, buryCoverPick, setUmaKeep, setShiBluff, setCoopSignal, setConvTrust, convTrustOf, moveHint, coopContext, setShiRejectStrong, setShiRideKeep, setFlowbackYield, setFlowbackTh, setFlowbackPreMc, flowbackYieldPass, setShiAtkAvoid, setShiAtkAvoidMin, setUncutAtkAvoid, setUncutFb, setOuSigShiGuard, setKyoR1Conserve, setKyoConsMode, setKyoWeakConserve, strongNonShi, setKyoR1Wait, setKyoCertainRecv, cfrSolve2x2, setRuleLevel, setDiag, setRolloutOpp, modelRespAction, setLeafDd, setLeafDdLimit, setLeafDdCap, matchEquity, ddSolve, ddSolveNaive, ddRootValues, ddParAnalyze, sampleWorldW, makePassEvCache, readingNotes, komaLedger, setCountRead, countWhy, setCountGate, setCountPlanConf, setCountPlanRisk, planRisk, unseenMinusPartnerLedger, sampleWorldC, setCountSample, setCountRecvp, setCountBelief, setCountBeliefMaxHand, setCountBeliefMinHist, setCountBeliefMinEss, minEssDiag, setBeliefEst, beliefEstDiag, ledgerRefine, komaLedgerMaybeRefine, setSoloSig, setOuTakeTurn, setOuTtMaxHand, setOuTtMinChain, setOuTtMargin, setOuTtDets, ouTakeTurnPick, ouChainThroughP, mcDecideReceive, pCanReceive, setRecv8OuVeto, recv8OuVetoDiag, setOukH8, oukH8Diag, setOukH2, oukH2Diag, setOukH6, oukH6Diag, setAtkConsW, setAtkConsTrust, atkConsDiag, pEnemyReceives, isFirstRound, SEATS, KOMA_COUNT, POINTS, UNCUTTABLE, team, nextSeat, partnerOf, mcEvalReceive, gameEquityMC, countsFor, freshSolverProbe, puzzleTruthProbe, beliefExact, beliefMC,
+  return {setDeterminizationV2, worldV2Metadata, diagnosticCloneStateForRollout: cloneStateForRollout, setTblTrust, tblFactorAt, setOuSignal, setOuTrust, detectOuSignals, partnerSignaledOu, partnerSignaledShi, kakariGotae, shiStarted, canShiAttackC, setOppProfile, oppRatesFromCounts, setEvLambdaGate, inferPartnerHoldings, setSigRead, setOuMix, setKyouMix, setShiKyoFix, setShiCommit, setShiCommitReal, setKakariEv, kakariEvidence, setPassMirror, setShiPairEv, shiPairEvidence, setKPairEv, pairAttackEvidence, setKyoNeg, setKyoNegScope, setKyoNegClosed, kyoNegAttackEvidence, _kyClsProbe, setOuKyoRisk, setLedgerCal, calP, setOulessFk, setTakeTurn, setKamizaWait, setKakuSignal, kakuSigEvidence, setKyoCode, kyoCodeEvidence, setKyoBonus, setKyoRetention, kyoBiasOf, setHumanModel, setBeliefSharpen, setFaTemper, setBuryUmaFix, setBuryPairShi, setKeepShiEshi, setKeepShiLastGuard, setShiKeep2, setWidthBury, setBuryCover, buryCoverPick, setUmaKeep, setShiBluff, setCoopSignal, setConvTrust, convTrustOf, moveHint, coopContext, setShiRejectStrong, setShiRideKeep, setFlowbackYield, setFlowbackTh, setFlowbackPreMc, flowbackYieldPass, setShiAtkAvoid, setShiAtkAvoidMin, setUncutAtkAvoid, setUncutFb, setOuSigShiGuard, setKyoR1Conserve, setKyoConsMode, setKyoWeakConserve, strongNonShi, setKyoR1Wait, setKyoCertainRecv, cfrSolve2x2, setRuleLevel, setDiag, setRolloutOpp, modelRespAction, setLeafDd, setLeafDdLimit, setLeafDdCap, matchEquity, ddSolve, ddSolveNaive, ddRootValues, ddParAnalyze, sampleWorldW, makePassEvCache, readingNotes, komaLedger, setCountRead, countWhy, setCountGate, setCountPlanConf, setCountPlanRisk, planRisk, unseenMinusPartnerLedger, sampleWorldC, setCountSample, setCountRecvp, setCountBelief, setCountBeliefMaxHand, setCountBeliefMinHist, setCountBeliefMinEss, minEssDiag, setBeliefEst, beliefEstDiag, ledgerRefine, komaLedgerMaybeRefine, setSoloSig, setOuTakeTurn, setOuTtMaxHand, setOuTtMinChain, setOuTtMargin, setOuTtDets, ouTakeTurnPick, ouChainThroughP, mcDecideReceive, pCanReceive, setRecv8OuVeto, recv8OuVetoDiag, setOukH8, oukH8Diag, setOukH2, oukH2Diag, setOukH6, oukH6Diag, setAtkConsW, setAtkConsTrust, atkConsDiag, setShiProto, shiProtoDiag, shiCommitLive, shiCommitReleased, shiProtoDeviation, pEnemyReceives, isFirstRound, SEATS, KOMA_COUNT, POINTS, UNCUTTABLE, team, nextSeat, partnerOf, mcEvalReceive, gameEquityMC, countsFor, freshSolverProbe, puzzleTruthProbe, beliefExact, beliefMC,
           mulberry32, shuffle, fullDeck, counter,
           newGameState, advance, canAttackKing, validReceive, legalReceives, legalAttacks,
           maskHistoryFor, makeView, unseenCounts, solveWin, checkKingAtkOk,
@@ -9710,7 +9795,7 @@ const G_B = (() => {
     // この保護の対象外になり、伏せでしを捨てる発端バグと同型の穴が残っていたため巡目非依存に統一)。
     // ただし最後の1枚のしは攻めに使うため温存し、非し駒を伏せる(し攻め継続のバグ修正 v952-19)。
     // 旧実装は最後のしも伏せて消費し、攻めが非しに逸れてし攻めを放棄していた。
-    if (rl >= 1 && (shiStarted(hist, seat) || shouldShiAttack(hist, seat, c, view, st)) &&
+    if (rl >= 1 && !shiCommitReleased(hist, seat) && (shiStarted(hist, seat) || shouldShiAttack(hist, seat, c, view, st)) &&
         !(st.rejShi && st.rejShi[seat])) {
       const nShi0 = c["し"] || 0;
       // 残り攻め回数(この伏せ以降に自分が打つ攻めの数)= 手駒数/2。し攻めは毎回しで攻めるのが本則。
@@ -9748,7 +9833,7 @@ const G_B = (() => {
       enemyLikelyHoldsUncut(hist, seat, c, "し") && !enemyShiExhausted(hist, seat, c);
     const enemyShiActive = KEEP_SHI_ESHI &&
       (_eShiAtkCnt >= 2 || _eShiLastGuard) &&
-      !shiStarted(hist, seat) &&
+      !(shiStarted(hist, seat) && !shiCommitReleased(hist, seat)) &&   // build v220.0: C-17 中止後は敵し攻め中の し温存へ
       !shiImmune(hist, seat, c);   // 自しで受け切れる(し免疫)なら温存不要→香を伏せず香連打ルールへ
     // し温存時の伏せ駒選択
     if (enemyShiActive && (c["し"] || 0) >= 1) {
@@ -9869,7 +9954,7 @@ const G_B = (() => {
     // 例外(b)しを打つと敵が確実に受け上がりする時のみ続行しない。
     // コミットは「本物のし攻め」shiStartedで判定する(不具合修正2026-06)。旧iAttackedShiはごめんなさいのし
     // 単発や相方の非し拒否(shiStarted=false)でも誤コミットしていた。
-    const _shiCommitted = SHI_COMMIT_REAL ? shiStarted(hist, seat) : iAttackedShi(hist, seat);
+    const _shiCommitted = (SHI_COMMIT_REAL ? shiStarted(hist, seat) : iAttackedShi(hist, seat)) && !shiCommitReleased(hist, seat);   // build v220.0: C-17 の中止
     if (rl >= 1 && SHI_KYO_FIX && SHI_COMMIT && _shiCommitted && (c["し"] || 0) >= 1 &&
         !(st.rejShi && st.rejShi[seat]) && legalAttacks(hand, hist, seat).includes("し") &&
         !shiUkiagariCertain(view))
@@ -9892,10 +9977,10 @@ const G_B = (() => {
     if (rl >= 2 && (c["王"] || 0) === 2 && !isFirstRound(hist))
       return {koma: "王", why: "王ペア — 2巡目以降は王連打で上がりに行く"};
     // し攻めスタート確定
-    if (rl >= 1 && shiStarted(hist, seat) && (c["し"] || 0) >= 1 && !(st.rejShi && st.rejShi[seat]))
+    if (rl >= 1 && shiStarted(hist, seat) && (c["し"] || 0) >= 1 && !(st.rejShi && st.rejShi[seat]) && !shiCommitReleased(hist, seat))
       return {koma: "し", why: "し攻め進行中 — 続行"};
     // 味方し合図への応答 (し3枚での参加拡張つき)
-    if (rl >= 1 && partnerSignaledShi(hist, seat) && isFirstAttackForMe(hist, seat)) {
+    if (rl >= 1 && partnerSignaledShi(hist, seat) && isFirstAttackForMe(hist, seat) && !shiCommitReleased(hist, seat)) {   // build v220.0: C-17 中止後は参加しない
       const teamOkSig = shouldShiAttack(hist, seat, c, view, st);
       if (teamOkSig || canShiAttackC(c))
         return {koma: "し", why: (teamOkSig && !canShiAttackC(c))
@@ -9906,7 +9991,7 @@ const G_B = (() => {
     }
     // 【し攻め継続】自陣のし攻め確定 かつ 敵のし枯渇(信念推定)時のみ、し枚数不問でし攻めを継続。
     // 勝っているし攻めだけ継続し、勝っていない局面では非し切替の余地を残す。
-    if (rl >= 1 && shiStarted(hist, seat) && (c["し"] || 0) >= 1 && enemyShiExhausted(hist, seat, c) &&
+    if (rl >= 1 && shiStarted(hist, seat) && !shiCommitReleased(hist, seat) && (c["し"] || 0) >= 1 && enemyShiExhausted(hist, seat, c) &&
         [...new Set(legalAttacks(hand, hist, seat))].includes("し"))
       return {koma: "し", why: "し攻め継続 — 敵のし枯渇(信念推定)で確定勝ち筋、しで攻め続ける"};
     // し攻め拒否の二段: 拒否の受け直後は非しで攻めて「し薄」を確定させる
@@ -9929,7 +10014,7 @@ const G_B = (() => {
     // 直後の自発し攻め(既存canShiAttackC判定)に委ね、ここでは対象外にして重複発火を避ける。
     // レビューM-2対応: 既存の「し攻め継続(コミット)」と同様、敵が残り1枚でしを受けて確実に
     // 上がる局面(shiUkiagariCertain)ではしを打たないガードを追加(1手で局を献上するのを防ぐ)。
-    if (rl >= 1 && !isFirstAttackForMe(hist, seat) && !(st.rejShi && st.rejShi[seat]) &&
+    if (rl >= 1 && !isFirstAttackForMe(hist, seat) && !(st.rejShi && st.rejShi[seat]) && !shiCommitReleased(hist, seat) &&
         shouldShiAttack(hist, seat, c, view, st) &&
         [...new Set(legalAttacks(hand, hist, seat))].includes("し") &&
         !shiUkiagariCertain(view)) {
@@ -9938,7 +10023,7 @@ const G_B = (() => {
         "枚(自" + (c["し"] || 0) + "+相方推定" + pShiT2 + ")で継続"};
     }
     // 自発し攻め
-    if (rl >= 1 && isFirstAttackForMe(hist, seat) &&
+    if (rl >= 1 && isFirstAttackForMe(hist, seat) && !shiCommitReleased(hist, seat) &&   // build v220.0: C-17 中止後は発動しない
         (canShiAttackC(c) || (view.parent === seat && canShiAttackAfterBuryC(c))))
       return {koma: "し", why: "し攻め発動 — し4枚・ペアなしで局面支配"};
     // 【拡張符丁】王持ち合図のし (送り手)
@@ -9965,7 +10050,7 @@ const G_B = (() => {
     // v151: 下段の !(ouOn && 王なし && …) 節は恒真(到達不能)。shouldGomenShiがisFirstAttackForMe
     // かつisFirstRound(totalAttackCount<=4)を要求するため next<=5 で3巡目枝は不成立、
     // 自分の攻めが履歴に無いためfirstAttackKyouR1も常にfalse。Phase0-Eで発火0件を実測確認済み。
-    if (rl >= 1 && shouldGomenShi(view, c) && !(ouOn(seat) && partnerSignaledOu(hist, partnerOf(seat))) &&
+    if (rl >= 1 && shouldGomenShi(view, c) && !shiCommitReleased(hist, seat) && !(ouOn(seat) && partnerSignaledOu(hist, partnerOf(seat))) &&   // build v220.0: C-17 中止後は送らない
         !(ouOn(seat) && !(c["王"] || 0) && ouSigAvoidNow(hist, seat)))
       return {koma: "し", why: "ごめんなさいのし — バラバラの手を味方に誤読させない"};
     // ペア信号 (1巡目): 金銀馬ペアを持つ1巡目は、通りやすい単騎(角・飛等)でなくペアを攻めて「ペアあり」を
@@ -9979,6 +10064,7 @@ const G_B = (() => {
     // ペアワイズ反事実+UCB1層 (手駒2〜4枚・候補2つ以上)
     if (o && o.attackMC && !o.noMC && hand.length >= 2 && (hand.length <= 4 || rl < 2)) {
       let cands = attackCandidates(view, c);
+      if (shiCommitReleased(hist, seat)) { const nz = cands.filter(k => k !== "し"); if (nz.length && nz.length < cands.length) { SHI_PROTO_DIAG.atkFilter++; cands = nz; } }   // build v220.0: C-17 中止後は し で攻めない
       // [UNCUT除外を撤廃] 敵保有の香/し除外はDD/MCの最適手(テンポ捨て・同駒上がり布石等)を粗いハードルールで奪い勝率を下げるため削除（本番head-to-head検証: 撤廃で +1.9点/deal, z=4.28）
       if (ouOn(seat) && (c["し"] || 0) < 4 && cands.includes("し") &&
           (partnerSignaledOu(hist, partnerOf(seat)) ||
@@ -10000,6 +10086,7 @@ const G_B = (() => {
     if (!nonOu.length) return {koma: "王", why: "王のみ — 王で攻める"};
     let cfb = [...new Set(nonOu)].filter(k => !(k === "し" && (c[k] || 0) === 1));
     if (!cfb.length) cfb = [...new Set(nonOu)];
+    if (shiCommitReleased(hist, seat)) { const nz = cfb.filter(k => k !== "し"); if (nz.length && nz.length < cfb.length) { SHI_PROTO_DIAG.atkFilter++; cfb = nz; } }   // build v220.0: C-17 中止後は し で攻めない
     // [UNCUT除外を撤廃 (旧 #2修正 をリバート)] enemyLikelyHoldsUncut は「敵が一度でも露呈+未見>0」で発火する
     // 粗い述語で過剰除外し、実枚数を見る占有率スコア(m/(m+o)·1.3)の判断を上書きして損なう。本番head-to-head検証で
     // 撤廃が有益と確認 (per-deal +1.9点 z=4.28 / 150点先取マッチ 53.8% z=2.41)。コスト: NPS約20%低下。
@@ -10988,6 +11075,75 @@ const G_B = (() => {
   let SHI_COMMIT = true;
   function setShiCommit(on) { SHI_COMMIT = !!on; }
   let SHI_COMMIT_REAL = true;   // コミット判定を「本物のし攻め」shiStarted(チーム最初の2攻めがし-し&相方非拒否)に限定。
+  // ===== build v220.0: し攻めプロトコル v1.2(docs/PROTOCOL_し攻め_v1.2.md)への適合(第 1 便) =====
+  //   C-06/C-16: コミット中(本物のし攻め・拒否なし・C-17 の中止なし)は Solver の非確定プランを し攻めに従属させる。
+  //   C-07/C-13 例外: 確定上がり(worst-case)が し攻め継続 / し温存から逸れるときは (a) 敵の誰かがリーチ(残 2 枚以下)
+  //                   または (b) 確定点 ≥ 手駒の し以外の最高点駒(K-14) のときだけ採用する。
+  //   C-17: コミット後に敵が し で攻めたら即刻中止(以後 し は受け駒)。C-10: コミット中の敵の非し攻めは し以外の駒で受ける。
+  //   SHI_PROTO: 0 = v219.5 と着手列が 1 手も変わらない / 1 = C-06・C-16・C-07・C-13 例外・C-17 / 2(既定) = 1 ＋ C-10 の受け規則。
+  //   監査: docs/AUDIT_し攻め適合_v1.1.md(M1〜M9)。切り戻し: setShiProto(0) / #shiproto=0。
+  let SHI_PROTO = 2;
+  function setShiProto(n) { SHI_PROTO = Math.max(0, Math.min(2, n | 0)); }
+  const SHI_PROTO_DIAG = {planGate: 0, defendPlanGate: 0, certainGate: 0, certainPass: 0, recvRule: 0, atkFilter: 0};
+  function shiProtoDiag(reset) {
+    const out = Object.assign({level: SHI_PROTO}, SHI_PROTO_DIAG);
+    if (reset) for (const k of Object.keys(SHI_PROTO_DIAG)) SHI_PROTO_DIAG[k] = 0;
+    return out;
+  }
+  // コミットの起点 = チームの 2 攻め目(本物のし攻め: shiStarted と同じ前提)の履歴添字。無ければ -1
+  function shiCommitStartIdx(hist, seat) {
+    if (!shiStarted(hist, seat)) return -1;
+    let n = 0;
+    for (let i = 0; i < hist.length; i++) { const h = hist[i]; if (h.act === "attack" && team(h.seat) === team(seat) && ++n === 2) return i; }
+    return -1;
+  }
+  // C-17: コミット後に敵が し で攻めた → し攻めは中止(以後 shiCommitLive は false。し は受け駒として扱う)
+  function shiCommitReleased(hist, seat) {
+    if (!SHI_PROTO) return false;
+    const i0 = shiCommitStartIdx(hist, seat);
+    if (i0 < 0) return false;
+    for (let i = i0 + 1; i < hist.length; i++) { const h = hist[i]; if (h.act === "attack" && h.koma === "し" && team(h.seat) !== team(seat)) return true; }
+    return false;
+  }
+  // C-06 のコミット中: 本物のし攻め ∧ し攻め拒否なし ∧ C-17 の中止なし
+  function shiCommitLive(hist, seat, st) {
+    return !!SHI_PROTO && shiStarted(hist, seat) && !(st && st.rejShi && st.rejShi[seat]) && !shiCommitReleased(hist, seat);
+  }
+  // 受け側(C-13): 敵チームの本物のし攻め中で、自軍は し攻めしていない
+  function shiDefending(hist, seat) { return shiStarted(hist, nextSeat(seat)) && !shiStarted(hist, seat); }
+  // Solver プラン {first, second, score} が条文から逸れるか。0 = 逸れない / 1 = コミット中に し攻めから逸れる(C-06・C-11) / 2 = 受け側で し を伏せる(C-13)
+  //   phase "bury": first = 伏せ駒・second = 攻め駒 / "respond": first = 受け駒・second = 攻め駒。し を持たない手・非し を持たない手には適用しない。
+  function shiProtoDeviation(view, plan, phase, st) {
+    if (!SHI_PROTO || !plan) return 0;
+    const hand = view.hand, hist = view.hist, seat = view.seat;
+    const nShi = hand.filter(k => k === "し").length;
+    if (!nShi || nShi === hand.length) return 0;
+    if (shiCommitLive(hist, seat, st)) {
+      if (phase === "bury") {
+        const surplus = nShi > Math.floor(hand.length / 2);   // 余剰の し は伏せて消費してよい(buryChoice「し攻め進行中」と同じ)
+        return ((plan.first !== "し" || surplus) && plan.second === "し") ? 0 : 1;
+      }
+      return (plan.second === "し" || (plan.first === "し" && nShi === 1)) ? 0 : 1;
+    }
+    if (phase === "bury" && plan.first === "し" && shiDefending(hist, seat)) return 2;
+    return 0;
+  }
+  // 非確定プラン(solverTeam / solverRead / solverDom / solverKyoP): 逸れるなら採用しない(C-16)
+  function shiProtoPlanOk(view, plan, phase, st) {
+    const d = shiProtoDeviation(view, plan, phase, st);
+    if (d === 1) SHI_PROTO_DIAG.planGate++; else if (d === 2) SHI_PROTO_DIAG.defendPlanGate++;
+    return d === 0;
+  }
+  // 確定プラン(worst-case の solveWin): 逸れるときは (a) 敵の誰かが残 2 枚以下 または (b) 確定点 ≥ 手駒の し以外の最高点駒(K-14) でだけ採用(C-07・C-13 例外)
+  function shiProtoCertainOk(view, plan, phase, st) {
+    if (shiProtoDeviation(view, plan, phase, st) === 0) return true;
+    const seat = view.seat, sizes = view.sizes || {};
+    const enemyReach = SEATS.some(s => team(s) !== team(seat) && (sizes[s] != null ? sizes[s] : 8) <= 2);
+    const line = Math.max(POINTS["し"], ...view.hand.filter(k => k !== "し").map(k => POINTS[k] || 0));
+    if (enemyReach || plan.score >= line) { SHI_PROTO_DIAG.certainPass++; return true; }
+    SHI_PROTO_DIAG.certainGate++;
+    return false;
+  }
   function setShiCommitReal(on) { SHI_COMMIT_REAL = !!on; }   // false=旧iAttackedShi(ごめんなさいのし1枚で誤コミット)
   // 相方のし攻めへの応答時、非し手が強ければし攻めに乗らず拒否(非し攻めへ)。ユーザー提案(2026-06)。
   let SHI_REJECT_STRONG = true;   // ユーザー戦術・検証でマッチ中立(z=-0.30)・既定ON
@@ -12925,7 +13081,8 @@ const G_B = (() => {
             policyAction, mcDecideReceive, setRecv8OuVeto, recv8OuVetoDiag,
             passEvidence, passFactor, setOukH8, oukH8Diag,   // v212(OUK_H8。passFactorC は連結済み)
             setOukH2, oukH2Diag,   // v214(OUK_H2)
-            setOukH6, oukH6Diag, attackMC, atkConsWeight, atkConsFactor, setAtkConsW, setAtkConsTrust, atkConsDiag, advance]   // v218(ATK_CONS_W)
+            setOukH6, oukH6Diag, attackMC, atkConsWeight, atkConsFactor, setAtkConsW, setAtkConsTrust, atkConsDiag, advance,   // v218(ATK_CONS_W)
+            setShiProto, shiProtoDiag, shiCommitStartIdx, shiCommitReleased, shiCommitLive, shiDefending, shiProtoDeviation, shiProtoPlanOk, shiProtoCertainOk, buryChoice, receiveChoice]   // v220.0(SHI_PROTO。可変トグルは連結しない。attackChoice は G_B の M-13 差分のため載せない)
       .map(f => f.toString())
       .concat([PKDD._coreSrc, PKDD._loadWorldSrc, JSON.stringify(BELIEF_EST_C), String(BELIEF_EST_EPS), String(RECV8_OU_VETO_DETS), String(RECV8_OU_VETO_Z),
                String(OUK_H8_E2_CONT), String(OUK_H8_E2_NOCONT), String(OUK_H8_E3), String(OUK_H6_E2_CONT), String(OUK_H6_E2_NOCONT), String(OUK_H6_E3), String(OUK_H2_E2), String(OUK_H2_E3), String(ATK_CONS_LAMBDA), String(ATK_CONS_MIN_ESS)])
@@ -14166,7 +14323,7 @@ const G_B = (() => {
       // 最後の1枚で乗ると受けでし切れ→直後の攻めが非しに逸れ、相方のリードを切るだけで継続不能になる。
       // し1枚のときは下のルールも !iAttackedShi で不発 → 既定の「手番を奪わない(パス)」に落ち相方のリード温存。
       if (attack === "し" && (c["し"] || 0) >= 1 + SHI_RIDE_KEEP &&
-          shiStarted(hist, view.seat) && enemyShiExhausted(hist, view.seat, c))
+          shiStarted(hist, view.seat) && !shiCommitReleased(hist, view.seat) && enemyShiExhausted(hist, view.seat, c))
         return {koma: "し", why: "し攻め継続 — 敵のし枯渇(信念推定で受け不能)、受け後も継続可(し2枚以上)で乗る"};
       if (attack === "し" && (c["し"] || 0) >= 4 && (canShiAttackC(c) || (c["し"] || 0) >= 5))
         return {koma: "し", why: "味方のし攻めに乗る — " + ((c["し"] || 0) >= 5 ? "し5枚は強ペアでも乗る" : "し4枚でし攻め発動")};
@@ -14474,14 +14631,14 @@ const G_B = (() => {
             const unseenD = Object.assign({}, unseenW);
             for (const X of safe) unseenD[X] = 0;
             let srD = solveWin(view.hand, true, null, unseenD, checkKingAtkOk(view.hand, unseenD));
-            if (srD && view.hand.includes(srD.first) && (!srW || srD.score > srW.score)) {
+            if (srD && view.hand.includes(srD.first) && (!srW || srD.score > srW.score) && shiProtoPlanOk(view, srD, "bury", st)) {
               st.solverCache[seat] = {k: srD.second, c: false};
               return {type: "bury", koma: srD.first, src: "solverDom",
                       why: "支配局面 — 敵は" + [...safe].join("") + "を受けられない公算大。王王を温存し" + srD.score + "点狙い（ほぼ確実）"};
             }
           }
         }
-        if (srW && view.hand.includes(srW.first)) {
+        if (srW && view.hand.includes(srW.first) && shiProtoCertainOk(view, srW, "bury", st)) {
           st.solverCache[seat] = {k: srW.second, c: true};
           return {type: "bury", koma: srW.first, src: "solver",
                   why: "Solver — " + srW.score + "点の確実な上がり手順を読み切り"};
@@ -14493,7 +14650,7 @@ const G_B = (() => {
           let srR = solveWin(view.hand, true, null, unseenR, kingOkR);
           srR = hideOuLead(srR, view.hand, view.hist, f => view.hand.includes(f),
                            ban => solveWin(view.hand, true, null, unseenR, kingOkR, ban));
-          if (srR && view.hand.includes(srR.first)) {
+          if (srR && view.hand.includes(srR.first) && shiProtoPlanOk(view, srR, "bury", st)) {
             st.solverCache[seat] = {k: srR.second, c: true};
             return {type: "bury", koma: srR.first, src: "solverRead",
                     why: "Solver — " + srR.score + "点の上がり手順を読み切り（敵の受け筋から駒位置を特定・定石受けなら確定）"};
@@ -14514,7 +14671,7 @@ const G_B = (() => {
             else if (risk > COUNT_PLAN_RISK) sr = null;
           }
         }
-        if (sr && view.hand.includes(sr.first)) {
+        if (sr && view.hand.includes(sr.first) && shiProtoPlanOk(view, sr, "bury", st)) {
           st.solverCache[seat] = {k: sr.second, c: false};
           const pTxt = COUNT_GATE
             ? "（相方の" + sr.second + "保持推定" + Math.round((((LBury.pHold[partnerOf(seat)] || {})[sr.second]) || 0) * 100) + "%・敵の受け確率" + Math.round((planRisk(LBury, seat, sr)) * 100) + "%・枚数読み）"
@@ -14535,7 +14692,7 @@ const G_B = (() => {
             unseenP["し"] = 0;
           }
           const srP = solveWin(view.hand, true, null, unseenP, checkKingAtkOk(view.hand, unseenP));
-          if (srP && view.hand.includes(srP.first)) {
+          if (srP && view.hand.includes(srP.first) && shiProtoPlanOk(view, srP, "bury", st)) {
             const riskP = planRisk(LBury, seat, srP);
             const firstNeedsCheck = srP.first === "香" || (KYO_UNBLOCK_P >= 2 && srP.first === "し");
             const firstOk = !firstNeedsCheck || pEnemyReceives(LBury, seat, srP.first) <= KYO_UNBLOCK_TH;
@@ -14659,7 +14816,7 @@ const G_B = (() => {
         let srW = solveWin(view.hand, false, attack, unseenW, kingOkRW);
         srW = hideOuLead(srW, view.hand, view.hist, f => lr.includes(f),
                          ban => solveWin(view.hand, false, attack, unseenW, kingOkRW, ban));
-        if (srW && lr.includes(srW.first)) {
+        if (srW && lr.includes(srW.first) && shiProtoCertainOk(view, srW, "respond", st)) {
           st.solverCache[seat] = {k: srW.second, c: true};
           return {type: "receive", koma: srW.first, src: "solver",
                   why: "Solver — 受けて" + srW.score + "点の確実な上がり手順"};
@@ -14670,7 +14827,7 @@ const G_B = (() => {
           let srRR = solveWin(view.hand, false, attack, unseenRR, kingOkRR);
           srRR = hideOuLead(srRR, view.hand, view.hist, f => lr.includes(f),
                             ban => solveWin(view.hand, false, attack, unseenRR, kingOkRR, ban));
-          if (srRR && lr.includes(srRR.first)) {
+          if (srRR && lr.includes(srRR.first) && shiProtoPlanOk(view, srRR, "respond", st)) {
             st.solverCache[seat] = {k: srRR.second, c: true};
             return {type: "receive", koma: srRR.first, src: "solverRead",
                     why: "Solver — 受けて" + srRR.score + "点の上がり手順（敵の受け筋から駒位置を特定・定石受けなら確定）"};
@@ -14689,7 +14846,7 @@ const G_B = (() => {
             else if (risk > COUNT_PLAN_RISK) sr = null;
           }
         }
-        if (sr && lr.includes(sr.first)) {
+        if (sr && lr.includes(sr.first) && shiProtoPlanOk(view, sr, "respond", st)) {
           st.solverCache[seat] = {k: sr.second, c: false};
           const pTxt = COUNT_GATE
             ? "（相方の" + sr.second + "保持推定" + Math.round((((LResp.pHold[partnerOf(seat)] || {})[sr.second]) || 0) * 100) + "%・敵の受け確率" + Math.round((planRisk(LResp, seat, sr)) * 100) + "%・枚数読み）"
@@ -14710,7 +14867,7 @@ const G_B = (() => {
             unseenP["し"] = 0;
           }
           const srP = solveWin(view.hand, false, attack, unseenP, checkKingAtkOk(view.hand, unseenP));
-          if (srP && lr.includes(srP.first)) {
+          if (srP && lr.includes(srP.first) && shiProtoPlanOk(view, srP, "respond", st)) {
             const riskP = planRisk(LResp, seat, srP);
             const firstNeedsCheck = srP.first === "香" || (KYO_UNBLOCK_P >= 2 && srP.first === "し");
             const firstOk = !firstNeedsCheck || pEnemyReceives(LResp, seat, srP.first) <= KYO_UNBLOCK_TH;
@@ -14723,6 +14880,14 @@ const G_B = (() => {
             }
           }
         }
+      }
+      // build v220.0(C-10・SHI_PROTO ≥ 2): コミット中の敵の非し攻めは、し以外の受け駒があれば受けて手番を取り返し し で攻め続ける
+      //   (受けMC の「なし」より上位・C-16)。同駒(非王)を優先し、他に無ければ王で受ける(王の出し惜しみをしない・K-6)。
+      //   確定 Solver(受けて N 点の確実)と (1) を通った solverTeam はこの規則より上位。し攻め中でない席・し を持たない席では不発。
+      if (SHI_PROTO >= 2 && !isPartnerAtk && attack !== "し" && view.hand.includes("し") && shiCommitLive(view.hist, seat, st)) {
+        const pick = lr.find(k => k !== "王") || lr[0];
+        SHI_PROTO_DIAG.recvRule++;
+        return {type: "receive", koma: pick, src: "rule", why: "し攻め中の受け(C-10) — し以外の" + pick + "で受けて手番を取り返し、しで攻め続ける"};
       }
       // 受けMC (検証済み構成の軽量版): 敵の攻め×手駒6枚以下×候補2つ以上
       // v96: 相方し攻めは定石パスをMC評価で覆せるようにする(検証報告の主因13件対応)
@@ -16174,7 +16339,7 @@ const G_B = (() => {
     }
     return decided ? nsWins / decided : null;
   }
-  return {setDeterminizationV2, worldV2Metadata, diagnosticCloneStateForRollout: cloneStateForRollout, setTblTrust, tblFactorAt, setOuSignal, setOuTrust, detectOuSignals, partnerSignaledOu, partnerSignaledShi, kakariGotae, shiStarted, canShiAttackC, setOppProfile, oppRatesFromCounts, setEvLambdaGate, inferPartnerHoldings, setSigRead, setOuMix, setKyouMix, setShiKyoFix, setShiCommit, setShiCommitReal, setKakariEv, kakariEvidence, setPassMirror, setShiPairEv, shiPairEvidence, setKPairEv, pairAttackEvidence, setKyoNeg, setKyoNegScope, setKyoNegClosed, kyoNegAttackEvidence, _kyClsProbe, setOuKyoRisk, setLedgerCal, calP, setOulessFk, setTakeTurn, setKamizaWait, setKakuSignal, kakuSigEvidence, setKyoCode, kyoCodeEvidence, setKyoBonus, setKyoRetention, kyoBiasOf, setHumanModel, setBeliefSharpen, setFaTemper, setBuryUmaFix, setBuryPairShi, setKeepShiEshi, setKeepShiLastGuard, setShiKeep2, setWidthBury, setBuryCover, buryCoverPick, setUmaKeep, setShiBluff, setCoopSignal, setConvTrust, convTrustOf, moveHint, coopContext, setShiRejectStrong, setShiRideKeep, setFlowbackYield, setFlowbackTh, setFlowbackPreMc, flowbackYieldPass, setShiAtkAvoid, setShiAtkAvoidMin, setUncutAtkAvoid, setUncutFb, setOuSigShiGuard, setKyoR1Conserve, setKyoConsMode, setKyoWeakConserve, strongNonShi, setKyoR1Wait, setKyoCertainRecv, cfrSolve2x2, setRuleLevel, setDiag, setRolloutOpp, modelRespAction, setLeafDd, setLeafDdLimit, setLeafDdCap, matchEquity, ddSolve, ddSolveNaive, ddRootValues, ddParAnalyze, sampleWorldW, makePassEvCache, readingNotes, komaLedger, setCountRead, countWhy, setCountGate, setCountPlanConf, setCountPlanRisk, planRisk, unseenMinusPartnerLedger, sampleWorldC, setCountSample, setCountRecvp, setCountBelief, setCountBeliefMaxHand, setCountBeliefMinHist, setCountBeliefMinEss, minEssDiag, setBeliefEst, beliefEstDiag, ledgerRefine, komaLedgerMaybeRefine, setSoloSig, setOuTakeTurn, setOuTtMaxHand, setOuTtMinChain, setOuTtMargin, setOuTtDets, ouTakeTurnPick, ouChainThroughP, mcDecideReceive, pCanReceive, setRecv8OuVeto, recv8OuVetoDiag, setOukH8, oukH8Diag, setOukH2, oukH2Diag, setOukH6, oukH6Diag, setAtkConsW, setAtkConsTrust, atkConsDiag, pEnemyReceives, isFirstRound, SEATS, KOMA_COUNT, POINTS, UNCUTTABLE, team, nextSeat, partnerOf, mcEvalReceive, gameEquityMC, countsFor, freshSolverProbe, puzzleTruthProbe, beliefExact, beliefMC,
+  return {setDeterminizationV2, worldV2Metadata, diagnosticCloneStateForRollout: cloneStateForRollout, setTblTrust, tblFactorAt, setOuSignal, setOuTrust, detectOuSignals, partnerSignaledOu, partnerSignaledShi, kakariGotae, shiStarted, canShiAttackC, setOppProfile, oppRatesFromCounts, setEvLambdaGate, inferPartnerHoldings, setSigRead, setOuMix, setKyouMix, setShiKyoFix, setShiCommit, setShiCommitReal, setKakariEv, kakariEvidence, setPassMirror, setShiPairEv, shiPairEvidence, setKPairEv, pairAttackEvidence, setKyoNeg, setKyoNegScope, setKyoNegClosed, kyoNegAttackEvidence, _kyClsProbe, setOuKyoRisk, setLedgerCal, calP, setOulessFk, setTakeTurn, setKamizaWait, setKakuSignal, kakuSigEvidence, setKyoCode, kyoCodeEvidence, setKyoBonus, setKyoRetention, kyoBiasOf, setHumanModel, setBeliefSharpen, setFaTemper, setBuryUmaFix, setBuryPairShi, setKeepShiEshi, setKeepShiLastGuard, setShiKeep2, setWidthBury, setBuryCover, buryCoverPick, setUmaKeep, setShiBluff, setCoopSignal, setConvTrust, convTrustOf, moveHint, coopContext, setShiRejectStrong, setShiRideKeep, setFlowbackYield, setFlowbackTh, setFlowbackPreMc, flowbackYieldPass, setShiAtkAvoid, setShiAtkAvoidMin, setUncutAtkAvoid, setUncutFb, setOuSigShiGuard, setKyoR1Conserve, setKyoConsMode, setKyoWeakConserve, strongNonShi, setKyoR1Wait, setKyoCertainRecv, cfrSolve2x2, setRuleLevel, setDiag, setRolloutOpp, modelRespAction, setLeafDd, setLeafDdLimit, setLeafDdCap, matchEquity, ddSolve, ddSolveNaive, ddRootValues, ddParAnalyze, sampleWorldW, makePassEvCache, readingNotes, komaLedger, setCountRead, countWhy, setCountGate, setCountPlanConf, setCountPlanRisk, planRisk, unseenMinusPartnerLedger, sampleWorldC, setCountSample, setCountRecvp, setCountBelief, setCountBeliefMaxHand, setCountBeliefMinHist, setCountBeliefMinEss, minEssDiag, setBeliefEst, beliefEstDiag, ledgerRefine, komaLedgerMaybeRefine, setSoloSig, setOuTakeTurn, setOuTtMaxHand, setOuTtMinChain, setOuTtMargin, setOuTtDets, ouTakeTurnPick, ouChainThroughP, mcDecideReceive, pCanReceive, setRecv8OuVeto, recv8OuVetoDiag, setOukH8, oukH8Diag, setOukH2, oukH2Diag, setOukH6, oukH6Diag, setAtkConsW, setAtkConsTrust, atkConsDiag, setShiProto, shiProtoDiag, shiCommitLive, shiCommitReleased, shiProtoDeviation, pEnemyReceives, isFirstRound, SEATS, KOMA_COUNT, POINTS, UNCUTTABLE, team, nextSeat, partnerOf, mcEvalReceive, gameEquityMC, countsFor, freshSolverProbe, puzzleTruthProbe, beliefExact, beliefMC,
           mulberry32, shuffle, fullDeck, counter,
           newGameState, advance, canAttackKing, validReceive, legalReceives, legalAttacks,
           maskHistoryFor, makeView, unseenCounts, solveWin, checkKingAtkOk,
@@ -18541,6 +18706,13 @@ const GOITA_ENGINE_REGISTRY = (() => {
   try {
     const m = /[#&]oukh8=([01])/.exec(location.hash || "");
     if (m) GOITA_ENGINE_REGISTRY.invokeAll("setOukH8", +m[1]);
+  } catch (e) { /* トグル不可でも対局は継続 */ }
+})();
+/* build v220.0(SHI_PROTO): #shiproto=0|1|2 (既定2 = し攻めプロトコル v1.2 の第 1 便 ON)。#atkcons と同一パターン。0 で v219.5 と同一の打ち筋。 */
+(() => {
+  try {
+    const m = /[#&]shiproto=([012])/.exec(location.hash || "");
+    if (m) GOITA_ENGINE_REGISTRY.invokeAll("setShiProto", +m[1]);
   } catch (e) { /* トグル不可でも対局は継続 */ }
 })();
 /* build v218(ATK_CONS_W): #atkcons=0|1 (既定1 = 攻めの DD-PIMC に規則再生の整合重み)。#recv8 と同一パターン。0 で v216 と同一の打ち筋。 */
@@ -28551,6 +28723,10 @@ if (typeof document !== "undefined") (() => {
    * tag: fix=不具合修正 / fast=速くなった / read=読みが良くなった / ui=使いやすくなった(v212.1 新設) / (無印)=内部のみ
    * ================================================================ */
   const APP_CHANGELOG = [
+    {v: "v220.0", d: "2026-09-19", tag: "fix", tagJa: "不具合修正", t: "し攻めの途中で別の駒に逸れる読みを直しました", p: [
+      "味方でし攻めを始めたあと、AIが王などの別の駒で攻めに出てし攻めを途中で捨てる場合がありました。し攻めを続け、確実な上がりは敵がリーチのときか、し攻めより点が高いときだけ取るようにしました。",
+      "し攻めの途中で敵がしで攻めてきたら、し攻めをやめて他の駒で攻めます。し攻め中は敵の攻めをし以外の駒（王を含む）で受けて手番を取り返します。",
+      "URL 末尾に #shiproto=0 を付けて開くと前の版（v219.5）と同じ読みになります。"]},
     {v: "v219.5", d: "2026-09-18", tag: "", tagJa: "プリセットの変更", t: "対局プリセットの相手AIを一段ずつ上げました", p: [
       "対局プリセットの相手AIを一段ずつ上げました。「はじめて」は標準AI、「腕試し」は強いAI、「大会仕様」は最強AI（NN）が相手です（大会仕様は相方も最強AI）。今までどおり「詳しい設定 → 席の構成」で個別に選べます。",
       "出場前チェックリストの「勝ち越し」は、強いAI以上（強い・最強）の相手で数えるようにしました。これまでの記録はそのまま残ります。",
