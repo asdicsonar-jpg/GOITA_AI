@@ -4,6 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>ごいた — 能登の伝承遊戯</title>
+  <!-- build: v220.5「相方のしで攻める場面での上がり方を整えました（し攻めプロトコル v1.3 第 6 便: C-07×C-18 の優先・H-6 と Solver の門の整合・K-17 の確定上がり）」base=v220.4。
+       計画: docs/PLAN_v220.5_し攻めプロトコル適合_rev2_Opus5.5.md（§13 が裁定 L-1〜L-6。すべて (a)）。規範: docs/PROTOCOL_し攻め_v1.3.md（条文 C-07・C-13・C-16・C-18。K-18・K-22・K-24）。
+       裁定: L-1(相方リーチのし攻めへの応答では確定上がりの可否をC-18の点比較で決める。C-07の門はかけない)・L-5(敵のし攻め中の伏せで手駒がしと王だけならしを伏せるのはSolverの門でも逸脱としない)・L-6(自分もしで攻めた後の相方のし攻め(相方リーチでない)にし3枚以下で応答するとき、確定上がりの手順があればC-07の門にかけず受けて、その手順の攻めを打つ。次の攻め番からはC-07に戻る=L-8)。
+       変更: G / G_B の shiProtoCertainOk・shiProtoDeviation に SHI_PROTO 段 7 の機序を追加（harness/apply_v220_5.py・H0a・H0b・H1a・H1b・H1c・H2・H2b・H3。G/G_B 各 2 箇所）＋ app 層トグル #shiproto=0|1|2|3|4|5|6|7（A3）→ apply_ui_release.py（版数・CHANGELOG・バッジ・sw.js）。
+       機序: (1) 相方がリーチ(残り2枚)でしで攻めてきたときの応答では、確定上がりの可否をC-07の門でなくC-18の点比較で決める(Q14・C-07×C-18の優先・裁定L-1) (2) 敵のし攻め中の伏せで手駒がしと王だけなら、しを伏せるのは逸脱としない(Q15・H-6とSolverの門の整合・裁定L-5) (3) 自分もしで攻めた後の相方のし攻め(相方リーチでない)にし3枚以下で応答するとき、確定上がりの手順があれば受けて、その手順の攻めを打つ。次の攻め番からはC-07に戻る(Q17・K-17の確定上がり・裁定L-6・L-8)。SHI_PROTO 既定7、#shiproto=6 で v220.4 と着手列が1手も変わらない（400局で機械確認）。
+       CACHE_NAME: goita-v220.4 → goita-v220.5. -->
   <!-- build: v220.4「し攻めの細部を条文どおりに整えました（し攻めプロトコル v1.2 第 5 便: C-09 の計数・C-16 の一般化・逆し攻め・王飛角の後回し・C-18 の残り）」base=v220.3。
        計画: docs/PLAN_v220.4_し攻めプロトコル適合_rev3_Opus5.md（§13 が rev.3 の差分）。規範: docs/PROTOCOL_し攻め_v1.2.md（条文 C-09・C-10・C-13・C-16・C-18・K-16・K-17）。裁定: G-1(範囲はC-09の計数・C-16一般化・C-18の残り・逆し攻め、および敵のし攻め中の伏せの扱い)・G-2(C-16一般化は確定上がりにもC-07の例外を課す)・G-4(C-01は許容の条文として実測つきで記録し実装しない)・H-1(読みヒントの表示は確率のまま据え置く)・H-2(C-09の起点はチームの1攻め目)・H-5(敵のし攻め中の伏せは王だけ守り、残りは受けの見込みで選ぶ)・H-6(手駒がしと王だけなら、しを伏せる)。
        変更: G / G_B の komaLedger・pEnemyReceives・enemyShiRemaining・shiProtoDeviation・attackChoice・buryChoice・partnerFinishPLess・shiProtoRespondRule・shiProtoCertainOk に SHI_PROTO 段 6 の機序を追加し、新設 enemyShiRemaining で敵の残りしを枯らしの計数で数える（harness/apply_v220_4.py・H0〜H8。G/G_B 各 2 箇所）＋ app 層トグル #shiproto=0|1|2|3|4|5|6（A3）と読みヒントの台帳表示を確率のまま保つ複製（A4a・A4b・裁定H-1）→ apply_ui_release.py（版数・CHANGELOG・バッジ・sw.js）。
@@ -1840,7 +1846,7 @@ body.noto #wincut.show .wc-label{animation:wcFude .62s cubic-bezier(.2,.9,.3,1.2
 <div id="setup-screen">
   <!-- build v208: 版数表示は APP_CHANGELOG[0] から起動時に上書きされる(JS が動かない場合の保険としてここにも同じ版数を書いておく)。 -->
   <button type="button" class="setup-version" id="btn-version"
-          aria-label="バージョン v220.4 — 更新内容を見る" title="更新内容を見る"><span id="btn-version-num">v220.4</span><span class="sv-i" aria-hidden="true">ⓘ</span></button>
+          aria-label="バージョン v220.5 — 更新内容を見る" title="更新内容を見る"><span id="btn-version-num">v220.5</span><span class="sv-i" aria-hidden="true">ⓘ</span></button>
   <div class="title-block">
     <h1 class="serif">ごいた</h1>
     <div class="title-sub">能登・宇出津に伝わる竹駒の伝承遊戯</div>
@@ -4059,16 +4065,17 @@ const G = (() => {
   //   C-17: コミット後に敵が し で攻めたら即刻中止(以後 し は受け駒)。C-10: コミット中の敵の非し攻めは し以外の駒で受ける。
   //   SHI_PROTO: 0 = v219.5 と着手列が 1 手も変わらない / 1 = C-06・C-16・C-07・C-13 例外・C-17 / 2(既定) = 1 ＋ C-10 の受け規則。
   //   監査: docs/AUDIT_し攻め適合_v1.1.md(M1〜M9)。切り戻し: setShiProto(0) / #shiproto=0。
-  let SHI_PROTO = 6;   // build v220.4: 既定を段 6(Q9 C-09計数・Q10 C-16一般化・Q11 逆し攻め・Q12 王飛角後回し・Q13 C-18の残り)に上げる。5 = v220.3 / 4 = v220.2 / 3 = v220.1 / 2 = v220.0 / 0 = v219.5
-  function setShiProto(n) { SHI_PROTO = Math.max(0, Math.min(6, n | 0)); }
+  let SHI_PROTO = 7;   // build v220.5: 既定を段 7(Q14 C-18 を C-07 に優先・Q15 H-6 と Solver の門の整合・Q17 K-17 の確定上がり)に上げる。6 = v220.4 / 5 = v220.3 / 4 = v220.2 / 3 = v220.1 / 2 = v220.0 / 0 = v219.5
+  function setShiProto(n) { SHI_PROTO = Math.max(0, Math.min(7, n | 0)); }
   const SHI_PROTO_DIAG = {planGate: 0, defendPlanGate: 0, certainGate: 0, certainPass: 0, recvRule: 0, atkFilter: 0};
   function shiProtoDiag(reset) {
-    const out = Object.assign({level: SHI_PROTO}, SHI_PROTO_DIAG, SHI_PROTO3_DIAG, SHI_PROTO4_DIAG, SHI_PROTO5_DIAG, SHI_PROTO6_DIAG);
+    const out = Object.assign({level: SHI_PROTO}, SHI_PROTO_DIAG, SHI_PROTO3_DIAG, SHI_PROTO4_DIAG, SHI_PROTO5_DIAG, SHI_PROTO6_DIAG, SHI_PROTO7_DIAG);
     if (reset) for (const k of Object.keys(SHI_PROTO_DIAG)) SHI_PROTO_DIAG[k] = 0;
     if (reset) for (const k of Object.keys(SHI_PROTO3_DIAG)) SHI_PROTO3_DIAG[k] = 0;
     if (reset) for (const k of Object.keys(SHI_PROTO4_DIAG)) SHI_PROTO4_DIAG[k] = 0;
     if (reset) for (const k of Object.keys(SHI_PROTO5_DIAG)) SHI_PROTO5_DIAG[k] = 0;
     if (reset) for (const k of Object.keys(SHI_PROTO6_DIAG)) SHI_PROTO6_DIAG[k] = 0;
+    if (reset) for (const k of Object.keys(SHI_PROTO7_DIAG)) SHI_PROTO7_DIAG[k] = 0;
     return out;
   }
   // コミットの起点 = チームの 2 攻め目(本物のし攻め: shiStarted と同じ前提)の履歴添字。無ければ -1
@@ -4111,7 +4118,10 @@ const G = (() => {
       }
       return (plan.second === "し" || (plan.first === "し" && nShi === 1)) ? 0 : 1;
     }
-    if (phase === "bury" && plan.first === "し" && shiDefending(hist, seat)) return 2;
+    if (phase === "bury" && plan.first === "し" && shiDefending(hist, seat)) {
+      if (SHI_PROTO >= 7 && hand.every(k => k === "し" || k === "王")) { SHI_PROTO7_DIAG.h6Dev++; return 0; }   // build v220.5(Q15・規範 v1.3 C-13・H-6): 手駒が し と王だけなら し を伏せるのは逸脱でない(規則 buryChoice と同じ)
+      return 2;
+    }
     return 0;
   }
   // 非確定プラン(solverTeam / solverRead / solverDom / solverKyoP): 逸れるなら採用しない(C-16)
@@ -4127,6 +4137,15 @@ const G = (() => {
     const enemyReach = SEATS.some(s => team(s) !== team(seat) && (sizes[s] != null ? sizes[s] : 8) <= 2);
     const line = Math.max(POINTS["し"], ...view.hand.filter(k => k !== "し").map(k => POINTS[k] || 0));
     if (enemyReach || plan.score >= line) { SHI_PROTO_DIAG.certainPass++; return true; }
+    if (SHI_PROTO >= 7 && phase === "respond" && st && st.pendingAttack === "し" && partnerReachAtk(view, st)) {   // build v220.5(Q14・規範 v1.3 C-07/C-18・裁定 L-1): 相方リーチの し攻めへの応答は C-07 の門で退けず、続く C-18 の点比較(shiProtoC18Ok)で決める
+      SHI_PROTO7_DIAG.c18First++;
+      return true;
+    }
+    if (SHI_PROTO >= 7 && phase === "respond" && st && st.pendingAttack === "し" && st.attacker === partnerOf(seat) && !partnerReachAtk(view, st) &&
+        shiSelfCommitted(view.hist, seat) && view.hand.filter(k => k === "し").length <= 3 && !enemyShiExhausted(view.hist, seat, counter(view.hand))) {   // build v220.5(Q17・裁定 L-6): コミット後の相方の し攻め(K-17)への応答では、確定上がりを C-07 の門にかけない(G-2 の見直し。非確定は従来どおり Q10 で退ける)
+      SHI_PROTO7_DIAG.k17CertTake++;
+      return true;
+    }
     SHI_PROTO_DIAG.certainGate++;
     if (SHI_PROTO >= 6 && phase === "respond") _c18CertGateView = view;   // build v220.4(Q13): 理由文のためだけ
     return false;
@@ -4148,6 +4167,8 @@ const G = (() => {
   // build v220.4: 段 6(Q9 C-09 計数・Q10 C-16 一般化・Q11 逆し攻め・Q12 王飛角後回し・Q13 C-18 の残り)の発火計測
   const SHI_PROTO6_DIAG = {c09GateShi: 0, c16K17Gate: 0, c13Reverse: 0, c13KeepBig: 0, c18OuFix: 0};
   let _c18CertGateView = null;   // build v220.4(Q13): 応答で確定プランを C-07 の門が退けた決定の view(理由文のためだけ・判断には使わない)
+  // build v220.5: 段 7(Q14 C-18 を C-07 に優先・Q15 H-6 と Solver の門の整合・Q17 K-17 の確定上がり)の発火計測
+  const SHI_PROTO7_DIAG = {c18First: 0, h6Dev: 0, k17CertTake: 0};
   // 自分が し で攻めた後か(チーム単位の shiCommitLive と区別する。v220.0 レビューの申し送り 1)
   function shiSelfCommitted(hist, seat) { return iAttackedShi(hist, seat); }
   // K-12: し以外の手駒で受けられる敵の攻め種(王飛角金銀馬香の 7 種)の数。4 以上なら「受けが広い」
@@ -11390,16 +11411,17 @@ const G_B = (() => {
   //   C-17: コミット後に敵が し で攻めたら即刻中止(以後 し は受け駒)。C-10: コミット中の敵の非し攻めは し以外の駒で受ける。
   //   SHI_PROTO: 0 = v219.5 と着手列が 1 手も変わらない / 1 = C-06・C-16・C-07・C-13 例外・C-17 / 2(既定) = 1 ＋ C-10 の受け規則。
   //   監査: docs/AUDIT_し攻め適合_v1.1.md(M1〜M9)。切り戻し: setShiProto(0) / #shiproto=0。
-  let SHI_PROTO = 6;   // build v220.4: 既定を段 6(Q9 C-09計数・Q10 C-16一般化・Q11 逆し攻め・Q12 王飛角後回し・Q13 C-18の残り)に上げる。5 = v220.3 / 4 = v220.2 / 3 = v220.1 / 2 = v220.0 / 0 = v219.5
-  function setShiProto(n) { SHI_PROTO = Math.max(0, Math.min(6, n | 0)); }
+  let SHI_PROTO = 7;   // build v220.5: 既定を段 7(Q14 C-18 を C-07 に優先・Q15 H-6 と Solver の門の整合・Q17 K-17 の確定上がり)に上げる。6 = v220.4 / 5 = v220.3 / 4 = v220.2 / 3 = v220.1 / 2 = v220.0 / 0 = v219.5
+  function setShiProto(n) { SHI_PROTO = Math.max(0, Math.min(7, n | 0)); }
   const SHI_PROTO_DIAG = {planGate: 0, defendPlanGate: 0, certainGate: 0, certainPass: 0, recvRule: 0, atkFilter: 0};
   function shiProtoDiag(reset) {
-    const out = Object.assign({level: SHI_PROTO}, SHI_PROTO_DIAG, SHI_PROTO3_DIAG, SHI_PROTO4_DIAG, SHI_PROTO5_DIAG, SHI_PROTO6_DIAG);
+    const out = Object.assign({level: SHI_PROTO}, SHI_PROTO_DIAG, SHI_PROTO3_DIAG, SHI_PROTO4_DIAG, SHI_PROTO5_DIAG, SHI_PROTO6_DIAG, SHI_PROTO7_DIAG);
     if (reset) for (const k of Object.keys(SHI_PROTO_DIAG)) SHI_PROTO_DIAG[k] = 0;
     if (reset) for (const k of Object.keys(SHI_PROTO3_DIAG)) SHI_PROTO3_DIAG[k] = 0;
     if (reset) for (const k of Object.keys(SHI_PROTO4_DIAG)) SHI_PROTO4_DIAG[k] = 0;
     if (reset) for (const k of Object.keys(SHI_PROTO5_DIAG)) SHI_PROTO5_DIAG[k] = 0;
     if (reset) for (const k of Object.keys(SHI_PROTO6_DIAG)) SHI_PROTO6_DIAG[k] = 0;
+    if (reset) for (const k of Object.keys(SHI_PROTO7_DIAG)) SHI_PROTO7_DIAG[k] = 0;
     return out;
   }
   // コミットの起点 = チームの 2 攻め目(本物のし攻め: shiStarted と同じ前提)の履歴添字。無ければ -1
@@ -11442,7 +11464,10 @@ const G_B = (() => {
       }
       return (plan.second === "し" || (plan.first === "し" && nShi === 1)) ? 0 : 1;
     }
-    if (phase === "bury" && plan.first === "し" && shiDefending(hist, seat)) return 2;
+    if (phase === "bury" && plan.first === "し" && shiDefending(hist, seat)) {
+      if (SHI_PROTO >= 7 && hand.every(k => k === "し" || k === "王")) { SHI_PROTO7_DIAG.h6Dev++; return 0; }   // build v220.5(Q15・規範 v1.3 C-13・H-6): 手駒が し と王だけなら し を伏せるのは逸脱でない(規則 buryChoice と同じ)
+      return 2;
+    }
     return 0;
   }
   // 非確定プラン(solverTeam / solverRead / solverDom / solverKyoP): 逸れるなら採用しない(C-16)
@@ -11458,6 +11483,15 @@ const G_B = (() => {
     const enemyReach = SEATS.some(s => team(s) !== team(seat) && (sizes[s] != null ? sizes[s] : 8) <= 2);
     const line = Math.max(POINTS["し"], ...view.hand.filter(k => k !== "し").map(k => POINTS[k] || 0));
     if (enemyReach || plan.score >= line) { SHI_PROTO_DIAG.certainPass++; return true; }
+    if (SHI_PROTO >= 7 && phase === "respond" && st && st.pendingAttack === "し" && partnerReachAtk(view, st)) {   // build v220.5(Q14・規範 v1.3 C-07/C-18・裁定 L-1): 相方リーチの し攻めへの応答は C-07 の門で退けず、続く C-18 の点比較(shiProtoC18Ok)で決める
+      SHI_PROTO7_DIAG.c18First++;
+      return true;
+    }
+    if (SHI_PROTO >= 7 && phase === "respond" && st && st.pendingAttack === "し" && st.attacker === partnerOf(seat) && !partnerReachAtk(view, st) &&
+        shiSelfCommitted(view.hist, seat) && view.hand.filter(k => k === "し").length <= 3 && !enemyShiExhausted(view.hist, seat, counter(view.hand))) {   // build v220.5(Q17・裁定 L-6): コミット後の相方の し攻め(K-17)への応答では、確定上がりを C-07 の門にかけない(G-2 の見直し。非確定は従来どおり Q10 で退ける)
+      SHI_PROTO7_DIAG.k17CertTake++;
+      return true;
+    }
     SHI_PROTO_DIAG.certainGate++;
     if (SHI_PROTO >= 6 && phase === "respond") _c18CertGateView = view;   // build v220.4(Q13): 理由文のためだけ
     return false;
@@ -11479,6 +11513,8 @@ const G_B = (() => {
   // build v220.4: 段 6(Q9 C-09 計数・Q10 C-16 一般化・Q11 逆し攻め・Q12 王飛角後回し・Q13 C-18 の残り)の発火計測
   const SHI_PROTO6_DIAG = {c09GateShi: 0, c16K17Gate: 0, c13Reverse: 0, c13KeepBig: 0, c18OuFix: 0};
   let _c18CertGateView = null;   // build v220.4(Q13): 応答で確定プランを C-07 の門が退けた決定の view(理由文のためだけ・判断には使わない)
+  // build v220.5: 段 7(Q14 C-18 を C-07 に優先・Q15 H-6 と Solver の門の整合・Q17 K-17 の確定上がり)の発火計測
+  const SHI_PROTO7_DIAG = {c18First: 0, h6Dev: 0, k17CertTake: 0};
   // 自分が し で攻めた後か(チーム単位の shiCommitLive と区別する。v220.0 レビューの申し送り 1)
   function shiSelfCommitted(hist, seat) { return iAttackedShi(hist, seat); }
   // K-12: し以外の手駒で受けられる敵の攻め種(王飛角金銀馬香の 7 種)の数。4 以上なら「受けが広い」
@@ -19197,7 +19233,7 @@ const GOITA_ENGINE_REGISTRY = (() => {
 /* build v220.0(SHI_PROTO): #shiproto=0|1|2 (既定2 = し攻めプロトコル v1.2 の第 1 便 ON)。#atkcons と同一パターン。0 で v219.5 と同一の打ち筋。 */
 (() => {
   try {
-    const m = /[#&]shiproto=([0-6])/.exec(location.hash || "");
+    const m = /[#&]shiproto=([0-7])/.exec(location.hash || "");
     if (m) GOITA_ENGINE_REGISTRY.invokeAll("setShiProto", +m[1]);
   } catch (e) { /* トグル不可でも対局は継続 */ }
 })();
@@ -29209,6 +29245,10 @@ if (typeof document !== "undefined") (() => {
    * tag: fix=不具合修正 / fast=速くなった / read=読みが良くなった / ui=使いやすくなった(v212.1 新設) / (無印)=内部のみ
    * ================================================================ */
   const APP_CHANGELOG = [
+    {v: "v220.5", d: "2026-09-23", tag: "fix", tagJa: "不具合修正", t: "相方のしで攻める場面での上がり方を整えました", p: [
+      "相方がリーチでしで攻めてきて、自分も受ければ確実に上がれるときは、しで攻め続けることより、自分と相方のどちらが高い点で上がれると見込めるかを優先して決めます。",
+      "自分もしで攻めた後に相方がしで攻めてきたとき、受ければ確実に上がれる手順があるなら、しが3枚以下でも受けて、その手順の攻めを打ちます（その次の攻めからは、しで攻め続けるかを改めて決めます。v220.4 では原則として通していました）。",
+      "URL 末尾に #shiproto=6 を付けて開くと前の版（v220.4）と同じ読みになります。"]},
     {v: "v220.4", d: "2026-09-21", tag: "fix", tagJa: "不具合修正", t: "し攻めの細部を条文どおりに整えました", p: [
       "v220.1 の「自分もしで攻めた後は、相方のしを受けずに通す」を細かくしました。しが3枚以下なら、確実に上がれる場合でも原則として通します。敵の誰かが残り2枚のときや、上がり点が手駒でいちばん高い駒の点以上のときは受けて上がり、敵のしが尽きたと見込めるときは受けることがあります（相方がリーチのときは v220.3 の規則に従います）。",
       "敵のしを受け続けて敵のしが尽きたと見込めたら、自分からしで攻めに転じます。",
