@@ -4,6 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>ごいた — 能登の伝承遊戯</title>
+  <!-- build: v220.6「UI の不具合の直し（再開・棋譜・調整の保存・吹き出しの幅・初回の既定 ほか 14 件。エンジンは無変更）」base=v220.5。
+       計画: docs/PLAN_v220.6_UI不具合の直し_rev2_Opus5.5.md（F-1〜F-13）＋ F-14（2026-09-26 Sonar 裁定: 教材の途中の設定へで教材の一時設定を持ち帰らない。入門の試作の QS-3 の 1 と 3 と同じ）。出発点: docs/REVIEW_UIUX改善提案_v220.5_検討_2026-09-25.md。
+       変更: UI 層（script ブロック 6）とマークアップ・CSS だけ（harness/apply_v220_6_fixes.py）→ apply_ui_release.py（版数・CHANGELOG・バッジ・sw.js）。G・G_B・T1 の区画は v220.5 と byte 一致。
+       CACHE_NAME: goita-v220.5 → goita-v220.6. -->
   <!-- build: v220.5「相方のしで攻める場面での上がり方を整えました（し攻めプロトコル v1.3 第 6 便: C-07×C-18 の優先・H-6 と Solver の門の整合・K-17 の確定上がり）」base=v220.4。
        計画: docs/PLAN_v220.5_し攻めプロトコル適合_rev2_Opus5.5.md（§13 が裁定 L-1〜L-6。すべて (a)）。規範: docs/PROTOCOL_し攻め_v1.3.md（条文 C-07・C-13・C-16・C-18。K-18・K-22・K-24）。
        裁定: L-1(相方リーチのし攻めへの応答では確定上がりの可否をC-18の点比較で決める。C-07の門はかけない)・L-5(敵のし攻め中の伏せで手駒がしと王だけならしを伏せるのはSolverの門でも逸脱としない)・L-6(自分もしで攻めた後の相方のし攻め(相方リーチでない)にし3枚以下で応答するとき、確定上がりの手順があればC-07の門にかけず受けて、その手順の攻めを打つ。次の攻め番からはC-07に戻る=L-8)。
@@ -1275,6 +1279,18 @@ body.theme-kinari .tut-tag,body.theme-kinari .tut-toggle{color:#7a6221}
   border-radius:14px;padding:14px 16px;box-shadow:0 10px 34px rgba(0,0,0,.55);pointer-events:auto;z-index:1501}
 #tut-bubble .tb-txt{font-size:.9rem;line-height:1.7;margin-bottom:12px;overflow-y:auto;flex:1 1 auto;min-height:0}
 #tut-bubble .tb-row{flex:none}
+/* v220.6 F-4: 吹き出しは幅を明示（left:50% の縮み幅で約半分になっていた）。ボタンの行は折り返す */
+#tut-bubble{width:min(92vw,500px);box-sizing:border-box}
+#tut-bubble .tb-row{flex-wrap:wrap}
+#tut-bubble .tb-row .btn{white-space:nowrap}
+/* v220.6 F-4: トーストは中身の幅（max-width はそのまま。長い文は折り返す） */
+#toast,#summary-toast,#goshi-beat{width:max-content}
+/* v220.6 F-3: 引っ張って更新・連打の拡大・横向きの文字の自動拡大を防ぐ（詳細度0なので既存の touch-action:none は変わらない） */
+html,body{overscroll-behavior-y:none}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+:where(button,[role="button"],#hand,#board,#handarea){touch-action:manipulation}
+/* v220.6 F-8: 参照していたが未定義だった変数（body に置いて theme の上書きに従う） */
+body{--fg:var(--kinari);--line:var(--hair)}
 #tut-bubble .tb-row{display:flex;gap:8px;justify-content:flex-end;align-items:center}
 #tut-bubble .tb-step{margin-right:auto;font-size:.66rem;color:var(--gin)}
 /* 段階的開示: チュートリアル中は高度パネルを隠す */
@@ -1420,7 +1436,7 @@ body.cud .pcard .phead .nm:not(.ally){color:#e8b89f}  /* 敵=暖色系で寒色�
   #stage .idle{font-size:.8rem}
   #stage .flow{font-size:.68rem}
   .pcard .phead .nm{font-size:1rem}
-  #handarea .koma{min-width:38px}
+  #hand .koma{min-width:38px}   /* v220.6 F-6: 残り駒表の小駒(.cg-k)に効かないよう手駒に限る(詳細度は据え置き) */
 }
 /* 「考え中…」で枠が縦長に変形する不具合の修正 */
 .pcard .phead .think{white-space:nowrap}              /* 縦折り返しを禁止し常に1行 */
@@ -1846,7 +1862,7 @@ body.noto #wincut.show .wc-label{animation:wcFude .62s cubic-bezier(.2,.9,.3,1.2
 <div id="setup-screen">
   <!-- build v208: 版数表示は APP_CHANGELOG[0] から起動時に上書きされる(JS が動かない場合の保険としてここにも同じ版数を書いておく)。 -->
   <button type="button" class="setup-version" id="btn-version"
-          aria-label="バージョン v220.5 — 更新内容を見る" title="更新内容を見る"><span id="btn-version-num">v220.5</span><span class="sv-i" aria-hidden="true">ⓘ</span></button>
+          aria-label="バージョン v220.6 — 更新内容を見る" title="更新内容を見る"><span id="btn-version-num">v220.6</span><span class="sv-i" aria-hidden="true">ⓘ</span></button>
   <div class="title-block">
     <h1 class="serif">ごいた</h1>
     <div class="title-sub">能登・宇出津に伝わる竹駒の伝承遊戯</div>
@@ -1937,7 +1953,7 @@ body.noto #wincut.show .wc-label{animation:wcFude .62s cubic-bezier(.2,.9,.3,1.2
     <h2>この設定で</h2>
     <p class="desc" id="setup-summary"></p>
     <div class="actions">
-      <button class="btn primary" id="btn-start" aria-describedby="setup-summary">対局をはじめる</button>
+      <button class="btn primary" id="btn-start" aria-describedby="setup-summary" disabled>準備中…</button>
       <button class="btn" id="btn-watch">観戦（全席AI）</button>
     </div>
     <p class="desc">席の構成・先取点・AIと表示は下の「詳しい設定」で変えられます。</p>
@@ -19539,6 +19555,13 @@ if (typeof document !== "undefined") (() => {
     },
     lastErrorName() { return storageTelemetry.lastErrorName; },
   });
+  // v220.6 F-12: 「履歴の無い端末」= 起動の時点で goita_ で始まるキーが 1 つも無い（起動の早い段階で 1 回だけ判定）
+  const FIRST_RUN_DEVICE = (() => {
+    try {
+      for (let i = 0; i < localStorage.length; i++) { if (String(localStorage.key(i)).indexOf("goita_") === 0) return false; }
+      return true;
+    } catch (e) { return false; }
+  })();
   function storageFailureIsQuota() {
     return /quota/i.test(DATA_STORAGE.lastErrorName() || "");
   }
@@ -19619,7 +19642,7 @@ if (typeof document !== "undefined") (() => {
     } catch (e) { /* 破損データ・非対応環境(プライベートブラウズ等)は既定値のまま */ }
   }
   function saveCfgToStorage() {
-    DATA_STORAGE.setItem(CFG_STORAGE_KEY, JSON.stringify(app.cfg)); // 保存不可でも対局は継続
+    DATA_STORAGE.setItem(CFG_STORAGE_KEY, JSON.stringify((_tutBackup && _tutBackup.cfg) ? _tutBackup.cfg : app.cfg)); // 保存不可でも対局は継続。v220.6 F-5: 教材の退避がある間は、退避した利用者の設定を保存する（入門の便の Q と同じ行）
   }
   /* ================================================================
    * A-1(v89b): 対局途中の自動保存・復帰 (PLAN_v89_uiux.md)
@@ -19821,6 +19844,8 @@ if (typeof document !== "undefined") (() => {
         scores: app.scores, parent: app.parent,
         gameNo: app.gameNo, matchNo: app.matchNo,
       };
+      // v220.6 F-1: 再開で配りの続きを作り直すため、マッチの種と dealOnce の通し番号も保存する
+      if (Number.isSafeInteger(app.matchSeed) && Number.isSafeInteger(app.dealSeq)) { data.matchSeed = app.matchSeed; data.dealSeq = app.dealSeq; }
       if (phase === "live" && app.rec) data.rec = app.rec;   // 局の途中: initialHandsごと保存(配り直し悪用は不可という仕様)
       DATA_STORAGE.setItem(MATCH_STORAGE_KEY, JSON.stringify(data));
     } catch (e) { /* 保存不可でも対局は継続(容量超過・プライベートブラウズ等は黙殺) */ }
@@ -19855,6 +19880,21 @@ if (typeof document !== "undefined") (() => {
     if (cont) cont.onclick = () => resumeSavedMatch(d);
     if (disc) disc.onclick = () => { deleteMatchProgress(); panel.style.display = "none"; renderKeikoPanel(); };   // T-1(v90a): 抑制解除の再評価
   }
+  // v220.6 F-1: 再開のときに app.rng・matchSeed・dealSeq を作り直す。取る順: 保存の最上位 → 局の途中の rec → 控え（新しい種）。
+  // 種と通し番号がそろえば、QR の再現(qrRecFromUnpacked)と同じく dealOnce を dealSeq 回まわして、配りの続きに戻す。
+  function restoreMatchRng(d) {
+    const ok = (seed, seq) => Number.isSafeInteger(seed) && seed >= 0 && seed <= 0xffffffff && Number.isSafeInteger(seq) && seq >= 0 && seq <= 0xffff;
+    let seed = null, seq = null;
+    if (d && ok(d.matchSeed, d.dealSeq)) { seed = d.matchSeed; seq = d.dealSeq; }
+    else if (d && d.rec && ok(d.rec.matchSeed, d.rec.dealSeq)) { seed = d.rec.matchSeed; seq = d.rec.dealSeq; }
+    if (seed == null) {
+      app.matchSeed = Date.now() % 2147483647; app.dealSeq = 0; app.rng = G.mulberry32(app.matchSeed);
+      return false;
+    }
+    app.matchSeed = seed; app.dealSeq = seq; app.rng = G.mulberry32(seed);
+    for (let i = 0; i < seq; i++) G.dealOnce(app.rng);
+    return true;
+  }
   function resumeSavedMatch(d) {
     const fail = () => {
       deleteMatchProgress();
@@ -19880,6 +19920,7 @@ if (typeof document !== "undefined") (() => {
       renderScores();
       if (d.phase === "live") {
         const rec = sanitizeImportedRec(d.rec, {imported: false, preserveLive: true});
+        restoreMatchRng(d);   // v220.6 F-1
         const st = rebuildState(rec, rec.moves.length);
         if (!st || st.phase === "over") { fail(); return; }   // 破損・競合レース: 通常起動にフォールバック
         app.st = st;
@@ -19893,6 +19934,7 @@ if (typeof document !== "undefined") (() => {
         step();
       } else {
         log(`―― 前回のつづき（第${app.gameNo}局へ）――`, true);
+        restoreMatchRng(d);   // v220.6 F-1
         startGame();
       }
     } catch (e) { fail(); }
@@ -20006,7 +20048,8 @@ if (typeof document !== "undefined") (() => {
       if (Array.isArray(d.career)) app.career = d.career.map(c => sanitizeCareerEntry(c, c && c.imported === true)).filter(Boolean).slice(-CAREER_MAX_GAMES);
       if (d.puzzleStats && typeof d.puzzleStats === "object") {
         const tried = Math.floor(importNumber(d.puzzleStats.tried, 0, 10000000, 0));
-        app.puzzleStats = {tried, solved: Math.floor(importNumber(d.puzzleStats.solved, 0, tried, 0))};
+        app.puzzleStats = {tried, solved: Math.floor(importNumber(d.puzzleStats.solved, 0, tried, 0)),
+          seen: Array.isArray(d.puzzleStats.seen) ? d.puzzleStats.seen.filter(x => typeof x === "string" && x.length <= 80).slice(-50) : []};   // v220.6 F-7
       }
       if (Array.isArray(d.allGames)) app.importedRecs = d.allGames.slice(-CAREER_MAX_GAMES).map(r => {
         try { return sanitizeImportedRec(r); } catch (e) { return null; }
@@ -22497,6 +22540,7 @@ if (typeof document !== "undefined") (() => {
     _flipPlay();
     app._flashKey = null;   // D5: 王受けフラッシュは1描画で消費
     updateTurnToken();   // v90: 番札の位置更新(renderAll末尾のみから呼ぶ)
+    syncKifuBtn();   // v220.6 F-2: 教材・入門・練習・再開・終局・振り返りのどの場面でも棋譜ボタンの状態を追いつかせる
     recordPerf("render", perfNow() - _renderT0);
   }
   /* PHASE10_RENDER_DIFF_END */
@@ -22528,11 +22572,17 @@ if (typeof document !== "undefined") (() => {
       });
     });
   }
+  // v220.6 F-9: --flip-dur は :root の固定値。毎回の getComputedStyle（スタイルの再計算）をやめ、初めの 1 回だけ読む
+  let _flipDurCache = null;
+  function _flipDur() {
+    if (_flipDurCache == null) _flipDurCache = (getComputedStyle(document.documentElement).getPropertyValue("--flip-dur") || ".3s").trim();
+    return _flipDurCache;
+  }
   function _flipPlay() {
     const slide = app._slideFrom; app._slideFrom = null;
     const slideSeat = app._slideSeat; app._slideSeat = null;   // B-1(v89c): 1手1回で消費(復帰・振り返りの全量再描画はapplyAndLogを通らないため誤発火しない)
     if (app.review || _flipReduced()) return;
-    const dur = (getComputedStyle(document.documentElement).getPropertyValue("--flip-dur") || ".3s").trim();
+    const dur = _flipDur();
     document.querySelectorAll("#board .fkoma-pos[data-key]").forEach(function (n) {
       const b = n.getBoundingClientRect();
       let a = _flipFirst.get(n.dataset.key);
@@ -22951,7 +23001,13 @@ if (typeof document !== "undefined") (() => {
     d.textContent = text;
     $("log").prepend(d);
   }
-  function kifu(line) { app.kifuLines.push(line); $("btn-kifu").disabled = false; }
+  function kifu(line) { app.kifuLines.push(line); syncKifuBtn(); }
+  // v220.6 F-2: 人が参加する局の途中は、全席の配牌が入った棋譜を書き出さない（局が終わると書き出せる）。観戦・振り返りは今までどおり
+  // 振り返りの間も、人が参加している局が進行中なら止める（局の途中から振り返りに入れるため。第二読者 rev1 M-1）。app.st は振り返りの間も進行中の局のまま
+  function kifuLocked() { const hs = app._humanSeatBeforeReview !== undefined ? app._humanSeatBeforeReview : app.humanSeat; return !!hs && !!app.st && app.st.phase !== "over" && !app.matchOver; }
+  function syncKifuBtn() { const b = $("btn-kifu"); if (b) b.disabled = !app.kifuLines.length || kifuLocked(); }
+  // v220.6 F-10: タッチ端末では「タップ」、それ以外は「クリック」
+  function tapWord() { try { return matchMedia("(pointer:coarse)").matches ? "タップ" : "クリック"; } catch (e) { return "クリック"; } }
   // AIの判断カテゴリを短い日本語に（棋譜に手番ごとのAI判断として添える）
   function srcJa(s){ return ({solver:"読み切り", rule:"定石", mc:"受けMC", basic:"定石", naive:"初級", forced:"強制", coop:"協調", human:"人間", t1:"NN"})[s] || (s ? s : "判断"); }
   // 5し続行で開始したことを記録(状態)＋宣言(ログ/SR実況/棋譜)。公開情報なので全員に開示。
@@ -22983,6 +23039,7 @@ if (typeof document !== "undefined") (() => {
   // コールバック。開いた側がmodal()呼び出し後に設定する(定石復習の未採点離脱の検知に使用)。
   // グレーディング等「正常終了」の経路は自分でnullへ戻してから閉じることで、二重発火を避ける。
   let _modalOnClose = null;
+  let _modalBeforeClose = null;   // v220.6 F-5: 閉じる前(DOM を消す前)に 1 回だけ呼ぶ。Esc・背景・閉じるの全経路で共通
   function _focusables(root) {
     return [...root.querySelectorAll('a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])')]
       .filter(el => el.offsetParent !== null || el === document.activeElement);
@@ -23154,6 +23211,7 @@ if (typeof document !== "undefined") (() => {
   function modal(html) {
     _modalPrevFocus = document.activeElement;
     _modalOnClose = null;   // B-4(v91b): 新しいモーダルを開くたびにリセット(前のモーダルのコールバックを引き継がない)
+    _modalBeforeClose = null;   // v220.6 F-5: 同上
     $("modal-body").innerHTML = html;
     enhanceTouchLabels($("modal-body"));
     $("ov-modal").classList.add("show");
@@ -23181,6 +23239,7 @@ if (typeof document !== "undefined") (() => {
     return mb;
   }
   function closeModal() {
+    { const before = _modalBeforeClose; _modalBeforeClose = null; if (before) { try { before(); } catch (e) {} } }   // v220.6 F-5: 再入防止のため先に外す
     const onClose = _modalOnClose; _modalOnClose = null;   // B-4(v91b): 実際に閉じる前にコールバックを退避(再入防止)
     $("ov-modal").classList.remove("show");
     $("modal-body").innerHTML = "";
@@ -23863,7 +23922,7 @@ if (typeof document !== "undefined") (() => {
     setMyTurn(true);
     if (st.phase === "bury") {
       status("あなたの番 — 伏せる駒を選んでください");
-      actionbar(app.cfg.hints ? "伏せる駒をクリック（裏向きで場に置きます）" : "");
+      actionbar(app.cfg.hints ? `伏せる駒を${tapWord()}（裏向きで場に置きます）` : "");
       $("hand-hint").textContent = "① 伏せ";
       const _tw = app.tutorial && app.tutorial.awaiting;
       renderHandTray("pick", (_tw && _tw.type === "bury" && _tw.koma) ? (k => k === _tw.koma) : (() => true));
@@ -23871,7 +23930,7 @@ if (typeof document !== "undefined") (() => {
       const legal = G.legalAttacks(st.hands[me], st.history, me);
       status("あなたの番 — 攻める駒を選んでください");
       const _ouStuck = app.cfg.hints && st.hands[me].includes("王") && !legal.includes("王");
-      actionbar(app.cfg.hints ? ("攻める駒をクリック" + (_ouStuck ? "　※王はまだ使えません（王2枚か、場か自分の伏せに王が必要）" : "")) : "");
+      actionbar(app.cfg.hints ? (`攻める駒を${tapWord()}` + (_ouStuck ? "　※王はまだ使えません（王2枚か、場か自分の伏せに王が必要）" : "")) : "");
       $("hand-hint").textContent = "② 攻め";
       const _twa = app.tutorial && app.tutorial.awaiting;
       renderHandTray("pick", (_twa && _twa.type === "attack" && _twa.koma) ? (k => k === _twa.koma && legal.includes(k)) : (k => legal.includes(k)));
@@ -23910,8 +23969,8 @@ if (typeof document !== "undefined") (() => {
         return;
       }
       // 受け = 手駒を直接クリック (受けられる駒のみ点灯)。パスはボタン。
-      status("あなたの応答 — 受ける駒をクリック、またはなし");
-      $("hand-hint").textContent = "受けられる駒をクリック";
+      status(`あなたの応答 — 受ける駒を${tapWord()}、またはなし`);
+      $("hand-hint").textContent = `受けられる駒を${tapWord()}`;
       const _twr = app.tutorial && app.tutorial.awaiting;
       renderHandTray("pick", (_twr && _twr.type === "receive" && _twr.koma) ? (k => k === _twr.koma && lr.includes(k)) : (k => lr.includes(k)));
       const _uncut = app.cfg.hints && G.UNCUTTABLE.has(atk) && st.hands[me].includes("王");
@@ -25368,6 +25427,7 @@ if (typeof document !== "undefined") (() => {
     if (mb) mb.onclick = () => { closeModal(); openMissDrill(); };
   }
   function downloadKifu() {
+    if (kifuLocked()) { try { toast("局の途中は棋譜を書き出せません（局が終わると書き出せます）"); } catch (e) {} syncKifuBtn(); return; }   // v220.6 F-2
     const blob = new Blob([app.kifuLines.join("\n")], {type: "text/plain"});
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
@@ -26534,7 +26594,7 @@ if (typeof document !== "undefined") (() => {
     renderReviewList();
     computeEquityCurve(rec);
     renderAll();
-    status(`${rec.imported ? "（読込）" : ""}第${rec.matchNo || "?"}勝負・第${rec.gameNo}局の振り返り — 手をクリックで再現、▶で巻き戻して再プレイ`);
+    status(`${rec.imported ? "（読込）" : ""}第${rec.matchNo || "?"}勝負・第${rec.gameNo}局の振り返り — 手を${tapWord()}で再現、▶で巻き戻して再プレイ`);
     if (enteringReview) requestAnimationFrame(() => {
       const target = $("rv-lesson") || $("rv-close");
       if (target) { try { target.focus({preventScroll: true}); } catch (e) { target.focus(); } }
@@ -27156,6 +27216,8 @@ if (typeof document !== "undefined") (() => {
     startGame();
   }
   function stopToSetup() {
+    // v220.6 F-14(D-1・QS-3 ①と同じ): 教材の途中なら、先に正規の退出で退避を戻す（教材の一時設定を持ち帰らない）
+    if (app.tutorial || _tutBackup) { exitTutorial(true); updateTutorialPanel(); }
     restoreSeatSwap();
     app.stopped = true;
     wakeLockRelease();   // A-2(v89b)
@@ -27355,6 +27417,7 @@ if (typeof document !== "undefined") (() => {
     newMatch();
   }
   $("btn-start").addEventListener("click", () => guardNewMatch(() => enterGame(false)));   // UI-3(UX-01)
+  { const _bs = $("btn-start"); _bs.textContent = "対局をはじめる"; _bs.disabled = false; }   // v220.6 F-13: 処理を付けたら有効にする（読み込み中は「準備中…」）
   $("btn-watch").addEventListener("click", () => guardNewMatch(() => enterGame(true)));   // UI-3(UX-01)
   { const hb = $("count-hold"); if (hb) {
       const isKey = ev => ev.key === " " || ev.key === "Enter" || ev.key === "Spacebar";
@@ -27430,6 +27493,15 @@ if (typeof document !== "undefined") (() => {
     renderSetupSummary();   // UI-3(UX-01): EW/N/target の代入後に要約を更新
   }
   document.querySelectorAll(".ladder-btn").forEach(b => b.addEventListener("click", () => applyLadderPreset(b.dataset.ladder)));
+  // v220.6 F-12: 履歴の無い端末は「はじめて」で開く。app.cfg にもコーチ「詳しい」を入れる（保存はしない。開始時に今までどおり保存される）
+  if (FIRST_RUN_DEVICE) {
+    try {
+      for (const k of COACH_FLAGS) app.cfg[k] = !!COACH_TIERS.full[k];
+      app.cfg.coach = "full";
+      applyCfgSideEffects();
+      applyLadderPreset("beginner");
+    } catch (e) { /* 失敗しても今までの既定のまま */ }
+  }
   $("btn-back").addEventListener("click", stopToSetup);
   $("btn-kifu").addEventListener("click", downloadKifu);
   { const bs = $("btn-summary"); if (bs) bs.addEventListener("click", speakSummary); }
@@ -27775,6 +27847,7 @@ if (typeof document !== "undefined") (() => {
   let _tutBackup = null;
   function startTutorial(key, opts) {
     const sc = TUT[key]; if (!sc) return;
+    if (_tutBackup) exitTutorial(true);   // v220.6 F-14(D-1c・入門の便の Q と同じ): 教材の中から別の教材を開いても、退避(利用者の設定)を上書きしない。第二読者 rev1 S-1
     _tutBackup = {cfg: Object.assign({}, app.cfg), tiers: Object.assign({}, app.tiers), humanSeat: app.humanSeat};
     app.tutorial = {key, idx: 0, awaiting: null, blockStep: true};
     app.humanSeat = "S";
@@ -27783,6 +27856,13 @@ if (typeof document !== "undefined") (() => {
     app.cfg.hints = true; app.cfg.advice = false; app.cfg.explain = false;
     app.tutReveal = !!sc.reveal; app.stopped = false; app.matchOver = false; app.review = null;
     cancelAppTimer();
+    // v220.6 F-11(D-5・裁定②): 前の通常対局の表示を持ち込まない（手番の帯のボタン・考え中・流局の印・上がりの演出）。作法は openReviewOn・入門の qsEnter と同じ
+    try { hideThinking(); } catch (e) {}
+    actionbar("");
+    if ($("stamp")) $("stamp").classList.remove("show");
+    clearTimeout(app._wcT);
+    try { kirikoRelease(true); } catch (e) {}
+    if ($("wincut")) $("wincut").classList.remove("show", "out");
     document.body.classList.add("tut", "tut-" + key);
     $("setup-screen").style.display = "none"; $("main-screen").classList.add("show"); $("handarea").classList.add("show");
     app.scores = {NS: 0, EW: 0}; app.matchNo = 1; app.gameNo = 1;
@@ -27944,7 +28024,7 @@ if (typeof document !== "undefined") (() => {
       [{label: "設定に戻る", primary: true, fn: () => exitTutorial(false)}, {label: "宇出津の大会について見る", fn: () => { exitTutorial(false); openUshitsuInfo(); }}]);
   }
   function exitTutorial(silent) {
-    if (_tutBackup) { app.cfg = _tutBackup.cfg; app.tiers = _tutBackup.tiers; app.humanSeat = _tutBackup.humanSeat; _tutBackup = null; }
+    if (_tutBackup) { app.cfg = _tutBackup.cfg; app.tiers = _tutBackup.tiers; app.humanSeat = _tutBackup.humanSeat; _tutBackup = null; applyCfgSideEffects(); }   // v220.6 F-14(QS-3 ③と同じ): 戻した設定の body の class を付け直す
     // build v104: autoステップの開始ゲート待ち/再生中に離脱した場合、保留中のタイマーが残ると
     // 離脱後に手が勝手に適用されうるため明示的に破棄する(blockStepの解除漏れ対策)。
     if (app.tutorial && app.tutorial.autoTimer) { clearTimeout(app.tutorial.autoTimer); app.tutorial.autoTimer = null; }
@@ -28013,7 +28093,9 @@ if (typeof document !== "undefined") (() => {
       result: r.result || null,
       moves: r.moves.map(m => ({seat: m.seat, action: m.action, human: m.human,
         thinkMs: m.thinkMs, why: m.why, cf: m.cf || null, drillResult: m.drillResult || null}))});
-    const data = {version: 1, savedAt: new Date().toISOString(),
+    const _savedAt = new Date().toISOString();
+    puzzleSeenAdd(`${_savedAt}|${app.puzzleStats.tried}|${app.puzzleStats.solved}`);   // v220.6 F-7: 自分の書き出しを読み戻しても足さない
+    const data = {version: 1, savedAt: _savedAt,
       career: app.career, puzzleStats: app.puzzleStats, convTrust: app.convTrust, tblTrust: app.tblTrust,
       oppCounts: app.oppCounts,
       missGames: [...app.matchRecs, ...app.importedRecs].filter(r => (r.misses || []).length).map(slim),
@@ -28024,6 +28106,13 @@ if (typeof document !== "undefined") (() => {
     a.download = `goita_seiseki_${new Date().toISOString().slice(0, 10)}.json`;
     a.click();
     URL.revokeObjectURL(a.href);
+    try { saveCareerToStorage(); } catch (e) {}   // v220.6 F-7: seen を再読み込みをまたいで残す
+  }
+  // v220.6 F-7: 取り込み済みの詰めの集計の指紋（savedAt|tried|solved）。最大 50 件
+  function puzzleSeenAdd(fp) {
+    if (!Array.isArray(app.puzzleStats.seen)) app.puzzleStats.seen = [];
+    if (!app.puzzleStats.seen.includes(fp)) app.puzzleStats.seen.push(fp);
+    if (app.puzzleStats.seen.length > 50) app.puzzleStats.seen = app.puzzleStats.seen.slice(-50);
   }
   function loadCareer(file) {
     const fr = new FileReader();
@@ -28064,10 +28153,16 @@ if (typeof document !== "undefined") (() => {
         d._nC = nC; d._nR = nR;
         if (d.puzzleStats && typeof d.puzzleStats === "object") {
           const tried = Math.floor(importNumber(d.puzzleStats.tried, 0, 10000000, 0));
-          app.puzzleStats.tried += tried;
-          app.puzzleStats.solved += Math.floor(importNumber(d.puzzleStats.solved, 0, tried, 0));
+          const solved = Math.floor(importNumber(d.puzzleStats.solved, 0, tried, 0));
+          const fp = `${typeof d.savedAt === "string" ? d.savedAt.slice(0, 40) : ""}|${tried}|${solved}`;   // v220.6 F-7: 同じ集計は 2 度足さない
+          if (!(Array.isArray(app.puzzleStats.seen) && app.puzzleStats.seen.includes(fp))) {
+            app.puzzleStats.tried += tried;
+            app.puzzleStats.solved += solved;
+            puzzleSeenAdd(fp);
+          }
         }
         log(`成績を読み込みました（新規 ${d._nC}局・逃し局面${d._nR}局、重複は除外）`, true);
+        try { saveCareerToStorage(); } catch (e) {}   // v220.6 F-7: 読み込みを再読み込みをまたいで残す
         openCareer();
       } catch (e) { log("成績ファイルの読み込みに失敗: " + e.message, true); }
     };
@@ -29245,6 +29340,12 @@ if (typeof document !== "undefined") (() => {
    * tag: fix=不具合修正 / fast=速くなった / read=読みが良くなった / ui=使いやすくなった(v212.1 新設) / (無印)=内部のみ
    * ================================================================ */
   const APP_CHANGELOG = [
+    {v: "v220.6", d: "2026-09-26", tag: "fix", tagJa: "不具合修正", t: "再開・棋譜・設定の保存などの不具合を直しました", p: [
+      "ページを読み込み直した後に「再開する」で続けると、次の局へ進めなかったり、保存が消えたりすることがありました。前の配りの続きから再開できるようにしました。",
+      "対局の途中は「棋譜」を押せないようにしました（全員の配牌が入っていたため）。局が終わると書き出せます。",
+      "「調整」は、閉じるボタンのほか Esc や外側のタップで閉じても、変更が保存されるようにしました。",
+      "ガイドの吹き出しと通知の幅、背の高いスマホでの残り駒表の形、詰めの成績を同じファイルから二重に読み込む問題、スマホでの表記（クリック→タップ）などを直しました。",
+      "初めて開いた端末では「はじめて」のプリセットが選ばれた状態で始まります。読み込みが終わるまで開始ボタンは「準備中…」と表示します。AIの打ち筋は変えていません。"]},
     {v: "v220.5", d: "2026-09-23", tag: "fix", tagJa: "不具合修正", t: "相方のしで攻める場面での上がり方を整えました", p: [
       "相方がリーチでしで攻めてきて、自分も受ければ確実に上がれるときは、しで攻め続けることより、自分と相方のどちらが高い点で上がれると見込めるかを優先して決めます。",
       "自分もしで攻めた後に相方がしで攻めてきたとき、受ければ確実に上がれる手順があるなら、しが3枚以下でも受けて、その手順の攻めを打ちます（その次の攻めからは、しで攻め続けるかを改めて決めます。v220.4 では原則として通していました）。",
@@ -29530,7 +29631,7 @@ if (typeof document !== "undefined") (() => {
       </details>
       <div class="row"><button class="btn primary" id="s-close">閉じる</button></div>`);
     wireCoachTier("s"); syncCoachTierUI("s");
-    m.querySelector("#s-close").onclick = () => {
+    const commitAdjust = () => {   // v220.6 F-5: 「閉じる」の中身を関数へ。Esc・背景・閉じるのどれでも閉じる前に 1 回呼ぶ
       const _advBefore = {advice: app.cfg.advice, assistHi: app.cfg.assistHi, readHint: app.cfg.readHint, missGuard: app.cfg.missGuard};   // UI-3(UX-02): 助言 OFF→ON の判定用(保存前の値)
       app.cfg.mc = m.querySelector("#s-mc").checked;
       app.cfg.ouSignal = m.querySelector("#s-ousig").checked;
@@ -29592,8 +29693,9 @@ if (typeof document !== "undefined") (() => {
       }
       saveCfgToStorage();   // O1: 「調整」での変更を保存
       renderAll();
-      closeModal();
     };
+    _modalBeforeClose = commitAdjust;
+    m.querySelector("#s-close").onclick = () => closeModal();
   });
   // オーバーフローメニュー(⋯)のトグル
   (function(){
@@ -29615,7 +29717,7 @@ if (typeof document !== "undefined") (() => {
       <ul>
         <li>2対2の組戦。向かいの席が相方、自分の次に手番が回る隣が下家、前に手番を持つ隣が上家です。</li>
         <li>親は駒を1枚<strong>伏せ</strong>てから1枚で<strong>攻め</strong>ます。</li>
-        <li>攻められたら<strong>同じ駒</strong>か<strong>王</strong>（香・し・王は切れない）を手駒からクリックして受けるか、「なし」。受けた人がそのまま次の攻めをします。</li>
+        <li>攻められたら<strong>同じ駒</strong>か<strong>王</strong>（香・し・王は切れない）を手駒から${tapWord()}して受けるか、「なし」。受けた人がそのまま次の攻めをします。</li>
         <li>誰も受けなければ、攻めた人が伏せて攻め直します。</li>
         <li><strong>最後の1枚を攻めで出した人の組</strong>に、その駒の点が入ります。伏せた駒と同じ駒なら2倍。</li>
         <li>王で攻めるには、王2枚を持つか、場に王が出ている必要があります。</li>
