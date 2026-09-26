@@ -5,6 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>ごいた — 能登の伝承遊戯</title>
   <!-- build: v220.6 に短い入門コース（3 場面・5 着手）と助言つきの 1 局練習を当てた（配信候補 v220.7 の元）。計画: docs/PLAN_短い入門コース_rev4_Opus5.5.md（§14 の裁定）・docs/PLAN_v220.7_入門コース配信_rev2_Opus5.5.md。適用: harness/apply_quickstart_v2.py。エンジン区画（G・G_B・T1）は不変。 -->
+  <!-- build: v220.8「小さな直しと UI の整理（モーダルの先頭・キーボードと読み上げ・題字・助言の確認・横持ち・SW ほか）」base=v220.7。
+       計画: docs/PLAN_v220.8_小さな直しとUI整理_rev2_Opus5.5.md（裁定は docs/DECISIONS_UIUX検討書の残り_2026-09-26.md §4・§4-1）。
+       変更: harness/apply_v220_8.py（index・sw.js）→ apply_ui_release.py（版数・CHANGELOG・バッジ・sw.js）。G・G_B・T1 の区画は v220.7 と byte 一致。
+       CACHE_NAME: goita-v220.7 → goita-v220.8. -->
   <!-- build: v220.7「短い入門コース（3 場面・5 着手）と助言つきの 1 局練習を配信」base=v220.6。
        計画: docs/PLAN_短い入門コース_rev4_Opus5.5.md（§14 の裁定 QS-1〜QS-8・QS-9）・docs/PLAN_v220.7_入門コース配信_rev2_Opus5.5.md（2026-09-26 の裁定: 版 v220.7・開発用バッジを外す・読み上げは今の作り・検討書 B7 は第1場面だけ帯を留めない・帯の終了が隠れるのは受け入れ）。
        変更: harness/apply_quickstart_v2.py（src は work/tutorial_qs/src_v2）→ apply_ui_release.py（版数・CHANGELOG・バッジ・sw.js）。G・G_B・T1 の区画は v220.6 と byte 一致。
@@ -351,6 +355,13 @@ button:focus:not(:focus-visible){outline:none}
 #setup-screen .title-block{display:flex;align-items:flex-end;gap:14px;padding:0 4px}
 #setup-screen h1{font-size:2.4rem;letter-spacing:.5em;font-weight:700;color:var(--kinari);line-height:1}
 #setup-screen .title-sub{font-size:.68rem;color:var(--gin-d);line-height:1.8;padding-bottom:4px}
+/* v220.8 F8-9（検討書 A1・裁定 D-1）: 狭い画面で題字「ごいた」が 2 行に折れないよう 1 行にし、副題を題字の下へ回す（版数バッジと重ねない） */
+#setup-screen h1{white-space:nowrap;flex:none}
+@media (max-width:439px){#setup-screen .title-block{flex-direction:column;align-items:flex-start;gap:2px}#setup-screen .title-sub{padding-bottom:0}}
+/* v220.8 F8-12: 開発用の機能は #dev が無いとき隠す（hidden。DOM からは除かない） */
+#btn-a11y-audit[hidden],#btn-a11y-audit-setup[hidden]{display:none!important}
+/* v220.8 F8-13（判断 9）: 横持ちの電話では、上に留まる上部バーの背景を不透明にし、盤の駒が透けないようにする（畳まない） */
+@media (orientation:landscape) and (max-height:600px) and (pointer:coarse){#topbar{background:var(--ink0);border-bottom:1px solid var(--hair2)}}
 /* build v208: バージョン表示をボタン化(押すと更新内容)。font/color は button 既定を上書きする。 */
 .setup-version{position:absolute;top:0;right:4px;z-index:2;padding:3px 10px;border:1px solid var(--hair2);
   border-radius:999px;background:var(--ink1);color:var(--gin);font-size:.65rem;font-weight:600;
@@ -1938,14 +1949,14 @@ body.noto #wincut.show .wc-label{animation:wcFude .62s cubic-bezier(.2,.9,.3,1.2
 <a href="#board" class="skip-link">対局盤面へスキップ</a>
 <div id="tut-overlay" aria-live="polite">
   <div id="tut-spot"></div>
-  <div id="tut-bubble"><div class="tb-txt" id="tut-bubble-txt"></div><div class="tb-row"><span class="tb-step" id="tut-bubble-step"></span><span id="tut-bubble-btns"></span></div></div>
+  <div id="tut-bubble"><div class="tb-txt" id="tut-bubble-txt" tabindex="0"></div><div class="tb-row"><span class="tb-step" id="tut-bubble-step"></span><span id="tut-bubble-btns"></span></div></div>
 </div>
 
 <!-- ================= 設定画面 ================= -->
 <div id="setup-screen">
   <!-- build v208: 版数表示は APP_CHANGELOG[0] から起動時に上書きされる(JS が動かない場合の保険としてここにも同じ版数を書いておく)。 -->
   <button type="button" class="setup-version" id="btn-version"
-          aria-label="バージョン v220.7 — 更新内容を見る" title="更新内容を見る"><span id="btn-version-num">v220.7</span><span class="sv-i" aria-hidden="true">ⓘ</span></button>
+          aria-label="バージョン v220.8 — 更新内容を見る" title="更新内容を見る"><span id="btn-version-num">v220.8</span><span class="sv-i" aria-hidden="true">ⓘ</span></button>
   <div class="title-block">
     <h1 class="serif">ごいた</h1>
     <div class="title-sub">能登・宇出津に伝わる竹駒の伝承遊戯</div>
@@ -2137,7 +2148,7 @@ body.noto #wincut.show .wc-label{animation:wcFude .62s cubic-bezier(.2,.9,.3,1.2
       </details>
     </div>
     <label class="toggle"><input type="checkbox" id="cfg-tempo" checked>
-      <span>難所で長考（相手の気配）<span class="desc">AIが難しいと判断した局面では考える間を延ばし、その席を微かに明滅。即断・長考のテンポから相手の迷いを読めます。</span></span></label>
+      <span>難所で長考（相手の気配）<span class="desc">AIが難しいと判断した局面では考える間を延ばし、その席を微かに明滅。即断・長考のテンポから相手の迷いを読めます。受けられる駒が無いときは、すぐに『なし』を出します。間から、受けの可否など手の内の一部が分かることがあります。大会仕様ではこの演出を切ります。</span></span></label>
     <label class="toggle"><input type="checkbox" id="cfg-livebar">
       <span>形勢バー（対局中の勝率）<span class="desc">対局中、この局のあなた組の勝率を盤上のバーで表示（将棋の評価バー風）。相手の手札は使わない自視点推定です。</span></span></label>
     <label class="toggle"><input type="checkbox" id="cfg-riverseq">
@@ -19425,7 +19436,7 @@ if (typeof document !== "undefined") (() => {
     counts: {label: "カウント表（王/香/しを強調）", desc: "自分の視点で場に出ていない駒数を表示します。"},
     sighonest: {label: "符丁の正直さコーチ", desc: "振り返りで、あなたの攻めが相方へ送った合図と手札の整合を点検します（学習向け）。"},
     autoWorstTour: {label: "終局後に悪手を自動で振り返る", desc: "対局が終わった直後、この局で検出した悪手(⚠読み切り逃し・☆明確局面での逸脱)を悪手度の高い順に自動で巡回表示します（既定OFF）。オフでもアクションバーの「悪手を振り返る」から手動で開けます。"},
-    tempo: {label: "難所で長考（相手の気配）", desc: "AIが難しいと判断した局面では考える間を延ばし、その席を微かに明滅。即断・長考のテンポから相手の迷いを読めます（「最強（NN＠oui2039）」ではこのAI自身の確信度とは独立したルールベース側の目安になります）。"},
+    tempo: {label: "難所で長考（相手の気配）", desc: "AIが難しいと判断した局面では考える間を延ばし、その席を微かに明滅。即断・長考のテンポから相手の迷いを読めます。受けられる駒が無いときは、すぐに『なし』を出します。間から、受けの可否など手の内の一部が分かることがあります。大会仕様ではこの演出を切ります。（「最強（NN＠oui2039）」ではこのAI自身の確信度とは独立したルールベース側の目安になります）。"},
     livebar: {label: "形勢バー（対局中の勝率）", desc: "対局中、この局のあなた組の勝率を盤上のバーで表示（将棋の評価バー風）。相手の手札は使わない自視点推定です。"},
     riverseq: {label: "河に手数の番号を表示", desc: "場に出た駒へ「何手目か」の通し番号を小さく重ねます。カウンティングや振り返りの読みに便利（既定OFF）。"},
     passHist: {label: "直前の「なし」を席カードに表示", desc: "各席が最近「なし」で通した攻め駒を名札の下に小さく並べます（青＝相方の攻め、朱＝敵の攻め。既定OFF）。"},
@@ -19651,6 +19662,8 @@ if (typeof document !== "undefined") (() => {
     },
     lastErrorName() { return storageTelemetry.lastErrorName; },
   });
+  // v220.8 F8-12（検討書 B4・裁定 D-7）: URL に #dev（#tempo=0&dev のような組み合わせも可）があるときだけ開発用の機能を出す。起動時に 1 回だけ判定
+  const DEV_MODE = (() => { try { return /[#&]dev(?![\w=])/.test(location.hash || ""); } catch (e) { return false; } })();
   // v220.6 F-12: 「履歴の無い端末」= 起動の時点で goita_ で始まるキーが 1 つも無い（起動の早い段階で 1 回だけ判定）
   const FIRST_RUN_DEVICE = (() => {
     try {
@@ -20449,9 +20462,12 @@ if (typeof document !== "undefined") (() => {
   }
   const isHuman = s => s === app.humanSeat;
   GOITA_ENGINE_REGISTRY.invokeAll("setOuSignal", app.cfg.ouSignal);
+  // v220.8 F8-8（検討書 F6）: 練習（解き直し・再プレイ・相方の席で打ち直す・ドリル）の間は、その局の番号から AI の種を作る。
+  //   実対局・入門・教材は rec.gameNo === app.gameNo なので変わらない。tierOpts・adviceOpts・局面キャッシュのキーで同じものを使う（三者一致）
+  function aiGameNo() { return (app.rec && app.rec.practice && app.rec.gameNo) ? app.rec.gameNo : app.gameNo; }
   const tierOpts = seat => {
     const t = app.tiers[seat];
-    const o = {mc: false, solver: app.cfg.solver, mcDets: 24, mcSeed: app.gameNo + 1};
+    const o = {mc: false, solver: app.cfg.solver, mcDets: 24, mcSeed: aiGameNo() + 1};
     if (t === "strong" || t === "coop") { o.mc = app.cfg.mc; o.mcDets = 96; o.attackMC = true; o.matchEq = true; // dead since v145 (coop UI removed): tはapp.tiersから来るため"coop"には決してならない。|| t==="coop"は到達不能・無害。 (c)受けMC分散対策(2026-07-03): mcDets 24→96
         o.dd = true; o.ddLimit = 16; o.ddDets = 16; o.wSample = true; o.danger = true;
         // build v157(攻め矛盾Phase2・D2案): mixed-engine A/B(ペア化・n=9,000)で勝率53.72%
@@ -22205,18 +22221,19 @@ if (typeof document !== "undefined") (() => {
   // プレーンテキスト中の定石名をタップ可能チップへ（HTMLは渡さないこと）
   function linkifyJoseki(text) {
     if (!text) return text || "";
-    let out = escapeHtml(text), used = new Set();
+    // v220.8 F8-3（axe nested-interactive）: 作ったチップの中はもう探さない（「し攻め発動」の中の「し攻め」を包まない）。文字の部分だけを探す
+    let segs = [{t: escapeHtml(text), chip: false}], used = new Set();
     for (const [needle, key] of WHY2JK) {
-      if (used.has(key)) continue;
-      const i = out.indexOf(needle);
-      if (i >= 0 && JOSEKI[key]) {
-        used.add(key);
-        out = out.slice(0, i) +
-          '<button class="jk-chip" data-jk="' + escapeHtml(key) + '">' + escapeHtml(needle) + '</button>' +
-          out.slice(i + needle.length);
-      }
+      if (used.has(key) || !JOSEKI[key]) continue;
+      const si = segs.findIndex(g => !g.chip && g.t.indexOf(needle) >= 0);
+      if (si < 0) continue;
+      used.add(key);
+      const g = segs[si], i = g.t.indexOf(needle);
+      segs.splice(si, 1, {t: g.t.slice(0, i), chip: false},
+        {t: '<button class="jk-chip" data-jk="' + escapeHtml(key) + '">' + escapeHtml(needle) + '</button>', chip: true},
+        {t: g.t.slice(i + needle.length), chip: false});
     }
-    return out;
+    return segs.map(g => g.t).join("");
   }
   function openJoseki(key) {
     const j = JOSEKI[key]; if (!j) return;
@@ -22713,7 +22730,7 @@ if (typeof document !== "undefined") (() => {
     const view = G.makeView(st, app.humanSeat);
     const notes = G.readingNotes(view);
     const tail = app.review ? ("r" + (app.reviewRec ? app.reviewRec.gameNo : 0) + "-" + app.review.idx)
-                            : ("l" + app.gameNo + "-" + st.history.length);
+                            : ("l" + aiGameNo() + "-" + st.history.length);
     const key = tail + "|" + notes.length;
     if (app.readKey === key) { el.classList.add("show"); return; }
     app.readKey = key;
@@ -22733,7 +22750,7 @@ if (typeof document !== "undefined") (() => {
   // 補正(実対局AIが使わない目線)のため外した。mcSeed=app.gameNo+1もtierOptsと同一(決定論化)。
   function adviceOpts() {
     // build v157(攻め矛盾Phase2・D2案): tierOpts(strong)と同一のatkBand:trueを付与し三者一致を維持。
-    return {mc: app.cfg.mc, solver: app.cfg.solver, mcDets: 96, mcSeed: app.gameNo + 1,
+    return {mc: app.cfg.mc, solver: app.cfg.solver, mcDets: 96, mcSeed: aiGameNo() + 1,
             attackMC: true, matchEq: true, dd: true, ddLimit: 16, ddDets: 16, wSample: true, danger: true,
             atkBand: true};
   }
@@ -22746,7 +22763,7 @@ if (typeof document !== "undefined") (() => {
   // 推奨手の「ただ一つの推奨」。読み切り(確定勝ち)優先→強MC(moveHint)。
   // 局面ごとに1回だけ計算しキャッシュ (MC乱数性・読み切り経路の差を排除)。
   function getRec(st, seat) {
-    const key = "r" + app.gameNo + "-" + st.history.length + "-" + st.phase + "-" + seat;
+    const key = "r" + aiGameNo() + "-" + st.history.length + "-" + st.phase + "-" + seat;
     if (app._recKey === key) return app._rec;
     let rec = null;
     try {
@@ -22790,7 +22807,7 @@ if (typeof document !== "undefined") (() => {
   function candidateRanking(st, seat) {
     if (!st || st.phase !== "respond" || st.actor !== seat) return null;
     // build v153: getRecと同型の局面キャッシュ(Phase 3でadviceOpts()化した際のコスト増を吸収する布石)
-    const ck = "c" + app.gameNo + "-" + st.history.length + "-" + seat;
+    const ck = "c" + aiGameNo() + "-" + st.history.length + "-" + seat;
     if (app._crKey === ck) return app._cr;
     // build v155(Phase3・三者一致の完成): v94コメントは「完全同一化」と書いていたが実際は
     // {mcDets,mcSeed}のみでadviceOpts()の他のキー(dd/ddLimit/ddDets/wSample/danger/attackMC/
@@ -22887,7 +22904,7 @@ if (typeof document !== "undefined") (() => {
       app.rec.hinted = true;   // 推奨手を表示した実戦局は成績集計から除外（旧ヒントの除外を継承）
       log("推奨手を表示 — この局は成績の集計から除外されます", false, "ai-note");
     }
-    const key = "a" + app.gameNo + "-" + st.history.length + "-" + st.phase;
+    const key = "a" + aiGameNo() + "-" + st.history.length + "-" + st.phase;
     if (app.adviceKey === key) { el.classList.add("show"); return; }
     app.adviceKey = key;
     const hint = getRec(st, app.humanSeat);
@@ -23227,6 +23244,7 @@ if (typeof document !== "undefined") (() => {
     //   フォーカスも#demo-40へ明示的に移す(modal()の「最初のフォーカス可能要素へ」という既存挙動に
     //   偶然一致していたが、型図鑑リスト部にフォーカス可能要素が将来追加されると壊れるため明示する)。
     if (opts && opts.scrollToDemos) {
+      m.setAttribute("data-keep-scroll", "1");   // v220.8 F8-1: modal() の先頭へ戻す処理より、見本への送りを優先する
       setTimeout(() => {
         const title = m.querySelector(".pat-demo-title");
         if (title) title.scrollIntoView({block: "start"});
@@ -23320,15 +23338,18 @@ if (typeof document !== "undefined") (() => {
     // B-4(v91b・v90bから持ち越しのaria-dialog-name是正): 本文先頭のh2があればaria-labelledbyで
     // 接続する(全モーダル共通の1箇所修正)。h2が無いモーダルは従来どおり無指定(役割=dialogのみ)。
     mb.removeAttribute("aria-labelledby");
-    const h2 = mb.querySelector("h2");
+    const h2 = mb.querySelector("h2") || mb.querySelector("h3");   // v220.8 F8-2（axe aria-dialog-name）: 見出しが h3 だけのモーダル（QR 読み取り・共有）にも名前を付ける
     if (h2) {
       if (!h2.id) h2.id = "modal-auto-title";
       mb.setAttribute("aria-labelledby", h2.id);
     }
     // 開いた直後に最初の操作要素へフォーカス(なければモーダル自体)。診断自身を除く
     // 動的画面は、閉じた後でも確認できるよう表示中のcomputed geometryを自動採取する。
+    mb.removeAttribute("data-keep-scroll");
     requestAnimationFrame(() => {
-      const f = _focusables(mb); (f[0] || mb).focus();
+      // v220.8 F8-1（検討書 B6・裁定 N-b）: フォーカスは今までどおり最初の操作要素へ。ただし送らずに先頭を見せる（型の見本への送りは data-keep-scroll で残す）
+      const f = _focusables(mb); const f0 = f[0] || mb; try { f0.focus({preventScroll: true}); } catch (e) { f0.focus(); }
+      if (!mb.hasAttribute("data-keep-scroll")) mb.scrollTop = 0;
       if (!mb.querySelector("#a11y-export")) {
         try { app._lastModalA11yAudit = A11Y_AUDIT.measure(mb); } catch (e) { /* 初期化前/非対応でも継続 */ }
       }
@@ -23504,6 +23525,7 @@ if (typeof document !== "undefined") (() => {
   }
   $("btn-a11y-audit-setup").addEventListener("click", () => openA11yDeviceAudit(A11Y_AUDIT.measure($("setup-screen"))));
   $("btn-a11y-audit").addEventListener("click", () => openA11yDeviceAudit(A11Y_AUDIT.measure($("main-screen"))));
+  if (!DEV_MODE) { $("btn-a11y-audit-setup").hidden = true; $("btn-a11y-audit").hidden = true; }   // v220.8 F8-12: 端末診断・実機診断は #dev のときだけ（hidden。DOM からは除かない）
   /* PHASE15_DEVICE_AUDIT_JS_END */
   /* ================================================================
    * 研究モード (human_eval_design.md §4) — A/B盲検・固定seed・予測課題・ログ・強制選択
@@ -23764,6 +23786,7 @@ if (typeof document !== "undefined") (() => {
   (function initResearchBtn() {
     try {
       const add = () => {
+        if (!DEV_MODE) return;   // v220.8 F8-12: 研究（盲検 A/B）は #dev のときだけ
         if (document.getElementById("btn-research")) return;
         const b = document.createElement("button");
         b.textContent = "研究"; b.id = "btn-research"; b.className = "btn small ghost";
@@ -24013,11 +24036,24 @@ if (typeof document !== "undefined") (() => {
     }, _stepMs);
   }
 
+  // v220.8 F8-7（検討書 I2・裁定 N-c）: 手駒・「なし」をキーボード（Enter・Space）で押したときだけ、次の自分の番で、フォーカスが失われていれば押せる所へ戻す。
+  //   タッチ・マウスで押したら（pointerdown）やめる。ほかの欄にフォーカスがあるときは奪わない。短い入門は入門の側で扱う（下の return の前には置かない）
+  let _kbdPlay = false;
+  document.addEventListener("keydown", e => { if ((e.key === "Enter" || e.key === " " || e.key === "Spacebar") && e.target && e.target.closest && e.target.closest("#hand, #actionbar")) _kbdPlay = true; }, true);
+  document.addEventListener("pointerdown", () => { _kbdPlay = false; }, true);
+  function kbdRefocus() {
+    if (!_kbdPlay) return;
+    const a = document.activeElement; if (a && a !== document.body && a !== document.documentElement) return;
+    if ($("ov-modal") && $("ov-modal").classList.contains("show")) return;
+    const t = document.querySelector("#hand .koma[role=button]:not(.dis)") || document.querySelector("#actionbar .btn:not([disabled])");
+    if (t) { try { t.focus({preventScroll: true}); } catch (e) {} }
+  }
   function humanTurn() {
     if (app.tutorial && app.tutorial.key === "quickstart") return;   // 短い入門: 入門の本編の描画は入門の側で行う（自動パス・AI の進行を起こさない）
     const st = app.st, me = app.humanSeat;
     app.turnT0 = performance.now();   // 思考時間の計測開始
     setMyTurn(true);
+    setTimeout(kbdRefocus, 0);   // v220.8 F8-7: 描画の後で
     if (st.phase === "bury") {
       status("あなたの番 — 伏せる駒を選んでください");
       actionbar(app.cfg.hints ? `伏せる駒を${tapWord()}（裏向きで場に置きます）` : "");
@@ -24178,6 +24214,18 @@ if (typeof document !== "undefined") (() => {
     }
   }
 
+  // v220.8 F8-13（判断 9）: 横持ちの電話で通常の対局（人の席あり・入門・教材・練習・観戦・研究を除く）を打つとき、端末ごとに 1 回だけ縦持ちを案内する
+  const LANDSCAPE_MQ = (typeof matchMedia === "function") ? matchMedia("(orientation:landscape) and (max-height:600px) and (pointer:coarse)") : null;
+  function maybeLandscapeHint() {
+    if (!LANDSCAPE_MQ || !LANDSCAPE_MQ.matches) return;
+    if (!app.humanSeat || app.tutorial || (app.rec && app.rec.practice) || app.drill || (app.research && app.research.active)) return;
+    if (!$("main-screen") || !$("main-screen").classList.contains("show")) return;
+    if (app._soundHintT && performance.now() - app._soundHintT < 5000) return;
+    if (DATA_STORAGE.getItem("goita_landscape_hint")) return;
+    DATA_STORAGE.setItem("goita_landscape_hint", "1");
+    setTimeout(() => { try { toast("横持ちでは盤が画面に収まりません。縦持ちのほうが見やすくなります。"); } catch (e) {} }, 1200);
+  }
+  if (LANDSCAPE_MQ) { try { LANDSCAPE_MQ.addEventListener("change", () => { try { if (app.st && app.st.phase !== "over") maybeLandscapeHint(); } catch (e) {} }); } catch (e) {} }
   function startGame() {
     if (app.tutorial && qsIsKey(app.tutorial.key)) return;   // 短い入門: 入門・練習の間は通常の局を始めない（練習でない局が成績に入るのを防ぐ・第二読者 M-1）
     restoreSeatSwap();   // 安全網: 席交換の練習を抜けずに次局へ来ても元の席・ティアに戻す(通常は endPractice で復元済み)
@@ -24194,9 +24242,11 @@ if (typeof document !== "undefined") (() => {
     try {
       if (!app.cfg.sound && app.humanSeat && !DATA_STORAGE.getItem("goita_sound_hint")) {
         DATA_STORAGE.setItem("goita_sound_hint", "1");
+        app._soundHintT = performance.now();   // v220.8 F8-13: 効果音の案内の直後（5 秒）は横持ちの案内を出さない（トーストは 1 つを上書きするため）
         setTimeout(() => { try { toast("効果音をONにできます（調整→効果音）"); } catch (e) {} }, 1200);
       }
     } catch (e) {}
+    try { maybeLandscapeHint(); } catch (e) {}
     if (app.humanSeat) setOuTrustBoth(app.humanSeat);
     applyOppProfile();
     app.drill = null;
@@ -25785,7 +25835,7 @@ if (typeof document !== "undefined") (() => {
     if (cur && cur[ci] != null) head += `<span class="ns">${teamDisp("NS")} ${Math.round(cur[ci] * 100)}%</span><span>/</span><span class="ew">${teamDisp("EW")} ${Math.round((1 - cur[ci]) * 100)}%</span>`;
     else head += `<span>計算中…</span>`;
     head += `</div>`;
-    let svg = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="形勢推移">`;
+    let svg = `<svg viewBox="0 0 ${W} ${H}">`;   // v220.8 F8-4（axe nested-interactive）: 中に押せる点があるので role="img" を外す。名前は枠 #rv-graph の aria-label
     if (cur && cur.length >= 2) {
       const ev = i => (cur[i] == null ? 0.5 : cur[i]);
       let ns = `${padL},${padT + ih} `;
@@ -27499,16 +27549,20 @@ if (typeof document !== "undefined") (() => {
     readSetup(watch);
     // UI-3(UX-02): 助言が ON のまま人間が対局を始めるときは、マッチ開始時に 1 回だけ「成績集計の対象外」を案内し、
     // その場で助言を切って始める選択肢を出す(裁定 8)。観戦・チュートリアル・練習・#m-new(もう一勝負)では出ない。
-    if (!watch && app.humanSeat && ADVICE_FLAGS.some(k => app.cfg[k])) {
+    // v220.8 F8-10（検討書 A2・裁定 D-2）: 端末ごとに 1 回。「このまま始める」「助言を切って始める」を押したら goita_advice_hint を書く（やめる・Esc・背景では書かない）
+    let _adviceSeen = false; try { _adviceSeen = DATA_STORAGE.getItem("goita_advice_hint") === "1"; } catch (e) {}
+    if (!watch && app.humanSeat && !_adviceSeen && ADVICE_FLAGS.some(k => app.cfg[k])) {
       const m = modal(
         `<h2 class="serif">助言が ON です</h2>` +
         `<p class="mg-p">推奨手・ハイライト・読みヒント・受けの助言のいずれかが ON です。<br>助言が表示された局は成績集計の対象外になります（過去の成績は変わりません）。</p>` +
         `<div class="mg-btns"><button class="btn primary" id="an-go">このまま始める</button>` +
         `<button class="btn" id="an-off">助言を切って始める</button>` +
         `<button class="btn" id="an-cancel">やめる</button></div>`);
-      m.querySelector("#an-go").onclick = () => { closeModal(); ensureGameScreen(); newMatch(); };
+      const _markAdvice = () => { try { DATA_STORAGE.setItem("goita_advice_hint", "1"); } catch (e) {} };
+      m.querySelector("#an-go").onclick = () => { _markAdvice(); closeModal(); ensureGameScreen(); newMatch(); };
       m.querySelector("#an-cancel").onclick = closeModal;   // Escape / 背景タップと同じ「設定画面に留まる」を見える形に(第二読者 S4)
       m.querySelector("#an-off").onclick = () => {
+        _markAdvice();
         for (const k of ADVICE_FLAGS) app.cfg[k] = false;
         document.body.classList.toggle("readHint", false);
         syncSetupFormFromCfg();
@@ -30241,6 +30295,11 @@ if (typeof document !== "undefined") (() => {
    * tag: fix=不具合修正 / fast=速くなった / read=読みが良くなった / ui=使いやすくなった(v212.1 新設) / (無印)=内部のみ
    * ================================================================ */
   const APP_CHANGELOG = [
+    {v: "v220.8", d: "2026-09-26", tag: "ui", tagJa: "使いやすくなった", t: "小さな不具合の直しと、画面の整理", p: [
+      "モーダルを開いたとき、いつも先頭から表示するようにしました。",
+      "キーボードや読み上げでの操作を直しました（⋯メニュー・ガイドの吹き出し・形勢グラフなど）。",
+      "横持ちの電話では上部のボタンの背景を不透明にし、縦持ちの案内を1回出すようにしました。",
+      "「助言が ON です」の確認は、端末ごとに最初の1回だけ出します。AIの打ち筋・ルール・得点は変えていません。"]},
     {v: "v220.7", d: "2026-09-26", tag: "ui", tagJa: "入門を追加", t: "はじめての方向けに、短い入門を追加しました", p: [
       "開始画面の「初心者向け・完全ガイド」を開くと、いちばん上に「短い入門をはじめる」があります。3つの場面で、受ける・攻める・なし・伏せる・上がるを実際に操作して体験できます。",
       "入門の後は、操作の案内とおすすめの駒つきで、初心者AIと1局練習できます。この練習は成績集計に入りません。",
@@ -30358,7 +30417,7 @@ if (typeof document !== "undefined") (() => {
       `<div class="cl-h"><span class="cl-v">${escapeHtml(e.v)}</span>` +
       `<span class="cl-tag ${escapeHtml(e.tag)}">${escapeHtml(e.tagJa)}</span>` +
       `<span class="cl-t">${escapeHtml(e.t)}</span></div>` +
-      `<ul class="cl-p">${e.p.map(x => `<li>${escapeHtml(x)}</li>`).join("")}</ul></div>`;
+      `<ul class="cl-p">${e.p.filter(x => DEV_MODE || !/#(shiproto|atkcons)=/.test(x)).map(x => `<li>${escapeHtml(x)}</li>`).join("")}</ul></div>`;   // v220.8 F8-12: 開発用の行は #dev のときだけ（件数は不変）
   }
   function openChangelog() {
     const cur = APP_CHANGELOG[0], rest = APP_CHANGELOG.slice(1);
@@ -30614,6 +30673,18 @@ if (typeof document !== "undefined") (() => {
       });
       more.addEventListener("click", () => { more.classList.remove("open"); mb.setAttribute("aria-expanded", "false"); });
       document.addEventListener("click", () => { more.classList.remove("open"); mb.setAttribute("aria-expanded", "false"); });
+      // v220.8 F8-6（検討書 I2）: 開いたら最初の項目へフォーカス。開いている間だけ Esc で閉じて ⋯ へ戻す。Tab で外へ出たら閉じる
+      const closeMore = back => { more.classList.remove("open"); mb.setAttribute("aria-expanded", "false"); if (back) { try { mb.focus({preventScroll: true}); } catch (e) {} } };
+      mb.addEventListener("click", () => {
+        if (!more.classList.contains("open")) return;
+        const first = Array.from(more.querySelectorAll("button")).find(b => !b.disabled && !b.hidden && b.getClientRects().length);
+        if (first) { try { first.focus({preventScroll: true}); } catch (e) {} }
+      });
+      document.addEventListener("keydown", e => {
+        if (e.key !== "Escape" || !more.classList.contains("open")) return;
+        e.preventDefault(); e.stopPropagation(); closeMore(true);
+      }, true);
+      more.addEventListener("focusout", e => { const to = e.relatedTarget; if (to && !more.contains(to) && to !== mb && more.classList.contains("open")) closeMore(false); });
     }
   })();
   $("btn-help").addEventListener("click", () => {

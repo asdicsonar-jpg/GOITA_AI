@@ -1,5 +1,5 @@
 // ごいた — Service Worker
-// 対象: index.html (build v220.7, SHA-256 ec6041b4ac95eeff84232985448cf7c183cee8d834b296a6464b49a651e5860d)
+// 対象: index.html (build v220.8, SHA-256 6f8cd7fedd1b02564b7b8bb93c13d085962458d7b8cf0e9708d67369568024ed)
 //
 // v205: A-1「ddSolve の Packed 化(PACKED_SOLVE、既定0=legacy)」。出荷既定では1行も
 // 実行されない基盤整備であり、着手列SHA-256 は v204 と完全一致することを機械確認済み。
@@ -41,6 +41,7 @@
 // v220.5: 相方がリーチでしで攻めてきたときの応答は、C-07の門でなくC-18の点比較で確定上がりの可否を決める(Q14・裁定L-1)。敵のし攻め中の伏せで手駒がしと王だけならしを伏せる(Q15・裁定L-5)。自分もしで攻めた後の相方のし攻め(相方リーチでない)にし3枚以下で応答するときは、確定上がりの手順があれば受けて、その手順の攻めを打つ(次の攻め番からはC-07に戻る。Q17・裁定L-6・L-8)。SHI_PROTO 既定7、setShiProto(6) / #shiproto=6 で v220.4 と着手列が同一。
 // v220.6: UI の不具合の直し（再開の乱数・対局中の棋譜・調整の保存・吹き出しとトーストの幅・残り駒表・詰めの成績の二重計上・未定義の CSS 変数・描画の無駄・表記・教材の開始と途中退出・初回の既定・読み込み中の開始ボタン）。エンジン区画は v220.5 と byte 一致。
 // v220.7: 短い入門コース（3 場面・5 着手）と助言つきの 1 局練習を配信（apply_quickstart_v2.py・検討書 B7 の直しを含む）。エンジン区画は v220.6 と byte 一致。
+// v220.8: 小さな直しと UI の整理（apply_v220_8.py）。本体の事前キャッシュを 1 本にし、成功した応答だけを保存。エンジン区画は v220.7 と byte 一致。
 //
 // このファイルは index.html と同じディレクトリに配置すること。index.html 側は
 // すでに以下の登録コードを持っている(http(s)配信時のみ有効。file://や未配置時は
@@ -53,14 +54,14 @@
 // アプリを開いたことがある端末には古いキャッシュが残り続け、新しい index.html が
 // 配信されない(PWAの典型的な事故)。
 
-const CACHE_NAME = "goita-v220.7";
+const CACHE_NAME = "goita-v220.8";
 
 // 起動シェルとして必ずキャッシュしたいファイル。存在しないもの(まだ配置していない
 // manifest.json やアイコン等)があっても install 全体を失敗させないよう、
 // 1件ずつ catch して無視する。
+// v220.8 F8-14（検討書 H3）: 本体は "./" の 1 本だけにする（"index.html" と二重に 9MB を持たない）
 const PRECACHE_URLS = [
   "./",
-  "index.html",
   "manifest.json",
   "icons/apple-touch-icon.png",
   "icons/icon-192.png"
@@ -103,15 +104,21 @@ self.addEventListener("fetch", (event) => {
   // ページ本体(HTML)はネットワーク優先: 更新があれば即座に拾い、
   // オフライン時のみキャッシュへフォールバックする。
   if (req.mode === "navigate" || req.destination === "document") {
+    // v220.8 F8-14: 成功した応答（ok）だけを保存する。本体（スコープの直下・index.html・クエリ付き）は 1 つのキー（"./"）にそろえる
+    const scope = new URL(self.registration.scope);
+    const isShell = url.pathname === scope.pathname || url.pathname === scope.pathname + "index.html";
+    const key = isShell ? scope.href : (url.origin + url.pathname);
     event.respondWith(
       fetch(req)
         .then((res) => {
-          const copy = res.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(req, copy));
+          if (res && res.ok) {
+            const copy = res.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(key, copy));
+          }
           return res;
         })
         .catch(() =>
-          caches.match(req).then((cached) => cached || caches.match("index.html"))
+          caches.match(key, {ignoreSearch: true}).then((cached) => cached || caches.match(scope.href))
         )
     );
     return;
