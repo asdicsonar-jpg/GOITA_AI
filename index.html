@@ -5,6 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>ごいた — 能登の伝承遊戯</title>
   <!-- build: v220.6 に短い入門コース（3 場面・5 着手）と助言つきの 1 局練習を当てた（配信候補 v220.7 の元）。計画: docs/PLAN_短い入門コース_rev4_Opus5.5.md（§14 の裁定）・docs/PLAN_v220.7_入門コース配信_rev2_Opus5.5.md。適用: harness/apply_quickstart_v2.py。エンジン区画（G・G_B・T1）は不変。 -->
+  <!-- build: v220.9「PC の 2 列配置（盤＝左・手番の枠・手駒・操作＝右・上部バーを ⋯ に畳む・低い画面では盤を縮める）」base=v220.8。
+       計画: docs/PLAN_v220.9_PCの2列配置_rev2_Opus5.5.md（裁定は docs/DECISIONS_UIUX検討書の残り_2026-09-26.md §4-3・§4-4 と計画 §0）。
+       変更: harness/apply_v220_9.py → apply_ui_release.py（版数・CHANGELOG・バッジ・sw.js）。G・G_B・T1 の区画は v220.8 と byte 一致。
+       CACHE_NAME: goita-v220.8 → goita-v220.9. -->
   <!-- build: v220.8「小さな直しと UI の整理（モーダルの先頭・キーボードと読み上げ・題字・助言の確認・横持ち・SW ほか）」base=v220.7。
        計画: docs/PLAN_v220.8_小さな直しとUI整理_rev2_Opus5.5.md（裁定は docs/DECISIONS_UIUX検討書の残り_2026-09-26.md §4・§4-1）。
        変更: harness/apply_v220_8.py（index・sw.js）→ apply_ui_release.py（版数・CHANGELOG・バッジ・sw.js）。G・G_B・T1 の区画は v220.7 と byte 一致。
@@ -1619,6 +1623,29 @@ body.cud .pcard .phead .nm:not(.ally){color:#e8b89f}  /* 敵=暖色系で寒色�
   #actionbar .btn:not(.primary):not(.rec){flex:0 1 auto}
 }
 body.reviewing #turn-focus{display:none!important}
+/* v220.9 P9-a（判断 10・案 A）: マウスの PC（幅 1024px 以上）では、盤＝左、形勢バー・練習の帯・手番の枠・観戦・案内・手駒・操作・助言＝右の 2 列にする。
+   右の列の並びは DOM の順のまま（裁定 P9-4）。読み上げ・Tab の順は変えない。上部バーはスマホと同じ「AI分析・調整・⋯・設定へ」に畳む */
+@media (min-width:1024px) and (hover:hover) and (pointer:fine){
+  #main-screen.show{display:grid;grid-template-columns:minmax(0,1fr) minmax(300px,38%);column-gap:10px;row-gap:6px;
+    align-items:start;max-width:1280px;grid-auto-flow:row dense}
+  #main-screen.show>*{grid-column:1 / -1}
+  #main-screen.show>#board{grid-column:1;grid-row:2 / span 8}
+  #main-screen.show>#equity-bar,#main-screen.show>#mode-banner,#main-screen.show>#turn-focus,#main-screen.show>#watch-info,
+  #main-screen.show>#quickstart-instruction,#main-screen.show>#handarea,#main-screen.show>#actionbar,#main-screen.show>#advice-pill{grid-column:2}
+  #turn-focus:not([hidden]){display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px}
+  body.reviewing #turn-focus,body.tut-quickstart #turn-focus{display:none!important}
+  #handarea{position:static!important}
+  #hand{flex-wrap:wrap!important;overflow:visible!important;justify-content:center}
+  #actionbar{position:static!important}
+  #topbar{position:relative!important;flex-wrap:nowrap}
+  #btn-more{display:inline-block;position:relative}
+  #topbar-more{display:none;position:absolute;top:100%;right:0;z-index:30;flex-direction:column;max-height:calc(100dvh - 60px);overflow-y:auto;
+    background:var(--ink2);border:1px solid var(--hair2);border-radius:10px;padding:6px;gap:4px;margin-top:4px;box-shadow:0 8px 24px rgba(0,0,0,.4)}
+  #topbar-more.open{display:flex}
+  #topbar-more .btn{width:100%;text-align:left}
+  .tbm-label{display:block;font-size:.6rem;color:var(--gin-d);letter-spacing:.16em;padding:6px 8px 2px}
+  .tbm-sep{display:block;border-top:1px solid var(--hair2);margin:3px 2px}
+}
 @media (pointer:coarse){
   button,select,summary,a[href],
   input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),textarea{
@@ -1956,7 +1983,7 @@ body.noto #wincut.show .wc-label{animation:wcFude .62s cubic-bezier(.2,.9,.3,1.2
 <div id="setup-screen">
   <!-- build v208: 版数表示は APP_CHANGELOG[0] から起動時に上書きされる(JS が動かない場合の保険としてここにも同じ版数を書いておく)。 -->
   <button type="button" class="setup-version" id="btn-version"
-          aria-label="バージョン v220.8 — 更新内容を見る" title="更新内容を見る"><span id="btn-version-num">v220.8</span><span class="sv-i" aria-hidden="true">ⓘ</span></button>
+          aria-label="バージョン v220.9 — 更新内容を見る" title="更新内容を見る"><span id="btn-version-num">v220.9</span><span class="sv-i" aria-hidden="true">ⓘ</span></button>
   <div class="title-block">
     <h1 class="serif">ごいた</h1>
     <div class="title-sub">能登・宇出津に伝わる竹駒の伝承遊戯</div>
@@ -22559,10 +22586,11 @@ if (typeof document !== "undefined") (() => {
     if (!card) { el.classList.remove("show"); return; }
     const bRect = board.getBoundingClientRect(), cRect = card.getBoundingClientRect();
     const w = el.offsetWidth || 18, h = el.offsetHeight || 18;
-    let x = cRect.left - bRect.left - w / 2;
-    let y = cRect.top - bRect.top - h / 2;
-    x = Math.max(0, Math.min(bRect.width - w, x));    // viewport内クランプ(W/Eの狭カード対策)
-    y = Math.max(0, Math.min(bRect.height - h, y));
+    const _z = parseFloat(board.style.zoom) || 1;   // v220.9 rev2: 盤の倍率（P9-b）。1 のときは今と同じ
+    let x = (cRect.left - bRect.left) / _z - w / 2;
+    let y = (cRect.top - bRect.top) / _z - h / 2;
+    x = Math.max(0, Math.min(bRect.width / _z - w, x));    // viewport内クランプ(W/Eの狭カード対策)
+    y = Math.max(0, Math.min(bRect.height / _z - h, y));
     // 「非表示→表示」への切替(局開始・復帰直後・振り返りからの復帰)は前の位置から滑ると不自然なため
     // no-anim即時配置とする。resize/orientationchangeはapp._turnTokenNoAnimで明示的に同じ扱いにする。
     const noAnim = app._turnTokenNoAnim || !el.classList.contains("show");
@@ -22708,7 +22736,8 @@ if (typeof document !== "undefined") (() => {
           a = cardOf[slideSeat].getBoundingClientRect();
         } else { _flipPop(n); return; }
       }
-      const dx = a.left - b.left, dy = a.top - b.top;
+      const _fz = parseFloat(($("board") || {style: {}}).style.zoom) || 1;   // v220.9 rev2: 盤の倍率（P9-b）で割る。1 のときは今と同じ
+      const dx = (a.left - b.left) / _fz, dy = (a.top - b.top) / _fz;
       if (Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5) return;
       n.style.transition = "none";
       n.style.transform = "translate(" + dx + "px," + dy + "px)";
@@ -24215,6 +24244,32 @@ if (typeof document !== "undefined") (() => {
   }
 
   // v220.8 F8-13（判断 9）: 横持ちの電話で通常の対局（人の席あり・入門・教材・練習・観戦・研究を除く）を打つとき、端末ごとに 1 回だけ縦持ちを案内する
+  // v220.9 P9-b（裁定 P9-1）: PC の 2 列のとき、盤の下端が画面の下に出るなら、盤（#board）だけを CSS の zoom で縮める（下限 0.75・入るときは 1）。
+  //   測り直すのは、画面の大きさ・盤の中身の高さ（ResizeObserver）・2 列の条件が変わったとき。2 列でないときは zoom を外す
+  const TWO_COL_MQ = (typeof matchMedia === "function") ? matchMedia("(min-width:1024px) and (hover:hover) and (pointer:fine)") : null;
+  let _fitBusy = false;
+  function fitBoardToHeight() {
+    const bd = $("board"), ms = $("main-screen"); if (!bd || !ms || _fitBusy) return;
+    if (!TWO_COL_MQ || !TWO_COL_MQ.matches || !ms.classList.contains("show")) { if (bd.style.zoom) bd.style.zoom = ""; return; }
+    _fitBusy = true;
+    try {
+      const z0 = bd.style.zoom; bd.style.zoom = "";
+      const r = bd.getBoundingClientRect(); const h = r.height, top = r.top + (window.scrollY || 0);
+      let z = 1; if (h > 0 && top + h + 8 > window.innerHeight) z = Math.max(0.75, (window.innerHeight - top - 8) / h);
+      z = Math.round(z * 1000) / 1000;
+      bd.style.zoom = z >= 1 ? "" : String(z);
+      // rev2（第二読者 M-1）: 倍率が変わったら、盤の中の番札を新しい倍率で置き直す（即時）
+      if (String(z0) !== bd.style.zoom) { try { if (app.st) { app._turnTokenNoAnim = true; updateTurnToken(); } } catch (e) {} try { if (app.tutorial) tutPlaceBubble(); } catch (e) {} }
+    } finally { _fitBusy = false; }
+  }
+  // rev2（第二読者 S-2）: 画面の大きさ・2 列の条件が変わったときは、倍率が同じでも古い教材の吹き出しを置き直す
+  function _fitOnViewport() { fitBoardToHeight(); try { if (app.tutorial) tutPlaceBubble(); } catch (e) {} }
+  try {
+    window.addEventListener("resize", _fitOnViewport);
+    if (TWO_COL_MQ) TWO_COL_MQ.addEventListener("change", _fitOnViewport);
+    if (typeof ResizeObserver === "function" && $("board")) new ResizeObserver(() => fitBoardToHeight()).observe($("board"));
+    if ($("main-screen") && typeof MutationObserver === "function") new MutationObserver(() => fitBoardToHeight()).observe($("main-screen"), {attributes: true, attributeFilter: ["class"]});
+  } catch (e) {}
   const LANDSCAPE_MQ = (typeof matchMedia === "function") ? matchMedia("(orientation:landscape) and (max-height:600px) and (pointer:coarse)") : null;
   function maybeLandscapeHint() {
     if (!LANDSCAPE_MQ || !LANDSCAPE_MQ.matches) return;
@@ -27775,7 +27830,7 @@ if (typeof document !== "undefined") (() => {
       steps: [
         {say: "ごいたへようこそ。能登・宇出津に伝わる、竹製の駒（竹駒）を使う4人対戦の伝承遊戯です。2人ずつ組んで相方と協力し、自分の手駒8枚を誰より早く打ち切ることを目指します。ルールを知らなくても大丈夫、一歩ずつ一緒に進めましょう。", mode: "next"},
         {say: "盤面は卓を上から見た図です。手前が【自分】。正面が【相方】（味方）。左右が【下家】【上家】という相手チームです。味方は青、相手は紫で色分けしています。", spot: "#board", mode: "next"},
-        {say: "画面の一番下に並ぶ8枚が、あなたの手駒です。この8枚をすべて場に出し切れば「上がり」。相方と力を合わせて、先に打ち切るのが目標です。", spot: "#handarea", mode: "next"},
+        {say: "「あなたの手駒」の欄に並ぶ8枚が、あなたの手駒です。この8枚をすべて場に出し切れば「上がり」。相方と力を合わせて、先に打ち切るのが目標です。", spot: "#handarea", mode: "next"},
         {say: "手番が来たら、手駒から1枚を表向きに出します。これが「攻め」です。攻められた他の3人は、同じ駒を持っていれば「受け」、無ければ「なし」（パス）になります。", spot: "#stage", mode: "next"},
         {say: "大事なのは、受けた人が次の攻め手になること。受けは“守り”であると同時に、場の主導権を奪い返す手でもあります。", spot: "#stage", mode: "next"},
         {say: "では実際の流れを見てみましょう。親（その局で最初に打つ人）の下家が、まず要らない駒を1枚“伏せ”（裏向き・中身は秘密）に置き、続けて「角」で攻めます。", mode: "auto", auto: [{seat: "E", type: "bury", koma: "香"}, {seat: "E", type: "attack", koma: "角"}]},
@@ -29011,6 +29066,10 @@ if (typeof document !== "undefined") (() => {
     }
     if (top) { b.style.bottom = "auto"; b.style.top = "calc(14px + env(safe-area-inset-top))"; }
     else { b.style.top = "auto"; b.style.bottom = "calc(20px + env(safe-area-inset-bottom))"; }
+    // v220.9 P9-c（裁定 P9-3）: PC の 2 列のときは、吹き出しを盤（左の列）の横の中央に置き、右の列（手番の枠・手駒・操作）に重ねない
+    let _bl = "";
+    try { if (TWO_COL_MQ && TWO_COL_MQ.matches && $("board")) { const br = $("board").getBoundingClientRect(); if (br.width > 0) _bl = Math.round(br.left + br.width / 2) + "px"; } } catch (e) {}
+    b.style.left = _bl;
   }
   function tutBubble(text, btns, opts) {
     const b = $("tut-bubble"); if (!b) return;
@@ -30295,6 +30354,10 @@ if (typeof document !== "undefined") (() => {
    * tag: fix=不具合修正 / fast=速くなった / read=読みが良くなった / ui=使いやすくなった(v212.1 新設) / (無印)=内部のみ
    * ================================================================ */
   const APP_CHANGELOG = [
+    {v: "v220.9", d: "2026-09-26", tag: "ui", tagJa: "使いやすくなった", t: "PC では盤と手駒を横に並べました", p: [
+      "幅の広いPC（マウス）では、盤を左に、手番・手駒・操作を右に並べ、1画面で打てるようにしました。",
+      "画面の低いPCでは、盤を少し縮めて1画面に収めます。上部のボタンは、スマホと同じく「⋯」にまとめました。",
+      "スマホ・タブレットの画面は変わりません。AIの打ち筋・ルール・得点は変えていません。"]},
     {v: "v220.8", d: "2026-09-26", tag: "ui", tagJa: "使いやすくなった", t: "小さな不具合の直しと、画面の整理", p: [
       "モーダルを開いたとき、いつも先頭から表示するようにしました。",
       "キーボードや読み上げでの操作を直しました（⋯メニュー・ガイドの吹き出し・形勢グラフなど）。",
