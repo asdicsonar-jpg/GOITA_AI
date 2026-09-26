@@ -4,6 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>ごいた — 能登の伝承遊戯</title>
+  <!-- build: v220.6 に短い入門コース（3 場面・5 着手）と助言つきの 1 局練習を当てた（配信候補 v220.7 の元）。計画: docs/PLAN_短い入門コース_rev4_Opus5.5.md（§14 の裁定）・docs/PLAN_v220.7_入門コース配信_rev2_Opus5.5.md。適用: harness/apply_quickstart_v2.py。エンジン区画（G・G_B・T1）は不変。 -->
+  <!-- build: v220.7「短い入門コース（3 場面・5 着手）と助言つきの 1 局練習を配信」base=v220.6。
+       計画: docs/PLAN_短い入門コース_rev4_Opus5.5.md（§14 の裁定 QS-1〜QS-8・QS-9）・docs/PLAN_v220.7_入門コース配信_rev2_Opus5.5.md（2026-09-26 の裁定: 版 v220.7・開発用バッジを外す・読み上げは今の作り・検討書 B7 は第1場面だけ帯を留めない・帯の終了が隠れるのは受け入れ）。
+       変更: harness/apply_quickstart_v2.py（src は work/tutorial_qs/src_v2）→ apply_ui_release.py（版数・CHANGELOG・バッジ・sw.js）。G・G_B・T1 の区画は v220.6 と byte 一致。
+       CACHE_NAME: goita-v220.6 → goita-v220.7. -->
   <!-- build: v220.6「UI の不具合の直し（再開・棋譜・調整の保存・吹き出しの幅・初回の既定 ほか 14 件。エンジンは無変更）」base=v220.5。
        計画: docs/PLAN_v220.6_UI不具合の直し_rev2_Opus5.5.md（F-1〜F-13）＋ F-14（2026-09-26 Sonar 裁定: 教材の途中の設定へで教材の一時設定を持ち帰らない。入門の試作の QS-3 の 1 と 3 と同じ）。出発点: docs/REVIEW_UIUX改善提案_v220.5_検討_2026-09-25.md。
        変更: UI 層（script ブロック 6）とマークアップ・CSS だけ（harness/apply_v220_6_fixes.py）→ apply_ui_release.py（版数・CHANGELOG・バッジ・sw.js）。G・G_B・T1 の区画は v220.5 と byte 一致。
@@ -1298,6 +1303,84 @@ body.tut #beliefbox,body.tut #readingbox,body.tut #review,body.tut #btn-summary,
 body.tut #analysis-sheet,body.tut #sheet-toggle,body.tut #sheet-scrim,body.tut #advice-pill{display:none!important}
 body.tut #main-screen{padding-bottom:36vh}   /* 盤面を上端までスクロールでき、下部の吹き出しと重ならないように */
     body.tut:not(.tut-jissen) #advicebox{display:none!important}
+/* ===== 短い入門コース（quickstart）・助言つきで1局練習（quickpractice） 計画: docs/PLAN_短い入門コース_rev4_Opus5.5.md ===== */
+/* 入口（ガイド枠の中の先頭・裁定 QS-2） */
+.qs-entry{margin:0 0 12px;padding:12px;border:1px solid var(--kin);border-radius:10px;background:var(--ink1)}
+.qs-entry h3{font-size:.9rem;color:var(--kin);margin:0 0 4px;letter-spacing:.06em}
+.qs-entry .qs-desc{font-size:.76rem;color:var(--gin);line-height:1.6;margin:0 0 8px}
+.qs-entry-btn{width:100%;min-height:44px;display:flex;flex-direction:column;align-items:center;gap:2px;padding:10px 14px!important;border-radius:10px!important}
+.qs-entry-btn .btn-main-txt{font-size:1rem;font-weight:700}
+.qs-entry-btn .btn-sub-txt{font-size:.68rem;opacity:.8}
+.qs-entry-done{padding:8px 12px}
+.qs-done-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.qs-done-label{font-size:.8rem;color:var(--kin);margin-right:auto}
+.qs-done-row .btn{min-height:44px}
+.qs-sub{font-size:.82rem;color:var(--kin);margin:2px 0 6px;letter-spacing:.06em;font-weight:700}
+.qs-sub:focus{outline:none}
+.qs-sub:focus-visible{outline:2px solid var(--kin);outline-offset:2px}
+/* 入門中の上部の帯と案内（通常のフロー） */
+#quickstart-bar{display:flex;align-items:center;flex-wrap:wrap;gap:8px}
+#quickstart-bar[hidden],#quickstart-instruction[hidden]{display:none!important}
+#quickstart-bar .qsb-title{flex:1 1 auto;min-width:0;font-size:.9rem;color:var(--kinari);letter-spacing:.04em}
+#quickstart-bar .qsb-step{color:var(--kin)}
+#quickstart-bar .btn{min-height:44px}
+#quickstart-instruction{padding:12px 14px}
+#quickstart-instruction h2{font-size:.95rem;color:var(--kin);margin:0 0 6px;letter-spacing:.04em}
+#quickstart-instruction p{margin:0 0 6px}
+#quickstart-instruction p:empty{display:none}
+.qsi-note{font-size:.78rem;color:var(--gin);line-height:1.6}
+.qsi-prev{font-size:.84rem;color:var(--aoi);line-height:1.6}
+.qsi-body{font-size:.92rem;line-height:1.7;color:var(--kinari)}
+.qsi-extra{font-size:.8rem;color:var(--gin);line-height:1.6}
+.qsi-notice{font-size:.84rem;color:var(--shu);line-height:1.6}
+.qsi-btns{display:flex;flex-wrap:wrap;gap:8px}
+.qsi-btns:empty{display:none}
+.qsi-btns .btn{min-height:44px}
+.qsi-btns .qsi-link{text-decoration:underline}
+/* 入門の本編で隠すもの（クリックは capture 段でも止める） */
+body.tut-quickstart #topbar,body.tut-quickstart #log-wrap,body.tut-quickstart #legend-wrap,body.tut-quickstart #count-hold,
+body.tut-quickstart #turn-focus,body.tut-quickstart #mode-banner,body.tut-quickstart #watch-info,body.tut-quickstart #rh-legend,
+body.tut-quickstart #tut-overlay{display:none!important}
+body.tut-quickstart #main-screen{padding-bottom:16px}
+body.tut-quickstart #hand{row-gap:22px;padding-bottom:20px}
+body.tut-quickstart #actionbar .btn{min-height:44px;min-width:44px}
+/* 練習の間は ⋯ を隠す（X-11） */
+body.tut-quickpractice #btn-more,body.tut-quickpractice #topbar-more{display:none!important}
+/* 強調: 枠と短い文字（色だけで伝えない） */
+#hand .koma-slot.qs-target{outline:3px solid var(--kin);outline-offset:3px;border-radius:6px}
+.qs-tlabel{position:absolute;left:50%;top:100%;transform:translateX(-50%);margin-top:4px;font-size:.66rem;font-weight:700;line-height:1.2;
+  white-space:nowrap;padding:1px 6px;border-radius:6px;background:var(--kin);color:var(--ink0);pointer-events:none;z-index:3}
+.fkoma-pos.qs-atk{outline:2px solid var(--shu);outline-offset:2px;border-radius:4px}
+.qs-atk-label{position:absolute;left:50%;bottom:100%;transform:translateX(-50%);margin-bottom:3px;font-size:.58rem;font-weight:700;line-height:1.2;
+  white-space:nowrap;padding:0 4px;border-radius:5px;background:var(--shu);color:#fff;pointer-events:none;z-index:4}
+@media (forced-colors:active){.qs-tlabel,.qs-atk-label{border:1px solid CanvasText}}
+/* 上部の帯（短い入門・この場面をやり直す・終了）は、どの向きでも上に留める（設計書 §5「常に見つけられる位置」・第二読者 S-6）。
+   入門の間は #topbar を隠すので top:0。送りの計算（qsScrollIntoPlace）は帯の高さを見えない扱いにする */
+body.tut-quickstart #quickstart-bar{position:sticky;top:0;z-index:20;background:var(--ink0);padding:4px 0;margin-bottom:4px;border-bottom:1px solid var(--hair2)}
+/* 狭い幅では、題を 1 行目、ボタン 2 つを 2 行目に並べて、帯を低く保つ */
+@media (max-width:419px){
+  body.tut-quickstart #quickstart-bar .qsb-title{flex:1 0 100%;font-size:.84rem}
+  body.tut-quickstart #quickstart-bar .btn{flex:1 1 auto}
+}
+/* 帯が画面の高さの 20% を超えるとき（文字を大きくした小さな画面）は、題の行を隠す（qsFitBar・裁定 ③・N-19） */
+#quickstart-bar.qsb-compact .qsb-title{display:none}
+/* v220.7（検討書 B7）: 相方の名札と押す駒が、上に留まる帯の下に入りきらない段（第1場面）だけ、帯を留めない（qsScrollIntoPlace が付け外しする） */
+body.tut-quickstart #quickstart-bar.qsb-unstick{position:static}
+/* 横画面では、入門の間は手駒を下に留めない（案内の本文が手駒の下に隠れないように） */
+@media (orientation:landscape) and (max-height:600px){
+  body.tut-quickstart #quickstart-bar{padding:2px 0}
+  body.tut-quickstart #handarea{position:static}
+}
+/* 狭い画面（幅 619px 以下）の空の #actionbar は sticky で不透明。入門の本編では空なら出さない（押す駒が帯の下に隠れる・第二読者 M-2）。
+   Q3 の「なし」は帯に出るので、そのときは今のまま */
+body.tut-quickstart #actionbar:empty{display:none}
+/* 自動スクロールで押す駒を下端に寄せたとき、駒の下の短い文字まで見えるように余白を取る（第二読者 M-2） */
+body.tut-quickstart #hand .koma{scroll-margin-bottom:32px}
+/* Q3（なし）: 受けられない手駒は既存どおり沈めるが、入門では押せるようにして「この練習では「なし」を押してみましょう」を出す（X-14・第二読者 N-12）。
+   駒には押したときの処理（照合で落ちて説明だけ出す）しか付けないので、状態は変わらない */
+body.tut-quickstart #hand.norecv .koma{pointer-events:auto;cursor:default}
+/* Q3 で押せるようにした沈めた手駒は、押しても説明が出るだけなので、持ち上がる動き（既存の :hover・:active）を付けない（第二読者 N-16） */
+body.tut-quickstart #hand.norecv .koma:hover,body.tut-quickstart #hand.norecv .koma:active{transform:none}
 /* モーダル: フォーカス時の可視化 */
 #ov-modal .modal:focus{outline:none}
 #ov-modal .modal :focus-visible{outline:2px solid var(--kin);outline-offset:2px}
@@ -1862,7 +1945,7 @@ body.noto #wincut.show .wc-label{animation:wcFude .62s cubic-bezier(.2,.9,.3,1.2
 <div id="setup-screen">
   <!-- build v208: 版数表示は APP_CHANGELOG[0] から起動時に上書きされる(JS が動かない場合の保険としてここにも同じ版数を書いておく)。 -->
   <button type="button" class="setup-version" id="btn-version"
-          aria-label="バージョン v220.6 — 更新内容を見る" title="更新内容を見る"><span id="btn-version-num">v220.6</span><span class="sv-i" aria-hidden="true">ⓘ</span></button>
+          aria-label="バージョン v220.7 — 更新内容を見る" title="更新内容を見る"><span id="btn-version-num">v220.7</span><span class="sv-i" aria-hidden="true">ⓘ</span></button>
   <div class="title-block">
     <h1 class="serif">ごいた</h1>
     <div class="title-sub">能登・宇出津に伝わる竹駒の伝承遊戯</div>
@@ -1914,6 +1997,8 @@ body.noto #wincut.show .wc-label{animation:wcFude .62s cubic-bezier(.2,.9,.3,1.2
       <span class="tut-toggle" aria-hidden="true"></span>
     </summary>
     <div class="tutorial-body">
+      <div id="quickstart-panel" class="qs-entry"></div>
+      <h3 class="qs-sub serif" id="qs-guide-sub" tabindex="-1">詳しく学ぶ・全11巻</h3>
       <p class="tutorial-desc" id="tut-desc">盤面の情報量をしぼり、一歩ずつ操作しながら基本を学べる体験型ガイドです。ルールを知らなくても大丈夫。</p>
       <div class="tutorial-actions" id="tut-actions"></div>
     </div>
@@ -2103,6 +2188,7 @@ body.noto #wincut.show .wc-label{animation:wcFude .62s cubic-bezier(.2,.9,.3,1.2
     <button class="btn small ghost" id="btn-back">設定へ</button>
   </div>
 
+  <div id="quickstart-bar" hidden role="region" aria-label="短い入門"><span class="qsb-title">短い入門　<span class="qsb-step" id="qsb-step"></span></span><button type="button" class="btn small" id="qsb-retry">この場面をやり直す</button><button type="button" class="btn small primary" id="qsb-exit">終了</button></div>
   <div id="equity-bar" role="img" aria-label="形勢バー（この局のあなた組の勝率・自視点推定）"></div>
 
   <div class="sr-only" id="statusline" role="status" aria-live="polite"><span id="status-text">準備中…</span></div>
@@ -2149,6 +2235,16 @@ body.noto #wincut.show .wc-label{animation:wcFude .62s cubic-bezier(.2,.9,.3,1.2
   </div>
 
   <div id="watch-info" hidden></div>
+  <section id="quickstart-instruction" class="panel" hidden aria-labelledby="qsi-head">
+    <h2 id="qsi-head" class="serif"></h2>
+    <p id="qsi-note" class="qsi-note"></p>
+    <p id="qsi-prev" class="qsi-prev"></p>
+    <p id="qsi-body" class="qsi-body"></p>
+    <p id="qsi-extra" class="qsi-extra"></p>
+    <p id="qsi-notice" class="qsi-notice"></p>
+    <p id="qsi-storage" class="qsi-note" hidden></p>
+    <div id="qsi-btns" class="qsi-btns"></div>
+  </section>
   <div class="panel" id="handarea">
     <div class="hd"><span>あなたの手駒</span><span id="hand-hint"></span><span id="count-bar" style="margin-left:auto;color:var(--gin-d);font-variant-numeric:tabular-nums"></span><button type="button" id="count-hold" class="btn small" hidden aria-label="駒数（押している間だけ盤に表示）">駒数</button></div>
     <div id="hand"></div>
@@ -22520,7 +22616,7 @@ if (typeof document !== "undefined") (() => {
     const st = displayState();
     app._riverSeq = (app.cfg.riverseq && st && st.history) ? computeRiverSeq(st) : null;
     app._watchReveal = !app.humanSeat && !!app.cfg.watchReveal;
-    const reveal = app.review ? true : (app.tutReveal ? true : ((st && st.phase === "over") || app._watchReveal));
+    const reveal = app.review ? true : (app.tutReveal ? true : ((st && st.phase === "over" && !qsNoReveal()) || app._watchReveal));   // 短い入門: 終局でも他の席を公開しない
     // D1: 終局で伏せ駒を初めて公開する描画のみフリップ(局ごと1回・振り返りは対象外)
     app._flipReveal = (!app.review && st && st.phase === "over" && app._revealedGame !== app.gameNo);
     if (app._flipReveal) app._revealedGame = app.gameNo;
@@ -22540,6 +22636,7 @@ if (typeof document !== "undefined") (() => {
     _flipPlay();
     app._flashKey = null;   // D5: 王受けフラッシュは1描画で消費
     updateTurnToken();   // v90: 番札の位置更新(renderAll末尾のみから呼ぶ)
+    qsAfterRender();   // 短い入門: 相手の攻め駒の枠と短い文字（入門の外ではすぐ戻る）
     syncKifuBtn();   // v220.6 F-2: 教材・入門・練習・再開・終局・振り返りのどの場面でも棋譜ボタンの状態を追いつかせる
     recordPerf("render", perfNow() - _renderT0);
   }
@@ -23917,6 +24014,7 @@ if (typeof document !== "undefined") (() => {
   }
 
   function humanTurn() {
+    if (app.tutorial && app.tutorial.key === "quickstart") return;   // 短い入門: 入門の本編の描画は入門の側で行う（自動パス・AI の進行を起こさない）
     const st = app.st, me = app.humanSeat;
     app.turnT0 = performance.now();   // 思考時間の計測開始
     setMyTurn(true);
@@ -23985,6 +24083,11 @@ if (typeof document !== "undefined") (() => {
     }
   }
   function onHandTap(k) {
+    if (app.tutorial && app.tutorial.key === "quickstart") {   // 短い入門: 状態を変える前に、入門の照合へ回す
+      const _qp = app.st && app.st.phase;
+      quickStartTryAction({type: _qp === "bury" ? "bury" : _qp === "attack" ? "attack" : _qp === "respond" ? "receive" : "none", koma: k});
+      return;
+    }
     const st = app.st;
     // 手番外/終局後/残存駒の再タップを無視。renderAllは手駒欄を再描画しないため打った駒が次の自手番まで
     // 対話可能に残る。ガード無しだと相手手番中の再タップが applyAndLog で現手番(AI)の手として適用され破綻する。
@@ -24076,6 +24179,7 @@ if (typeof document !== "undefined") (() => {
   }
 
   function startGame() {
+    if (app.tutorial && qsIsKey(app.tutorial.key)) return;   // 短い入門: 入門・練習の間は通常の局を始めない（練習でない局が成績に入るのを防ぐ・第二読者 M-1）
     restoreSeatSwap();   // 安全網: 席交換の練習を抜けずに次局へ来ても元の席・ティアに戻す(通常は endPractice で復元済み)
     // Fix(v87.1): キリコ持続演出(hold)中は次の局へ遷移できない(演出が新しい盤面へ残留し見づらくなるため)。
     //   完了ボタン(wc-done)で演出を閉じてから進む。.out(解放フェード中)は残留扱いにしない。
@@ -27216,8 +27320,9 @@ if (typeof document !== "undefined") (() => {
     startGame();
   }
   function stopToSetup() {
-    // v220.6 F-14(D-1・QS-3 ①と同じ): 教材の途中なら、先に正規の退出で退避を戻す（教材の一時設定を持ち帰らない）
-    if (app.tutorial || _tutBackup) { exitTutorial(true); updateTutorialPanel(); }
+    // 短い入門 計画 QS-3 ①（v220.6 F-14 の D-1 と同じ働き・入門の分を足した）: 教材の途中なら、先に正規の退出で退避を戻す（D-1・D-1b）
+    if ((_tutBackup && _tutBackup.kind === "qs") || (app.tutorial && qsIsKey(app.tutorial.key))) { exitQuickStart({silent: true}); updateTutorialPanel(); }
+    else if (app.tutorial || _tutBackup) { exitTutorial(true); updateTutorialPanel(); }
     restoreSeatSwap();
     app.stopped = true;
     wakeLockRelease();   // A-2(v89b)
@@ -27775,11 +27880,24 @@ if (typeof document !== "undefined") (() => {
       ],
     },
   };
-  function tutLoad() { try { return JSON.parse(DATA_STORAGE.getItem("goita_tutorial_progress")) || {cleared: []}; } catch (e) { return {cleared: []}; } }
+  // 短い入門（計画 §5-9・§8）: TUT に足すが、TUT_ORDER には足さない
+  TUT.quickstart = {title: "短い入門"};
+  TUT.quickpractice = {title: "助言つきで1局練習", reveal: false, free: true, deal: TUT_DEAL5, parent: "E",
+    tiers: {N: "naive", W: "naive", E: "naive"},
+    intro: "初心者AIと1局練習します。操作の案内と、おすすめの駒を表示します。この練習は成績集計に入りません。"};
+  // 短い入門 X-4: 保存値が壊れていても・型が違っても、cleared が配列の素のオブジェクトを返す（未知のフィールドは残す）
+  function tutLoad() {
+    let p = null;
+    try { p = JSON.parse(DATA_STORAGE.getItem("goita_tutorial_progress")); } catch (e) { p = null; }
+    if (!p || typeof p !== "object" || Array.isArray(p)) p = {};
+    if (!Array.isArray(p.cleared)) p.cleared = [];
+    return p;
+  }
   function tutSave(p) { DATA_STORAGE.setItem("goita_tutorial_progress", JSON.stringify(p)); }
   function tutPct(p) { return Math.round((p.cleared || []).filter(k => TUT_ORDER.includes(k)).length / TUT_ORDER.length * 100); }
   function tutNextKey(p) { return TUT_ORDER.find(k => !(p.cleared || []).includes(k)) || null; }
   function updateTutorialPanel() {
+    renderQuickStartEntry();   // 短い入門: ガイド枠の中の入口（11 巻の百分率は使わない）
     const acts = $("tut-actions"); if (!acts) return;
     const p = tutLoad(), wrap = $("tut-progress-wrap"), desc = $("tut-desc");
     const cleared = (p.cleared || []).filter(k => TUT_ORDER.includes(k));
@@ -27797,14 +27915,14 @@ if (typeof document !== "undefined") (() => {
       b.onclick = () => startTutorial(nk); acts.appendChild(b);
       if (!first) {
         const row = document.createElement("div"); row.className = "tutorial-actions-row";
-        const r = document.createElement("button"); r.className = "btn ghost small"; r.textContent = "最初からやり直す";
-        r.onclick = () => { tutSave({cleared: []}); updateTutorialPanel(); }; row.appendChild(r); acts.appendChild(row);
+        const r = document.createElement("button"); r.className = "btn ghost small"; r.textContent = "全11巻の進捗をリセット";
+        r.onclick = () => { setLegacyTutorialCleared([]); updateTutorialPanel(); }; row.appendChild(r); acts.appendChild(row);
       }
     } else {
       desc.textContent = "免許皆伝。基本はすべて修了しました。実戦で腕を磨きましょう。宇出津の大会は誰でも参加できます。";
       const b = document.createElement("button"); b.className = "btn primary tutorial-btn";
       b.innerHTML = `<span class="btn-main-txt serif">もう一度学ぶ</span><span class="btn-sub-txt">最初の巻から復習する</span>`;
-      b.onclick = () => { tutSave({cleared: []}); startTutorial(TUT_ORDER[0]); }; acts.appendChild(b);
+      b.onclick = () => { setLegacyTutorialCleared([]); startTutorial(TUT_ORDER[0]); }; acts.appendChild(b);
       // M2(v69): 免許皆伝→実際の大会への橋渡し
       const uRow = document.createElement("div"); uRow.className = "tutorial-actions-row";
       const uBtn = document.createElement("button"); uBtn.className = "btn ghost small";
@@ -27833,22 +27951,801 @@ if (typeof document !== "undefined") (() => {
     const m = modal(`<h2 class="serif">巻を選ぶ</h2>
       <p class="note">好きな巻から始められます。修了済みの巻を選んで復習しても、進捗は消えません。</p>
       <div class="tut-map-list">${rows}</div>
-      <div class="row"><button class="btn" id="tm-reset">最初からやり直す（全消去）</button><button class="btn primary" id="tm-close">閉じる</button></div>`);
+      <div class="row"><button class="btn" id="tm-reset">全11巻の進捗をリセット</button><button class="btn primary" id="tm-close">閉じる</button></div>`);
     const list = m.querySelector(".tut-map-list");
     if (list) list.addEventListener("click", (ev) => {
       const b = ev.target.closest("button[data-tk]"); if (!b) return;
       closeModal(); startTutorial(b.dataset.tk);
     });
     const rb = m.querySelector("#tm-reset");
-    if (rb) rb.onclick = () => { tutSave({cleared: []}); closeModal(); updateTutorialPanel(); };
+    if (rb) rb.onclick = () => { setLegacyTutorialCleared([]); closeModal(); updateTutorialPanel(); };
     const cb = m.querySelector("#tm-close");
     if (cb) cb.onclick = closeModal;
   }
+  /* ================================================================
+   * 短い入門コース（quickstart）と、助言つきで1局練習（quickpractice）
+   * 計画: docs/PLAN_短い入門コース_rev4_Opus5.5.md（§14 が裁定）。設計: Claude実装設計_ごいた短い入門コース_v1.md。
+   * 教材局面は QS_FIXTURES（goita-quickstart-fixtures.json の正本を適用スクリプトがそのまま埋め込む）だけを使う。
+   * G／G_B／T1・AI の判断には触れない。UI から既存の関数（G.newGameState・G.advance・G.legal*・applyAndLog）を呼ぶだけ。
+   * 起動の途中で呼ばれうる入口（qsAfterRender・qsNoReveal・renderQuickStartEntry）は、先頭で app.tutorial だけを見て
+   * すぐ戻るので、下の var／const が未初期化のまま読まれることはない（関数宣言は巻き上げ）。
+   * ================================================================ */
+  const QS_FIXTURES = {"schemaVersion":1,"baseVersion":"v220.4","baseSha256":"aa98eeac7816b65f03b49bc9a6a1ba2294ecf5b75c84a33ca9dc40029e0bfe52","scenes":[{"id":"receive-attack","sourceDeal":"TUT_DEAL","parent":"E","hands":{"E":["角","香","銀","馬","金","飛","し","し"],"S":["角","飛","金","銀","馬","香","し","し"],"N":["王","金","銀","馬","香","し","し","し"],"W":["王","金","銀","馬","香","し","し","し"]},"preScript":[{"seat":"E","type":"bury","koma":"香"},{"seat":"E","type":"attack","koma":"角"},{"seat":"N","type":"pass"},{"seat":"W","type":"pass"}],"startExpected":{"actor":"S","phase":"respond","pendingAttack":"角","humanHandCount":8},"actions":[{"seat":"S","type":"receive","koma":"角","expected":{"actor":"S","phase":"attack","pendingAttack":null,"humanHandCount":7}},{"seat":"S","type":"attack","koma":"金","expected":{"actor":"E","phase":"respond","pendingAttack":"金","humanHandCount":6}}]},{"id":"pass","sourceDeal":"TUT_DEAL4","parent":"E","hands":{"S":["金","馬","香","香","し","し","銀","銀"],"E":["王","飛","金","馬","し","し","し","し"],"N":["王","飛","金","馬","香","し","し","し"],"W":["角","角","金","銀","銀","馬","香","し"]},"preScript":[{"seat":"E","type":"bury","koma":"し"},{"seat":"E","type":"attack","koma":"飛"},{"seat":"N","type":"pass"},{"seat":"W","type":"pass"}],"startExpected":{"actor":"S","phase":"respond","pendingAttack":"飛","humanHandCount":8,"legalReceives":[]},"actions":[{"seat":"S","type":"pass","expected":{"actor":"E","phase":"bury","pendingAttack":null,"humanHandCount":8}}]},{"id":"bury-finish","sourceDeal":"TUT_DEAL4","parent":"S","hands":{"S":["金","馬","香","香","し","し","銀","銀"],"E":["王","飛","金","馬","し","し","し","し"],"N":["王","飛","金","馬","香","し","し","し"],"W":["角","角","金","銀","銀","馬","香","し"]},"preScript":[{"seat":"S","type":"bury","koma":"し"},{"seat":"S","type":"attack","koma":"香"},{"seat":"E","type":"pass"},{"seat":"N","type":"pass"},{"seat":"W","type":"pass"},{"seat":"S","type":"bury","koma":"し"},{"seat":"S","type":"attack","koma":"香"},{"seat":"E","type":"pass"},{"seat":"N","type":"pass"},{"seat":"W","type":"pass"},{"seat":"S","type":"bury","koma":"銀"},{"seat":"S","type":"attack","koma":"銀"},{"seat":"E","type":"pass"},{"seat":"N","type":"pass"},{"seat":"W","type":"pass"}],"startExpected":{"actor":"S","phase":"bury","pendingAttack":null,"humanHandCount":2,"humanHand":["金","馬"]},"actions":[{"seat":"S","type":"bury","koma":"馬","expected":{"actor":"S","phase":"attack","pendingAttack":null,"humanHandCount":1}},{"seat":"S","type":"attack","koma":"金","expected":{"actor":"S","phase":"over","humanHandCount":0,"gameOver":{"winner":"S","pts":30,"dbl":false,"koma":"金"}}}]}]};
+  const APP_DEV_LABEL = "";
+  const QS_SCENE_ORDER = ["receive-attack", "pass", "bury-finish"];
+  const QS_FIRST_STEP = {"receive-attack": "Q1", "pass": "Q3", "bury-finish": "Q4"};
+  // 着手の段: 期待手と、着手の後に期待する状態は QS_FIXTURES の actions[act] から取る（文章から再入力しない）
+  const QS_STEPS = {
+    Q1: {scene: "receive-attack", act: 0, next: "Q2"},
+    Q2: {scene: "receive-attack", act: 1, next: "R1"},
+    Q3: {scene: "pass", act: 0, next: "R2"},
+    Q4: {scene: "bury-finish", act: 0, next: "Q5"},
+    Q5: {scene: "bury-finish", act: 1, next: "DONE"},
+  };
+  // 文言は設計書 §6 の表が正本（字面のまま）
+  const QS_TEXT = {
+    Q1: {head: "1/3 受けて攻める", notes: ["手前があなた、向かいが相方。左右は相手です。", "この入門は1タップで操作"],
+      body: "相手が「角」で攻め、ほかの2人は「なし」で通しました。同じ「角」を押して受けましょう。"},
+    Q2: {head: "1/3 受けて攻める", prev: "角で受けました。", body: "受けると、続けて自分が攻めます。この練習では「金」を押して出しましょう。"},
+    R1: {head: "1/3 受けて攻める", body: "受けて、攻めることができました。手駒が8枚から6枚になりました。"},
+    Q3: {head: "2/3 なしで通す", notes: ["別の練習場面へ移りました。"], body: "相手の「飛」を受けられる駒がありません。「なし」を押しましょう。"},
+    R2: {head: "2/3 なしで通す", body: "「なし」で通しました。誰も受けなかったので、攻めた相手がもう一度、伏せてから攻めます。",
+      extra: "受けられる駒があっても「なし」を選べます。"},
+    Q4: {head: "3/3 伏せて上がる", notes: ["終盤の練習場面へ移りました。残り2枚です。"],
+      body: "あなたの「銀」を誰も受けず、手番が戻りました。まず「馬」を押して、裏向きに伏せましょう。"},
+    Q5: {head: "3/3 伏せて上がる", prev: "馬を裏向きに伏せました。", body: "残った「金」を押して攻めましょう。手駒を使い切れば上がりです。"},
+    DONE: {head: "入門修了", body: "金で上がり、あなたのチームに30点入りました。受け・攻め・なし・伏せを体験できました。",
+      extra: "通常の対局は、先に150点に届いたチームの勝ちです。親は最初に、伏せてから攻めます。",
+      more: "王や特別ルールは、詳しいガイドで学べます。"},
+  };
+  const QS_STORAGE_NOTE = "この端末では進捗を保存できません。このまま体験できます";
+  const QS_TAP_NOTE = "この入門は1タップで操作";   // 設計書 §5「入門開始時の案内の補足」: 入口から入った最初の段に出す（第2・第3場面から再開したときも・第二読者 N-3）
+  const QS_PHASE_OF = {bury: "bury", attack: "attack", receive: "respond", pass: "respond"};
+  const QS_SEAT_STEPS = {Q1: "card-n"};   // v220.7（B7）: 案内が相方（向かいの席）に触れる段と、見せる名札
+  const QS_BAR_MAX_RATIO = 0.2;   // 上部の帯が画面の高さのこの割合を超えるときは、題の行を隠す（裁定 2026-09-24 ③・第二読者 N-19）
+  const QS_VERB = {bury: "伏せる", attack: "攻める", receive: "受ける"};
+  var _qsSeq = 0;                 // セッションの連番
+  var _qsTimers = new Set();      // qsLater で登録したタイマー
+  var _qsMem = null;              // 保存できないときの、メモリ上の quickStart の写し
+  var _qsSaveFailed = 0;          // 保存に失敗した回数
+  var _qsStorageNoticeShown = false;
+  var _qsPendingStorageNotice = false;
+  var _qsStorageAnnounced = false;
+  var _qsBarWired = false;
+  var _qsLastDown = null;         // 入門の間の直前の pointerdown {t, id}
+  var _qsSpaceDownTarget = null;  // Space を押した要素（X-7 ②）
+  var _qsListening = false;
+  var _qsDiag = {aborts: 0, fixtureFails: 0, notices: 0, blockedClicks: 0, blockedRepeats: 0, blockedEarly: 0};
+
+  /* ---------------- 読み上げ（Sonar の実機の報告「読み上げが行われない」2026-09-24 への対応） ----------------
+   * 原因（Chromium のアクセシビリティツリーで確かめた）: 既存の #sr-live は #main-screen の中にあり、開始画面の間は描画されない（notRendered）。
+   * 入門・練習の開始と同じ瞬間に #main-screen を出して #sr-live に書くため、読み上げソフトには「今できた live 領域」になり、最初の案内が読まれない。
+   * さらに、同じ瞬間にフォーカスを押す駒へ移すので、フォーカスの読み上げが live 領域の読み上げを打ち消しうる。
+   * 対応: 段の案内は、live 領域ではなく「フォーカスを移す先（押す駒・なし・主ボタン）の説明（aria-describedby）」で渡す（1 経路・X-5）。
+   *       フォーカスが動かない知らせ（選べない駒の説明・保存できない案内）は、読み込みのときから body の直下にある入門専用の live 領域 #qs-live に書く */
+  (function qsInitLive() {
+    if (typeof document === "undefined" || !document.body || typeof document.createElement !== "function") return;
+    try {
+      if (!document.getElementById("qs-live")) {
+        const lv = document.createElement("div"); lv.id = "qs-live"; lv.className = "sr-only";
+        lv.setAttribute("aria-live", "polite"); lv.setAttribute("aria-atomic", "true"); document.body.appendChild(lv);
+      }
+      if (!document.getElementById("qs-desc")) {
+        const d = document.createElement("div"); d.id = "qs-desc"; d.className = "sr-only"; d.hidden = true; document.body.appendChild(d);
+      }
+    } catch (e) {}
+  })();
+  function qsAnnounce(text) {
+    const el = $("qs-live"); if (!el || !text) return;
+    el.textContent = "";
+    const put = () => { el.textContent = text; };
+    if (typeof requestAnimationFrame === "function") requestAnimationFrame(put); else setTimeout(put, 0);
+  }
+  // 押す対象に、見えている案内の部品を説明として結ぶ（空・隠れている部品は外す）
+  function qsDescribe(target, ids) {
+    if (!target || typeof target.setAttribute !== "function") return;
+    const use = ids.filter(id => { const e = $(id); return e && !e.hidden && (e.textContent || "").trim() !== ""; });
+    if (use.length) target.setAttribute("aria-describedby", use.join(" ")); else target.removeAttribute("aria-describedby");
+  }
+  function qsIsKey(k) { return k === "quickstart" || k === "quickpractice"; }
+  function qsMain() { return !!(app.tutorial && app.tutorial.key === "quickstart"); }
+  function qsNoReveal() { return !!(app.tutorial && app.tutorial.key === "quickstart"); }
+  function qsScene(id) { return QS_FIXTURES.scenes.find(s => s.id === id) || null; }
+  function qsSceneIndex(id) { return QS_SCENE_ORDER.indexOf(id); }
+  function qsNotes(t, id) {
+    const notes = ((QS_TEXT[id] || {}).notes || []).slice();
+    if (t && id === t.entryStep && notes.indexOf(QS_TAP_NOTE) < 0) notes.push(QS_TAP_NOTE);
+    return notes;
+  }
+
+  /* ---------------- 進捗（キーは goita_tutorial_progress だけ・§5-8） ---------------- */
+  function qsNormalize(q) {
+    const def = {schemaVersion: 1, checkpoint: null, completed: false, practiceCompleted: false};
+    if (!q || typeof q !== "object" || Array.isArray(q)) return def;
+    const out = Object.assign({}, q);
+    out.schemaVersion = (typeof q.schemaVersion === "number" && q.schemaVersion > 1) ? q.schemaVersion : 1;   // 将来の版の値は下げない（第二読者 N-6）
+    out.completed = q.completed === true;
+    out.practiceCompleted = q.practiceCompleted === true;
+    const cp = q.checkpoint;
+    out.checkpoint = (cp === null || cp === undefined) ? null : (QS_SCENE_ORDER.indexOf(cp) >= 0 ? cp : "receive-attack");
+    if (out.completed) out.checkpoint = null;
+    return out;
+  }
+  function qsMerge(stored, mem) {
+    if (!mem) return stored;
+    const out = Object.assign({}, stored, mem);
+    out.completed = !!(stored.completed || mem.completed);
+    out.practiceCompleted = !!(stored.practiceCompleted || mem.practiceCompleted);
+    if (out.completed) out.checkpoint = null;
+    return out;
+  }
+  function qsProgress() {
+    const stored = qsNormalize(tutLoad().quickStart);
+    return _qsSaveFailed ? qsMerge(stored, _qsMem) : stored;
+  }
+  function qsWriteProgress(p) {
+    const ok = DATA_STORAGE.setItem("goita_tutorial_progress", JSON.stringify(p));
+    if (!ok) { _qsSaveFailed++; qsStorageNotice(); }
+    return ok;
+  }
+  // 既存 11 巻の cleared だけを書く（quickStart と未知のフィールドは残す・H7）
+  function setLegacyTutorialCleared(cleared) {
+    const p = tutLoad();
+    p.cleared = Array.isArray(cleared) ? cleared.slice() : [];
+    return DATA_STORAGE.setItem("goita_tutorial_progress", JSON.stringify(p));   // 失敗しても入門の案内は出さない（既存の tutSave と同じ・第二読者 N-7）
+  }
+  // quickStart だけを書く。completed と practiceCompleted は一度 true になったら戻さない
+  function patchQuickStartProgress(patch) {
+    const p = tutLoad();
+    const cur = qsMerge(qsNormalize(p.quickStart), _qsSaveFailed ? _qsMem : null);
+    const next = qsNormalize(Object.assign({}, cur, patch));
+    next.completed = !!(cur.completed || next.completed);
+    next.practiceCompleted = !!(cur.practiceCompleted || next.practiceCompleted);
+    if (next.completed) next.checkpoint = null;
+    p.quickStart = next;
+    _qsMem = Object.assign({}, next);
+    return qsWriteProgress(p);
+  }
+  function qsStorageNotice() {
+    if (_qsStorageNoticeShown) return;
+    _qsStorageNoticeShown = true;
+    if (qsMain()) { _qsPendingStorageNotice = true; qsShowStorageNotice(); }
+    else { try { toast(QS_STORAGE_NOTE); } catch (e) {} qsAnnounce(QS_STORAGE_NOTE); }
+  }
+  function qsShowStorageNotice() {
+    const el = $("qsi-storage"); if (!el) return;
+    el.hidden = false; el.textContent = QS_STORAGE_NOTE;
+  }
+
+  /* ---------------- 入口（ガイド枠の中・裁定 QS-2／§14-1） ---------------- */
+  function renderQuickStartEntry() {
+    const host = $("quickstart-panel"); if (!host) return;
+    const q = qsProgress();
+    host.innerHTML = "";
+    if (q.completed) {
+      host.className = "qs-entry qs-entry-done";
+      host.innerHTML = `<div class="qs-done-row"><span class="qs-done-label">入門修了</span>` +
+        `<button type="button" class="btn primary" id="qs-entry-main">助言つきで1局練習</button>` +
+        `<button type="button" class="btn ghost" id="qs-entry-again">入門をもう一度</button></div>`;
+      host.querySelector("#qs-entry-main").onclick = () => startQuickPractice();
+      host.querySelector("#qs-entry-again").onclick = () => startQuickStart({restart: true});
+      return;
+    }
+    host.className = "qs-entry";
+    const resume = !!q.checkpoint;
+    const n = resume ? qsSceneIndex(q.checkpoint) + 1 : 0;
+    host.innerHTML = `<h3 class="serif">ごいたが初めての方へ</h3><p class="qs-desc">5つの操作で、受け・攻め・上がりを体験。</p>` +
+      `<button type="button" class="btn primary qs-entry-btn" id="qs-entry-main">` +
+      `<span class="btn-main-txt serif">${resume ? "入門のつづきへ" : "短い入門をはじめる"}</span>` +
+      `<span class="btn-sub-txt">${resume ? `第${n}場面のはじめから再開` : "5つの操作で体験"}</span></button>`;
+    host.querySelector("#qs-entry-main").onclick = () => startQuickStart({});
+  }
+
+  /* ---------------- 開始・退避・一時設定（§5-2・§5-6・§5-7） ---------------- */
+  function qsCanStart(fromCourse) {
+    const setup = $("setup-screen"), ms = $("main-screen");
+    // 開始画面からだけ起動する。入門の DONE と練習の終わりからの「練習」だけは、直前に正規の退出を済ませてから入る
+    if (!fromCourse && (!setup || setup.style.display === "none" || (ms && ms.classList.contains("show")))) return false;
+    if (app.drill || app.review || (app.research && app.research.active)) return false;
+    return true;
+  }
+  function qsCleanupLeftovers() {
+    if ((_tutBackup && _tutBackup.kind === "qs") || (app.tutorial && qsIsKey(app.tutorial.key))) exitQuickStart({silent: true});
+    else if (app.tutorial || _tutBackup) exitTutorial(true);
+  }
+  function qsTempCfg(key) {
+    const c = app.cfg, practice = key === "quickpractice";
+    c.opMode = "tap"; c.autoPass = false; c.hints = true;
+    c.advice = practice; c.assistHi = practice;
+    c.reading = false; c.cand = false; c.counts = false; c.missGuard = false; c.readHint = false; c.sighonest = false;
+    c.livebar = false; c.passHist = false; c.countsHold = false; c.watchReveal = false; c.riverseq = false; c.autoWorstTour = false; c.explain = false;
+    c.sigEcho = false; c.belief = "off";
+  }
+  function qsEnter(key) {
+    _tutBackup = {kind: "qs", cfg: Object.assign({}, app.cfg), tiers: Object.assign({}, app.tiers), humanSeat: app.humanSeat,
+      qs: {st: app.st, rec: app.rec, lastRec: app.lastRec, scores: app.scores, parent: app.parent, gameNo: app.gameNo, matchNo: app.matchNo,
+        matchOver: app.matchOver, stopped: app.stopped, review: app.review, drill: app.drill, preDrill: app.preDrill, mixQueue: app._mixQueue,
+        tutReveal: app.tutReveal, lastWin: app.lastWin, scAtStart: app._scAtStart, armedKoma: app.armedKoma, research: app.research,
+        wasMyTurn: app._wasMyTurn, revealedGame: app._revealedGame, tutorial: app.tutorial},
+      logHTML: $("log") ? $("log").innerHTML : null,
+      overlayLive: $("tut-overlay") ? $("tut-overlay").getAttribute("aria-live") : null};
+    app.cfg = Object.assign({}, app.cfg);
+    qsTempCfg(key);
+    app.humanSeat = "S";
+    app.tiers = {S: "human", N: "naive", W: "naive", E: "naive"};
+    app.drill = null; app.preDrill = null; app._mixQueue = null; app.review = null; app.tutReveal = false;
+    app.stopped = false; app.matchOver = false; app.armedKoma = null; app._scAtStart = null;
+    cancelAppTimer();
+    try { hideThinking(); } catch (e) {}
+    // 前の通常対局の表示を持ち込まない（第二読者 M-1・N-14）: 手番の帯のボタン（次の局へ・振り返り・なし など）・流局の印・上がりの演出・棋譜ログ
+    actionbar("");
+    if ($("stamp")) $("stamp").classList.remove("show");
+    if ($("wincut")) $("wincut").classList.remove("show", "out");
+    if ($("log")) $("log").innerHTML = "";
+    // 練習の吹き出しは読み上げない（結果は onGameOver の sr-alert、案内は announce の 1 経路にする・第二読者 S-3）
+    if (key === "quickpractice" && $("tut-overlay")) $("tut-overlay").setAttribute("aria-live", "off");
+    applyCfgSideEffects();
+    document.body.classList.add("tut", "tut-" + key);
+    $("setup-screen").style.display = "none"; $("main-screen").classList.add("show"); $("handarea").classList.add("show");
+    qsListen(true);
+  }
+  function startQuickStart(opts) {
+    opts = opts || {};
+    qsCleanupLeftovers();
+    if (!qsCanStart(false)) return;
+    qsWireBar();
+    const q = qsProgress();
+    const replay = q.completed;   // 修了した人の「入門をもう一度」: 保存は書かない（X-9）
+    const scene = (!opts.restart && !replay && q.checkpoint) ? q.checkpoint : QS_SCENE_ORDER[0];
+    qsEnter("quickstart");
+    app.tutorial = {key: "quickstart", sessionId: 0, sceneId: null, stepId: null, stage: "busy", awaiting: null,
+      blockStep: true, inputLocked: true, renderedAt: 0, replay, noticed: false, entryStep: QS_FIRST_STEP[scene]};
+    $("quickstart-bar").hidden = false; $("quickstart-instruction").hidden = false;
+    loadQuickStartScene(scene, {delay: 0});
+  }
+  function qsLegalMove(st, mv) {
+    if (!st || st.phase === "over" || st.actor !== mv.seat) return false;
+    if (st.phase !== QS_PHASE_OF[mv.type]) return false;
+    const hand = st.hands[mv.seat] || [];
+    if (mv.type !== "pass" && !hand.includes(mv.koma)) return false;
+    if (mv.type === "receive" && !G.legalReceives(hand, st.pendingAttack).includes(mv.koma)) return false;
+    if (mv.type === "attack" && !G.legalAttacks(hand, st.history, mv.seat).includes(mv.koma)) return false;
+    return true;
+  }
+  function qsSameGameOver(a, b) {
+    if (!a || !b) return false;
+    const ka = Object.keys(a).sort(), kb = Object.keys(b).sort();
+    return ka.join() === kb.join() && ka.every(k => a[k] === b[k]);
+  }
+  function qsCheckState(st, exp, go) {
+    if (!exp) return true;
+    for (const k of ["actor", "phase", "pendingAttack"]) if (Object.prototype.hasOwnProperty.call(exp, k) && st[k] !== exp[k]) return false;
+    if (st.hands.S.length !== exp.humanHandCount) return false;
+    if (exp.humanHand && JSON.stringify(st.hands.S) !== JSON.stringify(exp.humanHand)) return false;
+    if (exp.legalReceives && JSON.stringify(G.legalReceives(st.hands.S, st.pendingAttack)) !== JSON.stringify(exp.legalReceives)) return false;
+    if (exp.gameOver) return qsSameGameOver(go, exp.gameOver);
+    return go === undefined || go === null;
+  }
+  function loadQuickStartScene(sceneId, opts) {
+    const t = app.tutorial; if (!t || t.key !== "quickstart") return;
+    qsClearTimers();
+    const sc = qsScene(sceneId);
+    if (!sc) { qsAbort("場面が見つかりません: " + sceneId); return; }
+    const init = {N: sc.hands.N.slice(), W: sc.hands.W.slice(), S: sc.hands.S.slice(), E: sc.hands.E.slice()};
+    const st = G.newGameState({N: init.N.slice(), W: init.W.slice(), S: init.S.slice(), E: init.E.slice()}, sc.parent);
+    st.matchScores = {NS: 0, EW: 0};
+    st.matchTarget = app.cfg.target;
+    const rec = {gameNo: 1, parent: sc.parent, initialHands: init, scoresBefore: {NS: 0, EW: 0}, moves: [], practice: true};
+    // 準備手は記録専用の経路（X-1）: 適用の前に合法性を確かめ、記録の形は applyAndLog と同じ
+    for (const mv of sc.preScript) {
+      if (!qsLegalMove(st, mv)) { _qsDiag.fixtureFails++; qsAbort("準備手が合法でない: " + sceneId + " " + JSON.stringify(mv)); return; }
+      const ev = G.advance(st, {type: mv.type, koma: mv.koma || null});
+      if (ev && ev.gameOver) { _qsDiag.fixtureFails++; qsAbort("準備手で終局: " + sceneId); return; }
+      rec.moves.push({seat: mv.seat, action: {type: mv.type, koma: mv.koma || null}, src: "qs-script", why: null, thinkMs: 0, human: mv.seat === app.humanSeat});
+    }
+    if (!qsCheckState(st, sc.startExpected, undefined)) { _qsDiag.fixtureFails++; qsAbort("場面の初めの状態が違う: " + sceneId); return; }
+    app.st = st; app.rec = rec;
+    app.scores = {NS: 0, EW: 0}; app.parent = sc.parent; app.gameNo = 1; app.matchNo = 1; app.lastWin = null; app.matchOver = false;
+    app._dealAnimPending = false;
+    t.sceneId = sceneId;
+    t.sessionId = ++_qsSeq;
+    if (!t.replay) patchQuickStartProgress({checkpoint: sceneId});   // 場面の入口（§5-8）
+    qsGoStep(QS_FIRST_STEP[sceneId], opts && opts.delay != null ? opts.delay : 350);
+  }
+
+  /* ---------------- 段の描画・入力の有効化（§5-3〜§5-5） ---------------- */
+  function qsExpect(stepId) {
+    const s = QS_STEPS[stepId]; if (!s) return null;
+    const a = qsScene(s.scene).actions[s.act];
+    return {type: a.type, koma: a.koma || null, expected: a.expected};
+  }
+  function qsGoStep(stepId, delay) {
+    const t = app.tutorial; if (!t || t.key !== "quickstart") return;
+    qsClearTimers();
+    t.stepId = stepId;
+    t.stage = QS_STEPS[stepId] ? "await" : "result";
+    t.inputLocked = true;
+    t.noticed = false;
+    const ex = qsExpect(stepId);
+    t.awaiting = ex ? {type: ex.type, koma: ex.koma} : null;
+    renderAll();
+    qsRenderStep();
+    t.renderedAt = performance.now();
+    if (delay > 0) qsLater(qsEnableInput, delay); else qsEnableInput();
+  }
+  function qsRenderStep() {
+    const t = app.tutorial; if (!t || t.key !== "quickstart") return;
+    const id = t.stepId, tx = QS_TEXT[id] || {};
+    // 上部の帯
+    $("qsb-step").textContent = tx.head || "";
+    $("qsb-retry").hidden = id === "DONE" || id === "R1";   // R1 は案内の側に「この場面をやり直す」がある（重ねない・第二読者 N-9）
+    qsFitBar();
+    // 案内
+    $("qsi-head").textContent = tx.head || "";
+    $("qsi-note").textContent = qsNotes(t, id).join("　");
+    $("qsi-prev").textContent = tx.prev || "";
+    $("qsi-body").textContent = tx.body || "";
+    $("qsi-extra").textContent = [tx.extra || "", tx.more || ""].filter(Boolean).join("　");
+    $("qsi-notice").textContent = "";
+    const st = $("qsi-storage"); if (st) st.hidden = !_qsPendingStorageNotice;
+    const btns = $("qsi-btns"); btns.innerHTML = "";
+    const addBtn = (label, cls, fn, id2) => {
+      const b = document.createElement("button"); b.type = "button"; b.className = cls; b.textContent = label; if (id2) b.id = id2;
+      b.addEventListener("click", () => { const c = app.tutorial; if (!c || c.key !== "quickstart" || c.inputLocked || c.stepId !== id) return; c.inputLocked = true; fn(); });
+      btns.appendChild(b); return b;
+    };
+    $("hand").classList.remove("norecv");
+    if (QS_STEPS[id]) {
+      const ex = qsExpect(id);
+      setMyTurn(true);
+      $("hand-hint").textContent = "";
+      if (ex.type === "pass") {
+        renderHandTray(null);
+        $("hand").classList.add("norecv");
+        actionbar("", [{label: "なし", primary: true, fn: () => quickStartTryAction({type: "pass", koma: null})}]);
+      } else {
+        renderHandTray("pick", k => k === ex.koma);
+        actionbar("");
+        document.querySelectorAll("#hand .koma[role=button]").forEach(el => {
+          const slot = el.parentElement;
+          if (slot && slot.classList.contains("koma-slot")) {
+            slot.classList.add("qs-target");
+            const lb = document.createElement("span"); lb.className = "qs-tlabel"; lb.setAttribute("aria-hidden", "true"); lb.textContent = QS_VERB[ex.type];
+            slot.appendChild(lb);
+          }
+        });
+      }
+      // 選べない駒を押したときの説明（X-14）
+      document.querySelectorAll("#hand .koma:not([role=button])").forEach(el => {
+        const k = el.textContent;
+        el.addEventListener("click", () => quickStartTryAction({type: ex.type === "pass" ? "receive" : ex.type, koma: k}));
+      });
+    } else {
+      setMyTurn(false);
+      renderHandTray(null);
+      actionbar("");
+      if (id === "R1") {
+        addBtn("次の練習へ", "btn primary", () => qsNextScene("pass"), "qsi-primary");
+        addBtn("この場面をやり直す", "btn", () => qsRetry());
+      } else if (id === "R2") {
+        addBtn("最後の練習へ", "btn primary", () => qsNextScene("bury-finish"), "qsi-primary");
+      } else if (id === "DONE") {
+        addBtn("助言つきで1局練習", "btn primary", () => { exitQuickStart({silent: true}); startQuickPractice({fromCourse: true}); }, "qsi-primary");
+        addBtn("開始画面へ", "btn", () => exitQuickStart({}));
+        addBtn("ルールを詳しく学ぶ", "btn ghost qsi-link", () => exitQuickStart({openGuide: true}));
+      }
+    }
+    qsAfterRender();
+  }
+  // 盤の上の相手の攻め駒に、枠と短い文字（renderAll の末尾からも呼ばれる・H20b）
+  function qsAfterRender() {
+    if (!app.tutorial || app.tutorial.key !== "quickstart") return;
+    const t = app.tutorial;
+    document.querySelectorAll("#board .qs-atk").forEach(el => el.classList.remove("qs-atk"));
+    document.querySelectorAll("#board .qs-atk-label").forEach(el => el.remove());
+    if (t.stage !== "await" || !app.st || app.st.phase !== "respond") return;
+    const now = document.querySelector("#board .fkoma.now");
+    const pos = now && now.parentElement;
+    if (pos && pos.classList.contains("fkoma-pos")) {
+      pos.classList.add("qs-atk");
+      const lb = document.createElement("span"); lb.className = "qs-atk-label"; lb.setAttribute("aria-hidden", "true"); lb.textContent = "相手の攻め";
+      pos.appendChild(lb);
+    }
+  }
+  function qsEnableInput() {
+    const t = app.tutorial; if (!t || t.key !== "quickstart") return;
+    t.inputLocked = false;
+    app.turnT0 = performance.now();
+    let target = null;
+    if (QS_STEPS[t.stepId]) {
+      const ex = qsExpect(t.stepId);
+      target = ex.type === "pass" ? document.querySelector("#actionbar .btn")
+        : document.querySelector("#hand .koma[role=button]:not(.dis)");
+    } else target = $("qsi-primary");
+    // 案内は、フォーカスを移す先の説明として読ませる（上の「読み上げ」の注）。フォーカスの知らせの時点で説明があるよう、focus() の前に結ぶ（第二読者 rev6 の N-24）。
+    // 着手の段では、直前の結果（qsi-prev「角で受けました。」など）も結ぶ。実況（#sr-live）が次のフォーカスで切られても、結果が読まれるように（N-25）。
+    // 保存できない案内は、出ている最初の 1 回だけ結ぶ
+    const storageFirst = _qsPendingStorageNotice && !_qsStorageAnnounced;
+    if (storageFirst) _qsStorageAnnounced = true;
+    const parts = QS_STEPS[t.stepId] ? ["qsi-prev", "qsi-note", "qsi-body"] : ["qsi-body", "qsi-extra"];
+    qsDescribe(target, storageFirst ? ["qsi-storage", ...parts] : parts);
+    if (target) { try { target.focus({preventScroll: true}); } catch (e) { try { target.focus(); } catch (e2) {} } }
+    const reduce = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
+    // v220.7（検討書 B7・2026-09-26 裁定「第1場面だけ帯を留めない」）: 案内が相方の席に触れる段では、相方の名札も見せる
+    const keepEl = QS_SEAT_STEPS[t.stepId] ? $(QS_SEAT_STEPS[t.stepId]) : null;
+    try { qsScrollIntoPlace(target, reduce, keepEl); } catch (e) {}
+  }
+  // 入力を有効にしたときの送り（第二読者 M-2）: 押す対象（駒なら下の短い文字まで）を必ず画面に入れ、入る限り案内の上端も見せる。
+  // 2 回の scrollIntoView（案内・対象）は、なめらかな送りが後から先を打ち消し、始めの位置しだいで対象が画面の外に残るため、1 回の送りにまとめる。
+  // 上に留まる帯（#quickstart-bar）と、下に留まる帯（狭い画面の #actionbar。対象がその中に無いとき）の分は見えない扱いにする
+  // v220.7（B7）: keepEl（相方の名札）を渡された段では、押す対象・案内に加えて keepEl の上端も見せる。
+  //   上に留まる帯のままでは入りきらないときだけ、その段の間は帯を留めない（qsb-unstick）。帯を外しても入りきらないときは、今までどおり対象を優先し、帯は留めたままにする。
+  //   ほかの段に移ると、帯はいつも留めた状態に戻る。
+  // v220.7（B7）: 帯を留めるかどうかだけを決める（送りはしない）。qsScrollIntoPlace と、画面の幅が変わったとき（回転・第二読者 S-3）に使う
+  function qsSetUnstick(target, keepEl) {
+    const barEl = $("quickstart-bar");
+    if (barEl) barEl.classList.remove("qsb-unstick");
+    if (keepEl && target && barEl && !barEl.hidden) {
+      const fits = () => {
+        const vh0 = window.innerHeight || document.documentElement.clientHeight;
+        const sticky = getComputedStyle(barEl).position === "sticky";
+        const ti = sticky ? barEl.getBoundingClientRect().height : 0;
+        const r = target.getBoundingClientRect(); let bot = r.bottom;
+        const slot = target.closest ? target.closest(".koma-slot") : null, lb = slot && slot.querySelector(".qs-tlabel");
+        if (lb) bot = Math.max(bot, lb.getBoundingClientRect().bottom);
+        const k = keepEl.getBoundingClientRect();
+        return (bot + 8) - (k.top - 8 - ti) <= vh0;   // 名札の上端から対象の下端までが、帯を除いた高さに入るか
+      };
+      if (!fits()) {
+        barEl.classList.add("qsb-unstick");
+        if (!fits()) barEl.classList.remove("qsb-unstick");
+      }
+    }
+  }
+  function qsScrollIntoPlace(target, reduce, keepEl) {
+    if (typeof window === "undefined" || typeof window.scrollTo !== "function") return;
+    qsSetUnstick(target, keepEl);
+    const vh = window.innerHeight || document.documentElement.clientHeight;
+    const y0 = window.scrollY || window.pageYOffset || 0;
+    const ins = $("quickstart-instruction"), bar = $("quickstart-bar"), ab = $("actionbar");
+    const topInset = (bar && !bar.hidden && getComputedStyle(bar).position === "sticky") ? bar.getBoundingClientRect().height : 0;
+    let botInset = 0;
+    if (ab && target && !ab.contains(target)) { const cs = getComputedStyle(ab); if (cs.position === "sticky" && cs.display !== "none") botInset = ab.getBoundingClientRect().height; }
+    const M = 8;
+    let lo = -Infinity, hi = Infinity;
+    // 対象（Q3 の「なし」）が下に留まる帯の中にあるときは、対象はいつも見えている。代わりに案内を、下端が帯の上に来るように見せる
+    // （入りきらなければ案内の上端を優先する・第二読者 N-17）
+    const abSticky = !!(ab && target && ab.contains(target) && getComputedStyle(ab).position === "sticky");
+    if (abSticky && ins && !ins.hidden) {
+      const ir = ins.getBoundingClientRect(), abH = ab.getBoundingClientRect().height;
+      const lo2 = y0 + ir.bottom + M + abH - vh, hi2 = y0 + ir.top - M - topInset;
+      const y2 = lo2 <= hi2 ? Math.min(Math.max(y0, lo2), hi2) : hi2;
+      if (isFinite(y2) && Math.abs(y2 - y0) >= 1) window.scrollTo({top: Math.max(0, y2), behavior: reduce ? "auto" : "smooth"});
+      return;
+    }
+    if (target) {
+      const r = target.getBoundingClientRect(); let bot = r.bottom;
+      const slot = target.closest ? target.closest(".koma-slot") : null, lb = slot && slot.querySelector(".qs-tlabel");
+      if (lb) bot = Math.max(bot, lb.getBoundingClientRect().bottom);
+      lo = y0 + bot + M + botInset - vh;          // 対象の下端（短い文字まで）が見える最小の位置
+      hi = y0 + r.top - M - topInset;             // 対象の上端が見える最大の位置
+    }
+    // B7: keepEl の上端が見える最大の位置（入るときだけ使う。入らなければ使わない＝今までどおり）
+    if (keepEl && target) {
+      const hiK = Math.min(hi, y0 + keepEl.getBoundingClientRect().top - M - topInset);
+      if (lo <= hiK) hi = hiK;
+    }
+    let y;
+    if (ins && !ins.hidden) {
+      const hiIns = Math.min(hi, y0 + ins.getBoundingClientRect().top - M - topInset);   // 案内の上端も見える最大の位置
+      if (lo <= hiIns) y = Math.min(Math.max(y0, lo), hiIns);                             // 両方入る: 今の位置に最も近い所
+      else y = (lo === -Infinity) ? hiIns : lo;                                            // 入りきらない: 対象を優先
+    } else y = Math.min(Math.max(y0, lo), hi);
+    if (!isFinite(y) || Math.abs(y - y0) < 1) return;
+    window.scrollTo({top: Math.max(0, y), behavior: reduce ? "auto" : "smooth"});
+  }
+  function qsNotice(t) {
+    const ex = qsExpect(t.stepId); if (!ex) return;
+    const msg = ex.type === "pass" ? "この練習では「なし」を押してみましょう"
+      : ex.type === "receive" ? `この練習では「${ex.koma}」で受けてみましょう`
+      : ex.type === "attack" ? `この練習では「${ex.koma}」で攻めてみましょう`
+      : `この練習では「${ex.koma}」を伏せてみましょう`;   // 設計書 §5 の『』は「」の中の入れ子。単独で出すので「」にそろえる（第二読者 N-4）
+    const el = $("qsi-notice"); if (el) el.textContent = msg;
+    _qsDiag.notices++;
+    if (!t.noticed) { t.noticed = true; qsAnnounce(msg); }   // 読み上げは段ごとに 1 回まで（フォーカスは動かないので live 領域 #qs-live で）
+  }
+
+  /* ---------------- 着手（§5-4） ---------------- */
+  function quickStartTryAction(action) {
+    const t = app.tutorial;
+    if (!t || t.key !== "quickstart") return false;
+    if (t.inputLocked || t.stage !== "await") return true;
+    const ex = qsExpect(t.stepId); if (!ex) return true;
+    const st = app.st;
+    if (!st || st.phase === "over" || st.actor !== "S" || st.phase !== QS_PHASE_OF[ex.type]) { qsNotice(t); return true; }
+    if (action.type !== ex.type || (action.koma || null) !== ex.koma) { qsNotice(t); return true; }
+    if (!qsLegalMove(st, {seat: "S", type: action.type, koma: action.koma || null})) { qsNotice(t); return true; }
+    t.inputLocked = true; t.stage = "busy"; t.awaiting = null;
+    clearPendingSelection(); renderHandTray(null); actionbar("");
+    if (action.type !== "pass") haptic(action.type === "bury" ? "bury" : action.type === "attack" ? "attack" : "receive");   // 「なし」の振動は applyAndLog が出す（二重にしない・第二読者 N-1）
+    const ms = Math.round(performance.now() - app.turnT0);
+    const res = applyAndLog({type: action.type, koma: action.koma || null}, ms);
+    if (!qsCheckState(app.st, ex.expected, res && res.gameOver)) { _qsDiag.fixtureFails++; qsAbort("着手の後の状態が違う: " + t.stepId); return true; }
+    renderAll();
+    if (res && res.gameOver) { finishQuickStart(res.gameOver); return true; }
+    const next = QS_STEPS[t.stepId].next;
+    if (next === "R1") { if (!t.replay) patchQuickStartProgress({checkpoint: "pass"}); }
+    else if (next === "R2") { if (!t.replay) patchQuickStartProgress({checkpoint: "bury-finish"}); }
+    qsGoStep(next, 350);
+    return true;
+  }
+  function qsNextScene(sceneId) { loadQuickStartScene(sceneId, {delay: 350}); }
+  function qsRetry() {
+    const t = app.tutorial; if (!t || t.key !== "quickstart" || !t.sceneId) return;
+    loadQuickStartScene(t.sceneId, {delay: 350});
+  }
+  function finishQuickStart(go) {
+    const t = app.tutorial; if (!t || t.key !== "quickstart") return;
+    const exp = qsScene("bury-finish").actions[1].expected.gameOver;
+    if (!qsSameGameOver(go, exp)) { _qsDiag.fixtureFails++; qsAbort("終局の結果が違う"); return; }
+    app.lastWin = go;
+    app.scores = {NS: 30, EW: 0};   // 教材の中だけの得点（onGameOver・flyPoints は呼ばない）
+    renderScores();
+    if (!t.replay) patchQuickStartProgress({completed: true, checkpoint: null});
+    qsGoStep("DONE", 350);
+  }
+  function qsAbort(msg) {
+    _qsDiag.aborts++;
+    try { console.error("[quickstart] " + msg); } catch (e) {}
+    const t = app.tutorial;
+    if (t && t.key === "quickstart") {
+      qsClearTimers();
+      t.inputLocked = true; t.stage = "result"; t.stepId = "ABORT";
+      if ($("qsb-retry")) $("qsb-retry").hidden = true;
+      if ($("quickstart-bar")) $("quickstart-bar").classList.remove("qsb-unstick");   // v220.7（B7・第二読者 N-1）: 止まった画面では帯を留める
+      qsFitBar();   // ボタンが 1 つ減って帯が低くなるので測り直す（N-23）
+      if ($("quickstart-instruction")) {
+        $("qsi-head").textContent = "短い入門";
+        $("qsi-note").textContent = ""; $("qsi-prev").textContent = ""; $("qsi-extra").textContent = ""; $("qsi-notice").textContent = "";
+        $("qsi-body").textContent = "入門を始められませんでした。開始画面へ戻ってください。";
+        const btns = $("qsi-btns"); btns.innerHTML = "";
+        const b = document.createElement("button"); b.type = "button"; b.className = "btn primary"; b.textContent = "開始画面へ";
+        b.onclick = () => exitQuickStart({}); btns.appendChild(b);
+      }
+      renderHandTray(null); actionbar("");
+    }
+  }
+
+  /* ---------------- タイマー（すべてセッションと段で照合・§5-2） ---------------- */
+  function qsLater(fn, ms) {
+    const t = app.tutorial; if (!t) return;
+    const sid = t.sessionId, step = t.stepId;
+    const id = setTimeout(() => {
+      _qsTimers.delete(id);
+      const c = app.tutorial;
+      if (!c || c.sessionId !== sid || c.stepId !== step) return;
+      fn();
+    }, ms);
+    _qsTimers.add(id);
+  }
+  function qsClearTimers() { _qsTimers.forEach(id => clearTimeout(id)); _qsTimers.clear(); }
+
+  /* ---------------- 入力の受け口（capture 段・X-7・X-8・X-11） ---------------- */
+  function qsBlock(e) { e.preventDefault(); e.stopImmediatePropagation(); }
+  function qsOnKeyDown(e) {
+    const t = app.tutorial; if (!t || !qsIsKey(t.key)) return;
+    const k = e.key;
+    if (k === "Enter" || k === " " || k === "Spacebar") {
+      if (e.repeat && t.key === "quickstart") { _qsDiag.blockedRepeats++; qsBlock(e); return; }
+      if (k !== "Enter") _qsSpaceDownTarget = e.target;
+    }
+  }
+  function qsOnKeyUp(e) {
+    const t = app.tutorial; if (!t || t.key !== "quickstart") return;
+    if ((e.key === " " || e.key === "Spacebar") && _qsSpaceDownTarget && _qsSpaceDownTarget !== e.target) { qsBlock(e); }
+    if (e.key === " " || e.key === "Spacebar") _qsSpaceDownTarget = null;
+  }
+  function qsOnPointerDown(e) { _qsLastDown = {t: e.timeStamp, id: e.pointerId}; }
+  function qsOnClick(e) {
+    const t = app.tutorial; if (!t || !qsIsKey(t.key)) return;
+    const el = e.target instanceof Element ? e.target : null;
+    if (t.key === "quickstart") {
+      // X-8: 描画より前に始まった押下の続きの click だけを捨てる（pointerdown を伴わない click は通す）
+      const d = _qsLastDown;
+      if (e.isTrusted && e.detail > 0 && d && d.t < t.renderedAt && (e.timeStamp - d.t) < 1000 &&
+          (typeof e.pointerId !== "number" || e.pointerId < 0 || e.pointerId === d.id)) { _qsDiag.blockedEarly++; qsBlock(e); return; }
+      const ms = $("main-screen");
+      if (el && ms && ms.classList.contains("show") && ms.contains(el) &&
+          !el.closest("#hand, #actionbar, #quickstart-instruction, #quickstart-bar")) { _qsDiag.blockedClicks++; qsBlock(e); return; }
+    } else if (el && el.closest("#topbar-more, #btn-more")) { _qsDiag.blockedClicks++; qsBlock(e); return; }
+  }
+  function qsListen(on) {
+    if (on === _qsListening) return;
+    _qsListening = on;
+    const f = on ? "addEventListener" : "removeEventListener";
+    document[f]("keydown", qsOnKeyDown, true);
+    document[f]("keyup", qsOnKeyUp, true);
+    document[f]("pointerdown", qsOnPointerDown, true);
+    document[f]("click", qsOnClick, true);
+    if (typeof window !== "undefined" && window[f]) window[f]("resize", qsOnResize);   // 回転などで幅が変わったら、帯の高さを測り直す
+    if (!on) { _qsLastDown = null; _qsSpaceDownTarget = null; }
+  }
+  // 上部の帯が高すぎる（画面の 20% を超える）ときは、題の行を隠す。題は案内の見出しにもある（裁定 ③・N-19）。
+  // 文字を大きくした小さな電話で、帯が画面の 1/3 を占めないようにする。ボタンの文字は小さくしない
+  // 見える高さだけの変化（電話のブラウザのツールバーの出し入れ）では測り直さない。境目の画面で、スクロールのたびに題の行が出たり消えたりしないように
+  // （第二読者 rev4 の N-22）。回転・ブラウザの拡大は幅も変わるので測り直す。段が替わるときは、いつも測り直す（qsRenderStep）
+  var _qsBarW = -1;
+  function qsOnResize() {
+    if (typeof window === "undefined" || window.innerWidth === _qsBarW) return;
+    qsFitBar();
+    // v220.7（B7・第二読者 S-3）: 名札を見せる段で入力を待っている間に幅が変わったら（回転など）、帯を留めるかを決め直す。送りはしない
+    const t = app.tutorial;
+    if (t && t.key === "quickstart" && !t.inputLocked && QS_SEAT_STEPS[t.stepId]) {
+      try { qsSetUnstick(document.querySelector("#hand .koma[role=button]:not(.dis)"), $(QS_SEAT_STEPS[t.stepId])); } catch (e) {}
+    }
+  }
+  function qsFitBar() {
+    const bar = $("quickstart-bar");
+    if (!bar || typeof window === "undefined" || typeof bar.getBoundingClientRect !== "function") return;
+    _qsBarW = window.innerWidth;
+    bar.classList.remove("qsb-compact");
+    if (!app.tutorial || app.tutorial.key !== "quickstart" || bar.hidden) return;
+    const vh = window.innerHeight || document.documentElement.clientHeight;
+    if (vh > 0 && bar.getBoundingClientRect().height > vh * QS_BAR_MAX_RATIO) bar.classList.add("qsb-compact");
+  }
+
+  // 上部の帯のボタン（1 回だけ結び付ける）。やり直しは入力が有効な間だけ、終了はいつでも
+  function qsWireBar() {
+    if (_qsBarWired) return;
+    const r = $("qsb-retry"), x = $("qsb-exit");
+    if (!r || !x) return;
+    _qsBarWired = true;
+    r.addEventListener("click", () => { const c = app.tutorial; if (!c || c.key !== "quickstart" || c.inputLocked || c.stepId === "DONE") return; c.inputLocked = true; qsRetry(); });
+    x.addEventListener("click", () => { const c = app.tutorial; if (!c || c.key !== "quickstart") return; exitQuickStart({}); });
+  }
+  /* ---------------- 退出（§5-7 の順番） ---------------- */
+  function exitQuickStart(opts) {
+    opts = opts || {};
+    const t = app.tutorial, b = _tutBackup;
+    if (t && qsIsKey(t.key)) { t.inputLocked = true; t.stage = "closed"; t.sessionId = -1; }    // 1・2
+    qsClearTimers(); cancelAppTimer();                                                           // 3
+    if (t && t.autoTimer) { clearTimeout(t.autoTimer); t.autoTimer = null; }
+    try { clearPendingSelection(); } catch (e) {}                                                // 4
+    qsListen(false);                                                                             // 5
+    document.body.className = document.body.className.replace(/\btut(-[a-z]+)?\b/g, "").trim();
+    $("tut-overlay").classList.remove("on");
+    if ($("quickstart-bar")) { $("quickstart-bar").hidden = true; $("quickstart-bar").classList.remove("qsb-compact", "qsb-unstick"); }
+    if ($("quickstart-instruction")) $("quickstart-instruction").hidden = true;
+    actionbar(""); $("hand").classList.remove("norecv");
+    try { hideThinking(); } catch (e) {}
+    document.querySelectorAll("#board .qs-atk-label").forEach(el => el.remove());
+    if (b && b.kind === "qs") {                                                                  // 6
+      app.cfg = b.cfg; app.tiers = b.tiers; app.humanSeat = b.humanSeat;
+      const q = b.qs;
+      app.st = q.st; app.rec = q.rec; app.lastRec = q.lastRec; app.scores = q.scores; app.parent = q.parent;
+      app.gameNo = q.gameNo; app.matchNo = q.matchNo; app.matchOver = q.matchOver; app.stopped = q.stopped;
+      app.review = q.review; app.drill = q.drill; app.preDrill = q.preDrill; app._mixQueue = q.mixQueue;
+      app.tutReveal = q.tutReveal; app.lastWin = q.lastWin; app._scAtStart = q.scAtStart; app.armedKoma = q.armedKoma;
+      app.research = q.research; app._wasMyTurn = q.wasMyTurn; app._revealedGame = q.revealedGame;
+      if ($("log") && b.logHTML !== null && b.logHTML !== undefined) $("log").innerHTML = b.logHTML;
+      const ov = $("tut-overlay");
+      if (ov) { if (b.overlayLive === null || b.overlayLive === undefined) ov.removeAttribute("aria-live"); else ov.setAttribute("aria-live", b.overlayLive); }
+    }
+    _tutBackup = null;
+    app.tutorial = (b && b.kind === "qs") ? b.qs.tutorial : null;   // 入る前の値（起動直後は undefined）へ戻す
+    _qsPendingStorageNotice = false;
+    applyCfgSideEffects();                                                                        // 7
+    syncSetupFormFromCfg();                                                                       // 8
+    if (!opts.silent) {                                                                           // 9
+      $("main-screen").classList.remove("show"); $("setup-screen").style.display = "";
+      updateTutorialPanel(); renderKeikoPanel(); keikoEvalWeakAsync(); keikoEvalGradAsync();
+      const tp = $("tutorial-panel");                                                             // 10
+      if (tp) tp.open = true;
+      const target = opts.openGuide ? $("qs-guide-sub") : $("qs-entry-main");
+      if (target) { try { target.focus({preventScroll: true}); target.scrollIntoView({block: "center"}); } catch (e) {} }
+    }
+  }
+
+  /* ---------------- 助言つきで1局練習（§5-9） ---------------- */
+  function startQuickPractice(opts) {
+    opts = opts || {};
+    qsCleanupLeftovers();
+    if (!qsCanStart(!!opts.fromCourse)) return;
+    const sc = TUT.quickpractice;
+    qsEnter("quickpractice");
+    const sid = ++_qsSeq;
+    const t = app.tutorial = {key: "quickpractice", sessionId: sid, idx: 0, awaiting: null, blockStep: true, free: true, recRef: null};
+    const init = {N: sc.deal.N.slice(), W: sc.deal.W.slice(), S: sc.deal.S.slice(), E: sc.deal.E.slice()};
+    app.st = G.newGameState({N: init.N.slice(), W: init.W.slice(), S: init.S.slice(), E: init.E.slice()}, sc.parent);
+    app.st.matchScores = {NS: 0, EW: 0};
+    app.st.matchTarget = app.cfg.target;
+    app.rec = {gameNo: 1, parent: sc.parent, initialHands: init, scoresBefore: {NS: 0, EW: 0}, moves: [], practice: true};
+    t.recRef = app.rec;
+    app.scores = {NS: 0, EW: 0}; app.parent = sc.parent; app.gameNo = 1; app.matchNo = 1; app.lastWin = null;
+    renderAll(); renderHandTray(null);
+    $("tut-overlay").classList.add("on"); tutSpotlight(null);
+    tutBubble(sc.intro, [{label: "練習をはじめる", primary: true, fn: () => {
+      const c = app.tutorial; if (!c || c.key !== "quickpractice" || c.sessionId !== sid || !c.blockStep) return;
+      $("tut-overlay").classList.remove("on"); c.blockStep = false; step();
+    }}], {announce: null});
+    qsDescribeBubble("tut-bubble-txt");   // 説明の文は、フォーカスが移る「練習をはじめる」の説明として読ませる
+  }
+  // 吹き出しの主ボタン（tutBubble が次の描画でフォーカスを移す）に説明を結ぶ
+  function qsDescribeBubble(id) {
+    const b = document.querySelector("#tut-bubble-btns .primary") || document.querySelector("#tut-bubble-btns button");
+    if (b) b.setAttribute("aria-describedby", id);
+  }
+  function finishQuickPractice(res) {
+    const t = app.tutorial; if (!t || t.key !== "quickpractice") return;
+    $("tut-overlay").classList.add("on"); tutSpotlight(null);
+    if (!t.recRef || app.rec !== t.recRef) {   // 練習の局ではない（X-11）: 完走に数えない
+      tutBubble("練習の局ではないため、完走に数えません。", [{label: "開始画面へ", primary: true, fn: () => exitQuickStart({})}], {announce: null});
+      qsDescribeBubble("tut-bubble-txt");
+      return;
+    }
+    patchQuickStartProgress({practiceCompleted: true});
+    const mine = res.winner && G.team(res.winner) === G.team(app.humanSeat);
+    const msg = res.draw ? "引き分けでした。" : (mine ? `あなたのチームが「${res.koma}」${res.pts}点で上がりました。` : `相手チームが「${res.koma}」${res.pts}点で上がりました。`);
+    tutBubble(msg, [
+      {label: "開始画面へ", primary: true, fn: () => exitQuickStart({})},
+      {label: "もう1局練習", fn: () => { exitQuickStart({silent: true}); startQuickPractice({fromCourse: true}); }},
+      {label: "ルールを詳しく学ぶ", fn: () => exitQuickStart({openGuide: true})},
+    ], {announce: null});
+    // onGameOver の #sr-alert は、同じ描画でのフォーカス移動に切られることがある（第二読者 rev7 N-26）。
+    // フォーカスが移る「開始画面へ」の説明に、結果と次の操作の両方を結ぶ（読み上げが 2 回になる読み上げソフトがあっても、読まれないよりよい）
+    const d = $("qs-desc"); if (d) d.textContent = [msg, "開始画面へ戻るか、もう1局練習できます。"].join(" ");
+    qsDescribeBubble("qs-desc");
+  }
+
+  /* ---------------- 試験用の読み取り口（読み取り専用・写しだけを返す・§5-11） ---------------- */
+  function qsCopy(x) { try { return JSON.parse(JSON.stringify(x)); } catch (e) { return "unserializable"; } }
+  function qsStSummary(st) {
+    if (!st) return null;
+    return qsCopy({actor: st.actor, phase: st.phase, pendingAttack: st.pendingAttack || null, attacker: st.attacker || null,
+      hands: st.hands, board: st.board, historyLen: st.history ? st.history.length : null, parent: st.parent});
+  }
+  function qsHash(s) { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0).toString(16); }
+  if (typeof window !== "undefined") {
+    try {
+      Object.defineProperty(window, "__quickstartDebug", {configurable: false, enumerable: false, writable: false, value: Object.freeze({
+        version: 1,
+        state() {
+          const t = app.tutorial;
+          let rb = null;
+          try { if (app.rec) rb = qsStSummary(rebuildState(app.rec, app.rec.moves.length)); } catch (e) { rb = "error"; }
+          return qsCopy({
+            tutorial: t ? {key: t.key, sessionId: t.sessionId, sceneId: t.sceneId || null, stepId: t.stepId || null, stage: t.stage || null,
+              inputLocked: !!t.inputLocked, blockStep: !!t.blockStep, replay: !!t.replay, free: !!t.free} : null,
+            st: qsStSummary(app.st), recMoves: app.rec ? app.rec.moves.map(m => ({seat: m.seat, action: m.action, src: m.src, human: m.human})) : null,
+            recPractice: app.rec ? !!app.rec.practice : null, rebuild: rb, scores: app.scores,
+            cfg: app.cfg, tiers: app.tiers, humanSeat: app.humanSeat,
+            backup: _tutBackup ? {kind: _tutBackup.kind || "legacy"} : null, timers: _qsTimers.size, listening: _qsListening, diag: _qsDiag});
+        },
+        progress() {
+          let raw = null; try { raw = DATA_STORAGE.getItem("goita_tutorial_progress"); } catch (e) {}
+          return qsCopy({raw, normalized: qsProgress(), mem: _qsMem, saveFailed: _qsSaveFailed, noticeShown: _qsStorageNoticeShown});
+        },
+        appDigest() {
+          const keys = ["cfg", "tiers", "humanSeat", "st", "rec", "lastRec", "scores", "parent", "gameNo", "matchNo", "matchOver", "stopped",
+            "review", "drill", "preDrill", "_mixQueue", "tutReveal", "lastWin", "_scAtStart", "research", "_revealedGame", "tutorial"];
+          const out = {};
+          for (const k of keys) { let s; try { s = JSON.stringify(app[k]); } catch (e) { s = "unserializable"; } out[k] = s === undefined ? "undefined" : qsHash(s); }
+          out.armedKoma = !!app.armedKoma;
+          out.backup = !!_tutBackup;
+          out.logHTML = $("log") ? qsHash($("log").innerHTML) : null;
+          out.overlayLive = $("tut-overlay") ? $("tut-overlay").getAttribute("aria-live") : null;
+          return out;
+        },
+      })});
+    } catch (e) { /* 読み取り口が作れなくても入門は動く */ }
+  }
   let _tutBackup = null;
   function startTutorial(key, opts) {
+    if (key === "quickstart") { startQuickStart({}); return; }   // 短い入門: 専用の開始へ
+    if (key === "quickpractice") { startQuickPractice({}); return; }
     const sc = TUT[key]; if (!sc) return;
-    if (_tutBackup) exitTutorial(true);   // v220.6 F-14(D-1c・入門の便の Q と同じ): 教材の中から別の教材を開いても、退避(利用者の設定)を上書きしない。第二読者 rev1 S-1
-    _tutBackup = {cfg: Object.assign({}, app.cfg), tiers: Object.assign({}, app.tiers), humanSeat: app.humanSeat};
+    if (_tutBackup) { if (_tutBackup.kind === "qs") exitQuickStart({silent: true}); else exitTutorial(true); }   // 退避の二重上書きの禁止（D-1c・v220.6 F14c と同じ働き）
+    _tutBackup = {kind: "legacy", cfg: Object.assign({}, app.cfg), tiers: Object.assign({}, app.tiers), humanSeat: app.humanSeat};
     app.tutorial = {key, idx: 0, awaiting: null, blockStep: true};
     app.humanSeat = "S";
     const _oppT = opts && opts.oppTier;   // 難度: 相手組(東西)の強さを上書き。相方Nは維持(協調)
@@ -27980,12 +28877,13 @@ if (typeof document !== "undefined") (() => {
     if (!t || !t.awaiting) return false;
     const e = t.awaiting;
     if (action.type === e.type && (action.koma || null) === (e.koma || null)) {
-      t.awaiting = null; t.blockStep = true; renderHandTray(null); renderAll(); setTimeout(() => tutRunStep(t.idx + 1), 350);
+      t.awaiting = null; t.blockStep = true; renderHandTray(null); renderAll(); { const _idx0 = t.idx; setTimeout(() => { if (app.tutorial !== t || t.idx !== _idx0) return; tutRunStep(_idx0 + 1); }, 350); }   // 短い入門 計画 H8
     }
     return true;   // チュートリアル中は通常のstep継続を止める(差し戻し含む)
   }
   function tutFinish() {
     const t = app.tutorial; if (!t) return;
+    if (qsIsKey(t.key)) return;   // 短い入門: 11 巻の cleared には足さない
     const p = tutLoad(); p.cleared = Array.from(new Set([...(p.cleared || []), t.key])); tutSave(p);
     // T-4(v90a): 混ぜ稽古の一環なら、通常の課程UI(次のレッスンへ/設定に戻る)ではなく専用の開示+連結UIを出す
     if (app._mixQueue && app._mixQueue.drills[app._mixQueue.idx] && app._mixQueue.drills[app._mixQueue.idx].tut === t.key) {
@@ -28008,6 +28906,8 @@ if (typeof document !== "undefined") (() => {
   function tutFreeOver(res) {
     renderAll();
     const t = app.tutorial; if (!t) return;
+    if (t.key === "quickpractice") { finishQuickPractice(res); return; }   // 短い入門の練習: 11 巻の cleared には足さない
+    if (t.key === "quickstart") return;
     const mine = res.winner && G.team(res.winner) === G.team(app.humanSeat);
     const rmsg = res.draw ? "引き分けでした。" : (mine ? `あなたのチームが「${res.koma}」${res.pts}点で上がりました！` : `相手チームが「${res.koma}」${res.pts}点で上がりました。`);
     log((res.draw ? "流局" : `${seatDisp(res.winner)} 上がり「${res.koma}」${res.pts}点`) + "（実戦）", true);
@@ -28024,7 +28924,8 @@ if (typeof document !== "undefined") (() => {
       [{label: "設定に戻る", primary: true, fn: () => exitTutorial(false)}, {label: "宇出津の大会について見る", fn: () => { exitTutorial(false); openUshitsuInfo(); }}]);
   }
   function exitTutorial(silent) {
-    if (_tutBackup) { app.cfg = _tutBackup.cfg; app.tiers = _tutBackup.tiers; app.humanSeat = _tutBackup.humanSeat; _tutBackup = null; applyCfgSideEffects(); }   // v220.6 F-14(QS-3 ③と同じ): 戻した設定の body の class を付け直す
+    if ((_tutBackup && _tutBackup.kind === "qs") || (app.tutorial && qsIsKey(app.tutorial.key))) { exitQuickStart({silent: !!silent}); return; }   // 短い入門
+    if (_tutBackup) { app.cfg = _tutBackup.cfg; app.tiers = _tutBackup.tiers; app.humanSeat = _tutBackup.humanSeat; _tutBackup = null; applyCfgSideEffects(); }   // QS-3 ③（v220.6 F-14 と同じ）
     // build v104: autoステップの開始ゲート待ち/再生中に離脱した場合、保留中のタイマーが残ると
     // 離脱後に手が勝手に適用されうるため明示的に破棄する(blockStepの解除漏れ対策)。
     if (app.tutorial && app.tutorial.autoTimer) { clearTimeout(app.tutorial.autoTimer); app.tutorial.autoTimer = null; }
@@ -29340,6 +30241,11 @@ if (typeof document !== "undefined") (() => {
    * tag: fix=不具合修正 / fast=速くなった / read=読みが良くなった / ui=使いやすくなった(v212.1 新設) / (無印)=内部のみ
    * ================================================================ */
   const APP_CHANGELOG = [
+    {v: "v220.7", d: "2026-09-26", tag: "ui", tagJa: "入門を追加", t: "はじめての方向けに、短い入門を追加しました", p: [
+      "開始画面の「初心者向け・完全ガイド」を開くと、いちばん上に「短い入門をはじめる」があります。3つの場面で、受ける・攻める・なし・伏せる・上がるを実際に操作して体験できます。",
+      "入門の後は、操作の案内とおすすめの駒つきで、初心者AIと1局練習できます。この練習は成績集計に入りません。",
+      "ガイド枠の中のリセットは「全11巻の進捗をリセット」になりました。短い入門の修了は消えません。",
+      "AIの打ち筋・ルール・得点は変えていません。"]},
     {v: "v220.6", d: "2026-09-26", tag: "fix", tagJa: "不具合修正", t: "再開・棋譜・設定の保存などの不具合を直しました", p: [
       "ページを読み込み直した後に「再開する」で続けると、次の局へ進めなかったり、保存が消えたりすることがありました。前の配りの続きから再開できるようにしました。",
       "対局の途中は「棋譜」を押せないようにしました（全員の配牌が入っていたため）。局が終わると書き出せます。",
@@ -29472,7 +30378,7 @@ if (typeof document !== "undefined") (() => {
   {
     const bv = $("btn-version");
     if (bv) {
-      const num = $("btn-version-num"), v = APP_CHANGELOG[0].v;
+      const num = $("btn-version-num"), v = APP_CHANGELOG[0].v + (APP_DEV_LABEL ? " " + APP_DEV_LABEL : "");   // 短い入門: 開発用の版表示（QS-5 (a)）
       if (num) num.textContent = v;
       bv.setAttribute("aria-label", `バージョン ${v} — 更新内容を見る`);
       bv.addEventListener("click", openChangelog);
