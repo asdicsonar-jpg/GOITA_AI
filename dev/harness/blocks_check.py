@@ -46,11 +46,21 @@ def main():
         ok = False
     for ref in a.engine_ref:
         _, br = blocks(ref)
+        eng = True
         for i in (1, 2, 3, 4, 5):
             if br[i] != bo[i]:
                 print(f'FAIL: [{i}] {NAMES[i]} が {ref} と違う')
-                ok = False
-        print(f'エンジン（1〜5）と {ref}: {"一致" if ok else "不一致"}')
+                eng = False
+        ok = ok and eng
+        print(f'エンジン（1〜5）と {ref}: {"一致" if eng else "不一致"}')
+    sb, _ = blocks(a.base)
+    outside = lambda s: RX.sub('<script>…</script>', s).split('\n')
+    import difflib
+    ob_, oo_ = outside(sb), outside(so)
+    hunks = [op for op in difflib.SequenceMatcher(None, ob_, oo_, autojunk=False).get_opcodes() if op[0] != 'equal']
+    print(f'<script> の外の差分: {len(hunks)} か所')
+    for tag, i1, i2, j1, j2 in hunks:
+        print(f'  {tag} 基底 {i1 + 1}〜{i2} 行 → 出力 {j1 + 1}〜{j2} 行: ' + (oo_[j1][:70] if j2 > j1 else ob_[i1][:70]))
     gz = len(gzip.compress(so.encode('utf-8'), 9))
     print(f'gzip -9: {gz:,} B（上限 {GZ_LIMIT:,} B・残り {GZ_LIMIT - gz:,} B）')
     if gz > GZ_LIMIT:

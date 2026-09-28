@@ -1,7 +1,9 @@
 """置換スクリプトの共通部分（元の harness/apply_v220_N.py の形を README §4 の記述から作り直したもの）。
 
-- add(tag, 族, old, new, n=1): old は逐語。基底の中でちょうど n 回当たること（違えば止まる）。
-- 置換は並べた順に当てる。new は出力の中でちょうど n 回だけ現れる文字列にする（逆変換の条件。前後の文脈を含めて一意にする）。
+- add(tag, 族, old, new, n=1): old は逐語。並べた順に当てるので、その時点の文字列（前の置換の後）でちょうど n 回当たること（違えば止まる）。
+- 逆変換は後ろから当てる。その時点の文字列で new がちょうど n 回であること（前後の文脈を含めて一意にする）。
+  最後に基底と byte で比べるので、この条件が甘くても誤って PASS はしない。
+- new に <script・</script を入れない。各置換の後に <script> ブロックが 9 のままかを確かめる。
 - --verify: 出力に逆向き（new→old）を後ろから当てて基底と byte 一致・G/G_B/T1 のブロックが基底と同じ。
 - --ablate 族,族: その族の置換を外した写しを作る（試験の検出力を見る）。
 - エンジンの区画（ブロック 0〜5・7・8）にアンカーを置かない（当たったら止まる）。
@@ -33,6 +35,8 @@ class Plan:
     def add(self, tag, fam, old, new, n=1):
         if old == new or not old:
             die(f'{tag}: old が空か new と同じ')
+        if '<script' in new or '</script' in new:
+            die(f'{tag}: new に <script・</script を入れない')
         self.items.append((tag, fam, old, new, n))
 
     def apply(self, s, skip=()):
@@ -57,6 +61,8 @@ class Plan:
                         die(f'{tag}: エンジン・固定の区画にアンカーがある')
             s = s.replace(old, new)
             sp = spans(s)
+            if len(sp) != 9:
+                die(f'{tag}: 置換の後の <script> ブロックが {len(sp)}（9 のはず）')
             frozen = [sp[i] for i in FROZEN]
         return s
 
