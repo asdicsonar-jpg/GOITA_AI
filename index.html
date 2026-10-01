@@ -5,6 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>ごいた — 能登の伝承遊戯</title>
   <!-- build: v220.6 に短い入門コース（3 場面・5 着手）と助言つきの 1 局練習を当てた（配信候補 v220.7 の元）。計画: docs/PLAN_短い入門コース_rev4_Opus5.5.md（§14 の裁定）・docs/PLAN_v220.7_入門コース配信_rev2_Opus5.5.md。適用: harness/apply_quickstart_v2.py。エンジン区画（G・G_B・T1）は不変。 -->
+  <!-- build: v220.16「フリック一式（フリックのみの上フリックをタッチで効かせる・フリックのみの案内・2タップの上フリックは1回目で選ぶだけ・操作モードの説明）」base=v220.15。
+       計画: docs/PLAN_v220.16_フリック一式と試験の穴_rev2_Opus5.5.md（rev1 と合わせて読む）。
+       変更: harness/apply_v220_16.py → apply_ui_release.py（版数・CHANGELOG・バッジ・sw.js）。G・G_B・T1 の区画は v220.15 と byte 一致。
+       CACHE_NAME: goita-v220.15 → goita-v220.16. -->
   <!-- build: v220.15「UI/UX 提案の採用分 4 件（2タップの案内と選択中の文・フリックのみのキーボード・保存を消す確認の最初のフォーカス・読みヒントの説明の文言）」base=v220.14。
        計画: docs/PLAN_v220.15_UIUX提案の採用分_rev4_Opus5.5.md（選び所は計画 §0）。
        変更: harness/apply_v220_15.py → apply_ui_release.py（版数・CHANGELOG・バッジ・sw.js）。G・G_B・T1 の区画は v220.14 と byte 一致。
@@ -1349,6 +1353,7 @@ body.theme-kinari .tut-tag,body.theme-kinari .tut-toggle{color:#7a6221}
 html,body{overscroll-behavior-y:none}
 html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 :where(button,[role="button"],#hand,#board,#handarea){touch-action:manipulation}
+body.op-flick #hand .koma[role=button]{touch-action:none;touch-action:pan-x pinch-zoom}
 /* v220.6 F-8: 参照していたが未定義だった変数（body に置いて theme の上書きに従う） */
 body{--fg:var(--kinari);--line:var(--hair)}
 #tut-bubble .tb-row{display:flex;gap:8px;justify-content:flex-end;align-items:center}
@@ -2024,7 +2029,7 @@ body.noto #wincut.show .wc-label{animation:wcFude .62s cubic-bezier(.2,.9,.3,1.2
 <div id="setup-screen">
   <!-- build v208: 版数表示は APP_CHANGELOG[0] から起動時に上書きされる(JS が動かない場合の保険としてここにも同じ版数を書いておく)。 -->
   <button type="button" class="setup-version" id="btn-version"
-          aria-label="バージョン v220.15 — 更新内容を見る" title="更新内容を見る"><span id="btn-version-num">v220.15</span><span class="sv-i" aria-hidden="true">ⓘ</span></button>
+          aria-label="バージョン v220.16 — 更新内容を見る" title="更新内容を見る"><span id="btn-version-num">v220.16</span><span class="sv-i" aria-hidden="true">ⓘ</span></button>
   <div class="title-block">
     <h1 class="serif">ごいた</h1>
     <div class="title-sub">能登・宇出津に伝わる竹駒の伝承遊戯</div>
@@ -20160,6 +20165,7 @@ if (typeof document !== "undefined") (() => {
     document.body.classList.toggle("nashi-left", app.cfg.nashiSide === "left");
     document.body.classList.toggle("noto", app.cfg.notoAccent !== false);
     document.body.classList.toggle("readHint", app.cfg.readHint);   // U-1バグ修正: rh-badge見切れ対策の#hand余白確保用
+    syncOpModeClass();   // v220.16 F1（A-1）: 起動・入門の出入りで op-flick を合わせる（末尾に置く: body の class の並びを既存の後ろにする）
   }
   loadCfgFromStorage();
   applyCfgSideEffects();
@@ -20926,7 +20932,7 @@ if (typeof document !== "undefined") (() => {
     const activate = () => { app.armedKoma = null; armHintClear(); try { app._slideFrom = el.getBoundingClientRect(); } catch (e) {} fn(); };   // v220.15 U-b: 出すときに選択中の文を戻す（受けの助言で「選び直す」に戻っても残さない）
     const onActivate = () => {
       const mode = app.cfg.opMode || "tap";
-      if (mode === "flick") return;                 // フリックのみ: タップは無効
+      if (mode === "flick") { try { toast("駒は上にはじいて出します"); } catch (e) {} return; }                 // フリックのみ: タップは無効（v220.16 F3t: 黙らず知らせる）
       if (mode === "confirm") {
         if (app.armedKoma === el) { activate(); return; }   // 2度目=確定
         if (app.armedKoma) app.armedKoma.classList.remove("armed");
@@ -20968,7 +20974,7 @@ if (typeof document !== "undefined") (() => {
       if (!tracking) return; tracking = false;
       const dy = sy - e.clientY, dx = Math.abs(e.clientX - sx), dt = e.timeStamp - st0;
       if (dy > 28 && dy > dx * 1.4 && dt < 500) {    // 上方向のフリック(全モード共通)
-        e.preventDefault(); flicked = true; activate();
+        e.preventDefault(); flicked = true; if ((app.cfg.opMode || "tap") === "confirm") onActivate(); else activate();   // v220.16 U-d: 2タップの上フリックは 1 回目で選ぶだけ（2 回目で確定）。flicked で同じ身振りの click を抑える
       }
     });
     el.addEventListener("pointercancel", () => {
@@ -23295,8 +23301,9 @@ if (typeof document !== "undefined") (() => {
   function kifuLocked() { const hs = app._humanSeatBeforeReview !== undefined ? app._humanSeatBeforeReview : app.humanSeat; return !!hs && !!app.st && app.st.phase !== "over" && !app.matchOver; }
   function syncKifuBtn() { const b = $("btn-kifu"); if (b) b.disabled = !app.kifuLines.length || kifuLocked(); }
   // v220.6 F-10: タッチ端末では「タップ」、それ以外は「クリック」
+  function syncOpModeClass() { document.body.classList.toggle("op-flick", (app.cfg.opMode || "tap") === "flick"); }   // v220.16 F1（A-1）: フリックのみのときだけ body に op-flick（駒の touch-action を pan-x pinch-zoom に・CSS 参照）。呼ぶのは applyCfgSideEffects の末尾と調整の保存の直後
   function tapWord() { try { return matchMedia("(pointer:coarse)").matches ? "タップ" : "クリック"; } catch (e) { return "クリック"; } }
-  function opTap() { return (app.cfg.opMode || "tap") === "confirm" ? "2回" + tapWord() : tapWord(); }   // v220.15 U-b（UX-02 ①）: 手番の案内の動詞。2タップ（確定）は「2回タップ」。1タップ・フリックのみは今までどおり（フリックの文は実機の確かめ U-0 の後）
+  function opTap() { const m = app.cfg.opMode || "tap"; return m === "confirm" ? "2回" + tapWord() : m === "flick" ? "上にはじく" : tapWord(); }   // v220.16 F2（A-3）: 手番の案内の動詞。2タップ（確定）は「2回タップ」・フリックのみは「上にはじく」・1タップは今までどおり
   // v220.15 U-b: 2タップの選択中を、操作の帯の文の行（#actionbar > span・「2回タップ」の案内と同じ行）に出す。1 回目と 2 回目の間で手駒・帯のボタンを動かさないよう、
   //   その行の幅と高さを押す前のまま固定し、文は 1 行（はみ出す分は …）に収める。行が無い（ヒント OFF の伏せ・攻め）ときは出さない（輪郭と読み上げだけ・今までどおり）
   function armHint(text) {
@@ -30780,6 +30787,12 @@ if (typeof document !== "undefined") (() => {
    * tag: fix=不具合修正 / fast=速くなった / read=読みが良くなった / ui=使いやすくなった(v212.1 新設) / (無印)=内部のみ
    * ================================================================ */
   const APP_CHANGELOG = [
+    {v: "v220.16", d: "2026-10-01", tag: "fix", tagJa: "不具合修正", t: "フリックのみの設定でスマホから駒を出せるようにしました", p: [
+      "操作モードが「フリックのみ」のとき、スマホで駒を上にはじいても駒が出なかったのを直しました（画面の縦送りとして扱われていました）。1タップ・2タップのときの手触りは変えていません。",
+      "フリックのみのときは、手番の案内を「攻める駒を上にはじく」などにし、駒をタップしたときは「駒は上にはじいて出します」と知らせるようにしました。",
+      "2タップ（確定）のときに駒を上に引くと、1回目は選ぶだけにしました（もう一度で出します）。",
+      "操作モードの説明に、フリックのみでも「なし」はボタンを1回押すことを書き足しました。",
+      "AIそのもの・ルール・得点は変えていません。"]},
     {v: "v220.15", d: "2026-09-30", tag: "ui", tagJa: "使いやすくなった", t: "操作の案内・保存の確認・読みヒントの説明を直しました", p: [
       "2タップ（確定）のときは、手番の案内を「2回タップ（クリック）」にし、1回目に選んだ駒を操作の案内の行に「○：もう一度で…」と出すようにしました。また、2タップで「なし」と「1手戻す」を続けて押したとき、先に選んだ方が1回で確定することがあったのを直しました。",
       "フリックのみの設定でも、キーボードの Enter・Space で駒を出せるようにしました。",
@@ -31069,7 +31082,7 @@ if (typeof document !== "undefined") (() => {
         <div class="sg-body">
           <label class="toggle"><input type="checkbox" id="s-autopass" ${app.cfg.autoPass ? "checked" : ""}>
             <span>受けられない時は自動で「なし」<span class="desc">オフ（既定）＝受けられない局面でも自分で「なし」を押して確認します（天鳳のパス操作と同じ）。オン＝受け駒が無い時は自動でパスします。</span></span></label>
-          <label class="toggle"><span>操作モード<span class="desc">1タップ=即座に出す（現状）。2タップ=駒も「なし」も選んでからもう一度で確定（誤操作防止）。フリックのみ=駒を上にはじいて出す（キーボードでは Enter・Space でも出せます）。</span>
+          <label class="toggle"><span>操作モード<span class="desc">1タップ=即座に出す（現状）。2タップ=駒も「なし」も選んでからもう一度で確定（誤操作防止）。フリックのみ=駒を上にはじいて出す（「なし」はボタンを1回押します。キーボードでは Enter・Space でも出せます）。</span>
             <select id="s-opmode" style="margin-top:4px">
               <option value="tap" ${app.cfg.opMode === "tap" ? "selected" : ""}>1タップ（即）</option>
               <option value="confirm" ${app.cfg.opMode === "confirm" ? "selected" : ""}>2タップ（確定）</option>
@@ -31146,6 +31159,7 @@ if (typeof document !== "undefined") (() => {
       app.cfg.countsHold = m.querySelector("#s-countsHold") ? m.querySelector("#s-countsHold").checked : app.cfg.countsHold;
       app._lbKey = null;
       app.cfg.opMode = m.querySelector("#s-opmode").value;
+      syncOpModeClass();   // v220.16 F1（A-1）: 調整の保存の直後に op-flick を合わせる
       app.cfg.haptics = m.querySelector("#s-haptics").checked;
       app.cfg.sound = m.querySelector("#s-sound").checked;
       if (app.cfg.sound) { sound.enable(); setTimeout(function () { try { sound.place(); } catch (e) {} }, 90); }
