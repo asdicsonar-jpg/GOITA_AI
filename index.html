@@ -5,6 +5,18 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>ごいた — 能登の伝承遊戯</title>
   <!-- build: v220.6 に短い入門コース（3 場面・5 着手）と助言つきの 1 局練習を当てた（配信候補 v220.7 の元）。計画: docs/PLAN_短い入門コース_rev4_Opus5.5.md（§14 の裁定）・docs/PLAN_v220.7_入門コース配信_rev2_Opus5.5.md。適用: harness/apply_quickstart_v2.py。エンジン区画（G・G_B・T1）は不変。 -->
+  <!-- build: v220.19「配りの途中（五し相談の間など）で詰めごいた・練習・振り返りに入ったときに、対局が止まる・局番が飛ぶ・局面が上書きされる不具合の直し」base=v220.18。
+       計画: docs/PLAN_v220.19_配りの途中で止まる不具合_rev2_Opus5.5.md（rev1 と合わせて読む）。
+       変更: harness/apply_v220_19.py → apply_ui_release.py（版数・CHANGELOG・バッジ・sw.js）。G・G_B・T1 の区画は v220.18 と byte 一致。
+       CACHE_NAME: goita-v220.18 → goita-v220.19. -->
+  <!-- build: v220.18「持ち越しの直し 4 件（詰めごいたの5し続行の宣言・配り中の案内・受けの助言の案内を働きに合わせる・カウント表の試しは ON の方向だけ戻す）」base=v220.17。
+       計画: docs/PLAN_v220.18_持ち越しとC・E_rev2_Opus5.5.md（rev1 と合わせて読む）。
+       変更: harness/apply_v220_18.py → apply_ui_release.py（版数・CHANGELOG・バッジ・sw.js）。G・G_B・T1 の区画は v220.17 と byte 一致。
+       CACHE_NAME: goita-v220.17 → goita-v220.18. -->
+  <!-- build: v220.17「フリックと長押しの範囲を、スマホの駒のタップ範囲（駒の周りの少し広い範囲）にそろえる」base=v220.16。
+       計画: docs/PLAN_v220.17_フリックの開始領域_rev2_Opus5.5.md（rev1 と合わせて読む）。
+       変更: harness/apply_v220_17.py → apply_ui_release.py（版数・CHANGELOG・バッジ・sw.js）。G・G_B・T1 の区画は v220.16 と byte 一致。
+       CACHE_NAME: goita-v220.16 → goita-v220.17. -->
   <!-- build: v220.16「フリック一式（フリックのみの上フリックをタッチで効かせる・フリックのみの案内・2タップの上フリックは1回目で選ぶだけ・操作モードの説明）」base=v220.15。
        計画: docs/PLAN_v220.16_フリック一式と試験の穴_rev2_Opus5.5.md（rev1 と合わせて読む）。
        変更: harness/apply_v220_16.py → apply_ui_release.py（版数・CHANGELOG・バッジ・sw.js）。G・G_B・T1 の区画は v220.15 と byte 一致。
@@ -237,6 +249,7 @@ button.btn.small::before{content:"";position:absolute;inset:-3px}
 .toggle input{width:18px;height:18px;accent-color:var(--kin);margin-top:1px;flex:0 0 auto}
 .toggle>span{flex:1 1 0;min-width:0}   /* max-content折返しでチェックボックス下に落ちるのを防止 */
 .toggle .desc{display:block;font-size:.7rem;color:var(--gin);margin-top:4px;line-height:1.55;flex-basis:100%;width:100%}   /* A4(v70): gin-dはkinari等でAA未達のためginに変更 */
+.toggle.mg-idle>span{opacity:.62}
 .coach-tier-wrap{margin:10px 0 4px;padding:11px 12px;border:1px solid var(--gin-d);border-radius:9px;background:rgba(255,255,255,.02)}
 .coach-tier-wrap .lbl2{font-size:.78rem;color:var(--kin);letter-spacing:.18em;margin-bottom:8px;display:flex;align-items:center;gap:9px}
 .coachbadge{font-size:.6rem;color:var(--shu);border:1px solid var(--shu);border-radius:10px;padding:1px 8px;letter-spacing:.05em;font-weight:600}
@@ -1354,6 +1367,7 @@ html,body{overscroll-behavior-y:none}
 html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 :where(button,[role="button"],#hand,#board,#handarea){touch-action:manipulation}
 body.op-flick #hand .koma[role=button]{touch-action:none;touch-action:pan-x pinch-zoom}
+body.op-flick #hand .koma-slot.ks-act{touch-action:none;touch-action:pan-x pinch-zoom}
 /* v220.6 F-8: 参照していたが未定義だった変数（body に置いて theme の上書きに従う） */
 body{--fg:var(--kinari);--line:var(--hair)}
 #tut-bubble .tb-row{display:flex;gap:8px;justify-content:flex-end;align-items:center}
@@ -2029,7 +2043,7 @@ body.noto #wincut.show .wc-label{animation:wcFude .62s cubic-bezier(.2,.9,.3,1.2
 <div id="setup-screen">
   <!-- build v208: 版数表示は APP_CHANGELOG[0] から起動時に上書きされる(JS が動かない場合の保険としてここにも同じ版数を書いておく)。 -->
   <button type="button" class="setup-version" id="btn-version"
-          aria-label="バージョン v220.16 — 更新内容を見る" title="更新内容を見る"><span id="btn-version-num">v220.16</span><span class="sv-i" aria-hidden="true">ⓘ</span></button>
+          aria-label="バージョン v220.19 — 更新内容を見る" title="更新内容を見る"><span id="btn-version-num">v220.19</span><span class="sv-i" aria-hidden="true">ⓘ</span></button>
   <div class="title-block">
     <h1 class="serif">ごいた</h1>
     <div class="title-sub">能登・宇出津に伝わる竹駒の伝承遊戯</div>
@@ -19502,6 +19516,15 @@ if (typeof document !== "undefined") (() => {
   // UI-3(UX-02): 助言フラグ = hinted を立てる 4 つ(renderAdvice / renderHandTray / missGuardConfirm)。counts / reading / hints / cand は含めない。
   // app 層の先頭近く(SHARED_TOGGLE_DEFS の直前)に置き、初期化中の呼び出し順(TDZ)に依存させない(第二読者 N3)。
   const ADVICE_FLAGS = ["advice", "assistHi", "readHint", "missGuard"];
+  // v220.18 C: 受けの助言は操作ヒント（hints）が ON のときだけ働く（missGuardWarn）。案内（要約・開始の確認・トースト・卒業の提案）はこの判定で見る。hinted を立てる判定・成績・scafOn（卒業帳・出場前チェックリスト）は今のまま
+  function missGuardActive(cfg) { return !!(cfg.missGuard && cfg.hints); }
+  function adviceActive(cfg) { return ADVICE_FLAGS.some(k => k === "missGuard" ? missGuardActive(cfg) : !!cfg[k]); }
+  // 受けの助言のトグルの行に、操作ヒントが OFF のとき mg-idle（淡く・押せるまま）を付ける。設定画面は renderSetupSummary、調整は syncCoachTierUI("s")（s-hints の change もここを通る）
+  function mgIdleSync(prefix) {
+    const mg = document.getElementById(prefix + "-missGuard"), h = document.getElementById(prefix + "-hints");
+    const row = mg && mg.closest("label");
+    if (row && h) row.classList.toggle("mg-idle", !h.checked);
+  }
   const SHARED_TOGGLE_DEFS = {
     mc: {label: "受けMC評価", desc: "受け/なしをモンテカルロ評価で判断します（「強い」AIに作用・既定ON）。際どい局面の参考用で、明確な受けとは異なる判断をすることがあります。"},
     solver: {label: "終盤Solver", desc: "確実な上がり手順を厳密探索。オフで読み切りをしなくなる。"},
@@ -19512,7 +19535,7 @@ if (typeof document !== "undefined") (() => {
     cand: {label: "候補手・難度バッジ", desc: "受け局面で上位手と「明確／際どい／互角」を表示（推奨手ON時）。"},
     assistHi: {label: "推奨手をハイライト・ゴースト", desc: "おすすめの攻め/受け駒を手駒で光らせ、置き場所を河に半透明で先出し（なし推奨時は「なし」を強調）。表示局は成績集計から除外。"},
     readHint: {label: "読みヒント（通る目安・保有推定）", desc: "あなたの手番のみ表示。攻め候補には「この攻めが通る目安」のバッジ（敵2席とも受けられないと推定される割合（推定・誤差あり）。受けられても見送る場合があります）、受け候補にはAIの推奨バッジ。駒を長押しすると相手の保有推定(pHold)も見られます。数値は推定であり断定ではありません。"},
-    missGuard: {label: "受けの助言（明確な局面だけ・確認つき）", desc: "明確な最善受けがあるのに別の駒を選んだときだけ、AIの推奨を示して確認します（戦術の助言です。誤タップ防止ではありません）。表示した局は成績集計から除外。"},
+    missGuard: {label: "受けの助言（明確な局面だけ・確認つき）", desc: "明確な最善受けがあるのに別の駒を選んだときだけ、AIの推奨を示して確認します（戦術の助言です。誤タップ防止ではありません）。表示した局は成績集計から除外。操作ヒントがOFFのときは働きません。"},
     counts: {label: "カウント表（王/香/しを強調）", desc: "自分の視点で場に出ていない駒数を表示します。"},
     sighonest: {label: "符丁の正直さコーチ", desc: "振り返りで、あなたの攻めが相方へ送った合図と手札の整合を点検します（学習向け）。"},
     pvPreview: {label: "打つ前に、相方への伝わり方を見る", desc: "稽古向け。手駒を長押しすると、その駒を打ったとき相方にどんな合図として伝わるかを、駒札に出します（合図の種類だけ。相方の手駒には触れません）。練習中は、この設定によらず出します。コーチ濃度とは別に切り替えます。"},
@@ -19937,7 +19960,7 @@ if (typeof document !== "undefined") (() => {
     const g = gradLoad();
     if (g.trial && g.trial.phase === "trial") return null;   // d: 進行中の試行が無い(同時に2つ試さない)
     for (const sf of SCAFFOLDS) {
-      if (!scafOn(sf)) continue;                                            // a: その足場が現在ON(v219.2 glue G6: 駒数の長押しを含む)
+      if (!scafOn(sf) || (sf.key === "missGuard" && !missGuardActive(app.cfg))) continue;   // a: その足場が現在ON(v219.2 glue G6: 駒数の長押しを含む)。v220.18 C: 受けの助言は操作ヒントが OFF なら働いていないので提案しない（卒業帳・チェックリストの scafOn は今のまま）
       const cd = g.cooldown[sf.key];
       if (cd != null && (app.career.length - cd) < 5) continue;             // e: 直近の却下/差し戻しから5局以上経過
       const m = gradMasteryFor(sf);
@@ -20006,7 +20029,7 @@ if (typeof document !== "undefined") (() => {
   // 「戻す」: 卒業扱いにはせずcfgをONへ戻す。5局のクールダウンの後に再提案されうる。
   function gradTrialRevert(sf) {
     const _p = (gradLoad().trial || {}).prev;   // v219.2 glue G8: counts の試しは開始前の 2 値へ(prev の無い旧データは従来どおり)
-    if (sf.key === "counts" && _p) { app.cfg.counts = !!_p.counts; app.cfg.countsHold = !!_p.countsHold; } else
+    if (sf.key === "counts" && _p) { app.cfg.counts = !!(_p.counts || app.cfg.counts); app.cfg.countsHold = !!(_p.countsHold || app.cfg.countsHold); } else   // v220.18 E: 試しの間に手で ON にした方を OFF に戻さない（ON の方向だけ戻す）
     app.cfg[sf.key] = true;
     saveCfgToStorage();
     const g = gradLoad();
@@ -20954,16 +20977,25 @@ if (typeof document !== "undefined") (() => {
     // 静止すればフリック不成立で競合しない)。チュートリアル中は無効(吹き出しと干渉するため)。
     let lpTimer = null;
     const clearLp = () => { if (lpTimer) { clearTimeout(lpTimer); lpTimer = null; } };
-    el.addEventListener("pointerdown", e => {
-      sx = e.clientX; sy = e.clientY; st0 = e.timeStamp; tracking = true; flicked = false;
-      clearLp();
-      app._lpFired = false;   // 新しいジェスチャの開始で必ずリセット(取りこぼし時の残留を防ぐ)
+    const startLp = () => {   // v220.17 D2: 長押しのタイマーを始める（駒と輪の pointerdown が呼ぶ）
       if (!app.tutorial) {
         lpTimer = setTimeout(() => {
           lpTimer = null; app._lpFired = true;
           try { showKomaCard(el.getBoundingClientRect(), el.textContent, {fromHand: true}); } catch (e) {}
         }, 450);
       }
+    };
+    const tryFlick = e => {   // v220.17 D2: 上フリックの判定（駒の pointerup と輪の pointerup が呼ぶ）
+      const dy = sy - e.clientY, dx = Math.abs(e.clientX - sx), dt = e.timeStamp - st0;
+      if (dy > 28 && dy > dx * 1.4 && dt < 500) {    // 上方向のフリック(全モード共通)
+        e.preventDefault(); flicked = true; if ((app.cfg.opMode || "tap") === "confirm") onActivate(); else activate();   // v220.16 U-d: 2タップの上フリックは 1 回目で選ぶだけ（2 回目で確定）。flicked で同じ身振りの click を抑える
+      }
+    };
+    el.addEventListener("pointerdown", e => {
+      sx = e.clientX; sy = e.clientY; st0 = e.timeStamp; tracking = true; flicked = false;
+      clearLp();
+      app._lpFired = false;   // 新しいジェスチャの開始で必ずリセット(取りこぼし時の残留を防ぐ)
+      startLp();
     });
     el.addEventListener("pointermove", e => {
       if (lpTimer && (Math.abs(e.clientX - sx) > 10 || Math.abs(e.clientY - sy) > 10)) clearLp();
@@ -20972,10 +21004,7 @@ if (typeof document !== "undefined") (() => {
       clearLp();
       if (app._lpFired) scheduleHideKomaCard();   // リセットはclickのcapture段で行う(flickedと同型)
       if (!tracking) return; tracking = false;
-      const dy = sy - e.clientY, dx = Math.abs(e.clientX - sx), dt = e.timeStamp - st0;
-      if (dy > 28 && dy > dx * 1.4 && dt < 500) {    // 上方向のフリック(全モード共通)
-        e.preventDefault(); flicked = true; if ((app.cfg.opMode || "tap") === "confirm") onActivate(); else activate();   // v220.16 U-d: 2タップの上フリックは 1 回目で選ぶだけ（2 回目で確定）。flicked で同じ身振りの click を抑える
-      }
+      tryFlick(e);
     });
     el.addEventListener("pointercancel", () => {
       tracking = false; clearLp();
@@ -20986,6 +21015,36 @@ if (typeof document !== "undefined") (() => {
       if (flicked) { e.stopImmediatePropagation(); flicked = false; }
       else if (app._lpFired) { e.stopImmediatePropagation(); app._lpFired = false; }
     }, true);
+    // v220.17 D2: 輪（.koma-slot::before・タップと同じ範囲）から始めたフリック・長押しも、駒の本体と同じに扱う。
+    // 輪の当たり先は slot 自身（e.target === slot）。駒の本体から始めた pointerdown は bubble で slot にも来るが、e.target で除く。
+    // click の抑えは足さない: 輪の click は #hand の委譲から駒の click() に渡り、駒の capture の抑え（共有の flicked・_lpFired）で止まる。
+    const slot = el.parentElement;
+    if (slot && slot.classList.contains("koma-slot")) {
+      slot.classList.add("ks-act");   // 押せる駒の輪だけ（.dis・受けられない番の slot には付かない）。CSS の touch-action はこの class にだけ
+      slot.addEventListener("pointerdown", e => {
+        if (e.target !== slot) return;
+        sx = e.clientX; sy = e.clientY; st0 = e.timeStamp; tracking = true; flicked = false;
+        clearLp();
+        app._lpFired = false;
+        startLp();
+      });
+      slot.addEventListener("pointermove", e => {
+        if (e.target !== slot) return;
+        if (lpTimer && (Math.abs(e.clientX - sx) > 10 || Math.abs(e.clientY - sy) > 10)) clearLp();
+      });
+      slot.addEventListener("pointerup", e => {
+        if (e.target !== slot) return;
+        clearLp();
+        if (app._lpFired) scheduleHideKomaCard();
+        if (!tracking) return; tracking = false;
+        tryFlick(e);
+      });
+      slot.addEventListener("pointercancel", e => {
+        if (e.target !== slot) return;
+        tracking = false; clearLp();
+        if (app._lpFired) { scheduleHideKomaCard(); app._lpFired = false; }
+      });
+    }
   }
   // UI-3(UX-07): .koma は clip-path を持ち擬似要素の拡張がヒットテストに届かないため、輪(#hand .koma-slot::before)は
   // clip-path を持たない .koma-slot 側に置く。輪(= slot 自身が target)のクリックは内側の対話可能な駒へ渡す(tap/confirm/flick の意味は駒本体と同じ)。
@@ -21792,8 +21851,8 @@ if (typeof document !== "undefined") (() => {
     if (!el) { el = document.createElement("div"); el.id = "goshi-beat"; el.setAttribute("aria-hidden", "true"); document.body.appendChild(el); }
     return el;
   }
-  function goshiBeat(reason, outcomeLabel, cont) {
-    if (app.stopped) return;   // 中断安全: 「間」自体を発生させず、contも呼ばない(v77-Fの中断即時性を踏襲)
+  function goshiBeat(reason, outcomeLabel, cont, live) {   // v220.19 N11
+    if (app.stopped || (live && !live())) return;   // 中断安全: 「間」自体を発生させず、contも呼ばない(v77-Fの中断即時性を踏襲)
     const beatMs = (app.humanSeat && fx().beatMs) || 0;
     if (!beatMs) { cont(); return; }   // 観戦/min preset等ゲート対象外は間なしで即contする(中断とは別の分岐)
     clearTimeout(app._goshiBeatT);   // 連打・再入は単一タイマーハンドルで防止(v77-Fのパターン踏襲)
@@ -21802,11 +21861,11 @@ if (typeof document !== "undefined") (() => {
     el.textContent = "五し — 相談中…";
     el.classList.add("show");
     app._goshiBeatT = setTimeout(() => {
-      if (app.stopped) { el.classList.remove("show"); return; }
+      if (app.stopped || (live && !live())) { el.classList.remove("show"); return; }
       el.textContent = "五し — " + outcomeLabel;
       app._goshiBeatT = setTimeout(() => {
         el.classList.remove("show");
-        if (!app.stopped) cont();
+        if (!app.stopped && (!live || live())) cont();
       }, 400);
     }, beatMs);
   }
@@ -23216,8 +23275,9 @@ if (typeof document !== "undefined") (() => {
   /* PHASE14_MOBILE_A11Y_JS_START
    * 狭い画面の視覚情報だけを3項目へ圧縮する。AI推奨・確率を混ぜず、aria-hiddenのため
    * 読み上げは詳細な#statuslineへ一本化する。 */
-  function turnFocusModel(st, humanSeat, review, stopped, autoPass) {
+  function turnFocusModel(st, humanSeat, review, stopped, autoPass, dealing) {
     if (!st || review || stopped) return null;
+    if (dealing && st.phase === "over") return {turn: "配り中", pending: "—", action: "待つ", active: null};   // v220.18 X14: 次の局の配りが決まるまでの帯が空のあいだ（前の局の「結果を確認」を出さない）。dealing は renderTurnFocus が app._dealingSt === app.st で渡す
     if (st.phase === "over") return {turn: "局終了", pending: "上がり", action: "結果を確認", active: "action"};
     const mine = !!humanSeat && st.actor === humanSeat;
     const turn = mine ? "あなた" : seatDisp(st.actor);
@@ -23238,9 +23298,10 @@ if (typeof document !== "undefined") (() => {
   }
   function renderTurnFocus() {
     const host = $("turn-focus"); if (!host) return;
-    const model = turnFocusModel(app.st, app.humanSeat, app.review, app.stopped, app.cfg && app.cfg.autoPass);
+    const dealing = !!(app._dealingSt && app._dealingSt === app.st);   // v220.18 X14: どの局の上での配り中かを局面の同一性で持つ（新しい局になれば app.st が替わるので、外し忘れがあっても残らない）
+    const model = turnFocusModel(app.st, app.humanSeat, app.review, app.stopped, app.cfg && app.cfg.autoPass, dealing);
     if (!model) { host.hidden = true; return; }
-    if (app.st && app.st.phase === "over") {
+    if (app.st && app.st.phase === "over" && model.turn !== "配り中") {
       const next = document.querySelector("#actionbar .btn.primary, #actionbar .btn.rec, #actionbar .btn");
       if (next && next.textContent.trim()) model.action = next.textContent.trim();
     }
@@ -24538,6 +24599,21 @@ if (typeof document !== "undefined") (() => {
     setTimeout(() => { try { toast("横持ちでは盤が画面に収まりません。縦持ちのほうが見やすくなります。"); } catch (e) {} }, 1200);
   }
   if (LANDSCAPE_MQ) { try { LANDSCAPE_MQ.addEventListener("change", () => { try { if (app.st && app.st.phase !== "over") maybeLandscapeHint(); } catch (e) {} }); } catch (e) {} }
+  // v220.19 N11: app._dealing = {tok, st0, gameNo}（配りの記録・startGame が作る）。settleDealing: "rollback" は gameNo を戻す／"keep" は戻さない。dealSeq と乱数は戻さない
+  function settleDealing(how) {
+    const d = app._dealing; if (!d) return false;
+    if (how === "rollback" && app.gameNo === d.gameNo) app.gameNo = d.gameNo - 1;   // 局番が記録の物と同じときだけ戻す（二重に戻さない・別の入口が替えた後は触らない）
+    clearTimeout(app._goshiBeatT); { const el = $("goshi-beat"); if (el) el.classList.remove("show"); }
+    app._dealing = null; app._dealingSt = null; app._dealTok = (app._dealTok || 0) + 1;
+    return true;
+  }
+  // 詰めごいたの失敗の帯の「対局を再開」: 取り残された配りは配り直す／局の終わりは overBand／それ以外は手番へ
+  function resumeAfterPause() {
+    app.stopped = false;
+    if (app._dealing) { settleDealing("rollback"); startGame(); return; }
+    if (app.st && app.st.phase === "over" && !app.tutorial && overBand()) return;   // 教材の間は今までどおり step()（教材のまま本物の局を配らない）
+    step();
+  }
   function startGame() {
     if (app.daily && app.daily.dealt) { try { toast("今日の一局は1局だけです"); } catch (e) {} stopToSetup(); return; }   // v220.12 D-d: 安全網（配った後は 2 局目に入らない）
     if (app.tutorial && qsIsKey(app.tutorial.key)) return;   // 短い入門: 入門・練習の間は通常の局を始めない（練習でない局が成績に入るのを防ぐ・第二読者 M-1）
@@ -24568,15 +24644,19 @@ if (typeof document !== "undefined") (() => {
     modeBanner(null);
     if (app.daily) modeBanner("<b>今日の一局</b><span>" + dailyDateJa(app.daily.date) + "</span>" + (app.daily.replay ? '<span class="dim">2回目以降・成績には入りません</span>' : ""));   // v220.12 D-h
     app.gameNo++;
+    const tok = (app._dealTok = (app._dealTok || 0) + 1);   // v220.19 N11
+    app._dealing = {tok, st0: app.st, gameNo: app.gameNo};
+    const live = () => !app.stopped && app._dealTok === tok && !!app._dealing && app._dealing.tok === tok && app.st === app._dealing.st0;
     $("stamp").classList.remove("show");
     $("wincut").classList.remove("show", "out");   // L1(v80): 完了ボタン持続化に伴う残留防止
     app.lastWin = null;
     closeReview();
     tourStop();   // 悪手ツアー(v87): closeReview()内でも呼ばれるが明示のため直接呼ぶ
+    app._dealingSt = app.st;   // v220.18 X14: この局の上で配り中（actionbar("") が turn-focus を描く前に立てる）
     actionbar("");   // v220.14 X-10: 前の局の帯（「次の局へ」など）を配りの前に空にする（五し相談・その「間」の間に押すと局番が飛ぶ・続行の後に古いボタンへフォーカスが戻る）
     let tries = 0;
     const tryDeal = () => {
-      if (app.stopped) return;
+      if (!live()) return;   // v220.19 N11
       if (++tries > 12) { app.dealSeq = (app.dealSeq || 0) + 1; log("配り直し上限 — 強制続行", true); return finalize(G.dealOnce(app.rng)); }
       app.dealSeq = (app.dealSeq || 0) + 1;   // build v166: QR共有用の通し番号(dealOnce呼び出し1回につき+1)
       const hands = G.dealOnce(app.rng);
@@ -24586,19 +24666,22 @@ if (typeof document !== "undefined") (() => {
         // C-6(v89c): AIが関与する五し相談に「考える間」を与える(観戦/min preset/エンジン非対応時はbeat=0で即時)
         const beat = (app.humanSeat && fx().beatMs) || 0;
         if (!beat) { log(`配り直し（${chk.reason || "五し"}）`, true); return tryDeal(); }
-        goshiBeat(chk.reason || "五し", "配り直し", () => { log(`配り直し（${chk.reason || "五し"}）`, true); tryDeal(); });
+        goshiBeat(chk.reason || "五し", "配り直し", () => { log(`配り直し（${chk.reason || "五し"}）`, true); tryDeal(); }, live);
         return;
       }
-      if (chk.needHuman) return askHumanGoshi(hands, chk, tryDeal);   // 人間自身が判断(思考時間が「間」そのもの・beatを通さない)
+      if (chk.needHuman) return askHumanGoshi(hands, chk, tryDeal, live);   // 人間自身が判断(思考時間が「間」そのもの・beatを通さない)
       if (chk.reason) {
         const beat = (app.humanSeat && fx().beatMs) || 0;
         if (!beat) { log(chk.reason, true); finalize(hands); return; }
-        goshiBeat(chk.reason, "続行", () => { log(chk.reason, true); finalize(hands); });
+        goshiBeat(chk.reason, "続行", () => { log(chk.reason, true); finalize(hands); }, live);
         return;
       }
       finalize(hands);
     };
     const finalize = hands => {
+      if (!live()) return;   // v220.19 N11
+      app._dealingSt = null;   // v220.18 X14: 配りが決まった
+      app._dealing = null;   // v220.19 N11
       app.st = G.newGameState(hands, app.parent);
       app.st.matchScores = {NS: app.scores.NS, EW: app.scores.EW};
       app.st.matchTarget = app.cfg.target; // Stage B(2026-07-25): T1エンジンのmatchTarget配線
@@ -24621,7 +24704,7 @@ if (typeof document !== "undefined") (() => {
     };
     tryDeal();
   }
-  function askHumanGoshi(hands, chk, redo) {
+  function askHumanGoshi(hands, chk, redo, live) {
     const req = chk.needHuman[0];
     const hand = hands[app.humanSeat].slice().sort(byPts);
     const m = modal(`
@@ -24637,12 +24720,15 @@ if (typeof document !== "undefined") (() => {
       </div>`);
     const decide = humanRedeal => {
       closeModal();
+      if (live && !live()) return;   // v220.19 N11
       const redeal = req.enemyAlso
         ? [...(chk.aiVotes || []), humanRedeal].every(v => v)
         : humanRedeal;
       if (redeal) { log("配り直し（五し相談）", true); redo(); }
       else {
         log("続行（五し相談）", true);
+        app._dealingSt = null;   // v220.18 X14: 配りが決まった
+        app._dealing = null;   // v220.19 N11
         app.st = G.newGameState(hands, app.parent);
         app.st.matchScores = {NS: app.scores.NS, EW: app.scores.EW};
         app.st.matchTarget = app.cfg.target; // Stage B(2026-07-25): T1エンジンのmatchTarget配線
@@ -25254,6 +25340,8 @@ if (typeof document !== "undefined") (() => {
     if (!useButton) app._wcT = setTimeout(_close, fxv.hold ? 1400 : fxv.wcAuto);
   }
   function onSpecialYaku(sp) {
+    app._dealingSt = null;   // v220.18 X14: 配牌手役で配りが終わった（app.st は前の局のまま＝同一性では外れないので、ここで外す）
+    app._dealing = null;   // v220.19 N11
     if (app.daily) {   // v220.12 D-d: 安全網（T-9 で今日の一局に手役は来ないはず）。得点を足さず、2 局目に入らない
       app.daily.done = true; app.rec = null;
       try { toast("今日の一局の配りに手役が出ました"); } catch (e) {}
@@ -25769,6 +25857,7 @@ if (typeof document !== "undefined") (() => {
     }
   }
   function startPractice(rec, idx, drillMeta, label) {
+    settleDealing("rollback");   // v220.19 N11: 配りの途中の練習。局番が飛ばない
     cancelAppTimer();
     closeModal();
     closeReview();
@@ -27389,16 +27478,23 @@ if (typeof document !== "undefined") (() => {
     if (app._fromSetup) { stopToSetup(); return; }   // v220.11 B1: 開始画面から入った振り返りは、開始画面へ戻る
     closeReview(true);
     renderAll();
+    overBand();
+  }
+  // v220.19 N11: 終局の帯（closeReviewToGame から切り出した・同じ規則＋配りの途中は出さない）。出したら true
+  function overBand() {
+    if (app._dealing) return false;   // 配りの途中は帯を出さない（配りの続きに任せる。「次の局へ」で局番が飛ばない）
     if (app.daily && app.st && app.st.phase === "over") {   // v220.12 D-d: 今日の一局の間は「次の局へ」を出さない（done では見ない・途中の練習の後も）
       actionbar("", [...(app.lastRec ? [{label: "振り返り", fn: openReview}] : []), {label: "設定へ戻る", primary: true, fn: stopToSetup}]);
-      return;
+      return true;
     }
     if (app.st && app.st.phase === "over" && !app.matchOver) {
       const over = app.scores.NS >= app.cfg.target || app.scores.EW >= app.cfg.target;
       actionbar("", over
         ? [{label: "振り返り", fn: openReview}, {label: "結果を見る", primary: true, fn: showMatchEnd}]
         : [{label: "振り返り", fn: openReview}, {label: "次の局へ", primary: true, fn: startGame}]);
+      return true;
     }
+    return false;
   }
   $("rv-close").addEventListener("click", closeReviewToGame);
   $("rv-lesson-redo").addEventListener("click", reviewLessonRedo);
@@ -27462,6 +27558,7 @@ if (typeof document !== "undefined") (() => {
       startPractice(rec, i, null, rec.daily ? `今日の一局の再プレイ: #${i + 1}` : `読込局面の再プレイ: 第${rec.matchNo}勝負・第${rec.gameNo}局 #${i + 1}`);
       return;
     }
+    settleDealing("keep");   // v220.19 N11
     app.drill = null;
     app.preDrill = null;
     app.bannerBase = null;
@@ -27819,6 +27916,8 @@ if (typeof document !== "undefined") (() => {
     startGame();
   }
   function stopToSetup() {
+    app._dealingSt = null;   // v220.18 X14: 止めたら配り中の印も外す
+    settleDealing("keep");   // v220.19 N11
     app._fromSetup = false;   // v220.11 B1
     app.daily = null;   // v220.12 D-i
     // 短い入門 計画 QS-3 ①（v220.6 F-14 の D-1 と同じ働き・入門の分を足した）: 教材の途中なら、先に正規の退出で退避を戻す（D-1・D-1b）
@@ -27886,6 +27985,7 @@ if (typeof document !== "undefined") (() => {
     const badge = document.getElementById(prefix + "-coachbadge");
     if (badge) badge.style.display = tier === "custom" ? "" : "none";
     if (tier !== "custom") app.cfg.coach = tier;
+    if (prefix !== "cfg") mgIdleSync(prefix);   // v220.18 C: 調整（"s"）。設定画面は renderSetupSummary の中
     if (prefix === "cfg") renderSetupSummary();   // UI-3(UX-01): 濃度ボタン・プリセット・syncSetupFormFromCfg からの変更(change は飛ばない)を要約へ
   }
   function wireCoachTier(prefix) {
@@ -27987,7 +28087,8 @@ if (typeof document !== "undefined") (() => {
     const ew = TIER_LABEL[v("cfg-EW")] || v("cfg-EW"), n = TIER_LABEL[v("cfg-N")] || v("cfg-N");
     // rev.3: 成績除外に関わる助言 4 つと、それ以外の補助表示(読み筋・カウント等)を分ける(「操作ヒントのみ」は読み筋 ON でも出て実態と違った)。
     const HELP = ["hints", "reading", "cand", "counts", "countsHold", "livebar", "riverseq", "explain", "sighonest", "pvPreview", "undo"];   // v219.2 glue G1: UI-2 の駒数長押しも補助
-    const adv = ADVICE_FLAGS.some(k => on("cfg-" + k)) ? "助言あり（表示した局は成績対象外）"
+    mgIdleSync("cfg");   // v220.18 C
+    const adv = adviceActive(Object.fromEntries([...ADVICE_FLAGS, "hints"].map(k => [k, on("cfg-" + k)]))) ? "助言あり（表示した局は成績対象外）"
       : (HELP.some(k => on("cfg-" + k)) ? "推奨手なし（ヒント・読み筋などの補助あり）" : "補助なし");
     el.textContent = `${who}／相手 ${ew}・相方 ${n}／先取 ${v("cfg-target")} 点／${adv}。目的を選んだだけでは始まりません。「対局をはじめる」で開始。`;
   }
@@ -28015,7 +28116,7 @@ if (typeof document !== "undefined") (() => {
     // その場で助言を切って始める選択肢を出す(裁定 8)。観戦・チュートリアル・練習・#m-new(もう一勝負)では出ない。
     // v220.8 F8-10（検討書 A2・裁定 D-2）: 端末ごとに 1 回。「このまま始める」「助言を切って始める」を押したら goita_advice_hint を書く（やめる・Esc・背景では書かない）
     let _adviceSeen = false; try { _adviceSeen = DATA_STORAGE.getItem("goita_advice_hint") === "1"; } catch (e) {}
-    if (!watch && app.humanSeat && !_adviceSeen && ADVICE_FLAGS.some(k => app.cfg[k])) {
+    if (!watch && app.humanSeat && !_adviceSeen && adviceActive(app.cfg)) {   // v220.18 C: 受けの助言だけの人は、操作ヒントが ON のときだけ案内
       const m = modal(
         `<h2 class="serif">助言が ON です</h2>` +
         `<p class="mg-p">推奨手・ハイライト・読みヒント・受けの助言のいずれかが ON です。<br>助言が表示された局は成績集計の対象外になります（過去の成績は変わりません）。</p>` +
@@ -29272,6 +29373,7 @@ if (typeof document !== "undefined") (() => {
     if (key === "quickstart") { startQuickStart({}); return; }   // 短い入門: 専用の開始へ
     if (key === "quickpractice") { startQuickPractice({}); return; }
     const sc = TUT[key]; if (!sc) return;
+    settleDealing("keep");   // v220.19 N11
     if (_tutBackup) { if (_tutBackup.kind === "qs") exitQuickStart({silent: true}); else exitTutorial(true); }   // 退避の二重上書きの禁止（D-1c・v220.6 F14c と同じ働き）
     _tutBackup = {kind: "legacy", cfg: Object.assign({}, app.cfg), tiers: Object.assign({}, app.tiers), humanSeat: app.humanSeat};
     app.tutorial = {key, idx: 0, awaiting: null, blockStep: true};
@@ -30616,8 +30718,10 @@ if (typeof document !== "undefined") (() => {
     G.SEATS.forEach((s, i) => map[s] = G.SEATS[(i + k) % 4]);
     const ih = {};
     for (const s of G.SEATS) ih[map[s]] = rec.initialHands[s];
+    const gh = Array.isArray(rec.goshiHolders) ? G.SEATS.filter(s => rec.goshiHolders.some(x => map[x] === s)) : null;   // v220.18 X12: 宣言者の席も手駒・手の席と同じ写像で回す（回さないと、作り直した局面で別の席が宣言者になる）
     return {...rec, parent: map[rec.parent], initialHands: ih,
-            moves: rec.moves.map(m => ({...m, seat: map[m.seat]}))};
+            moves: rec.moves.map(m => ({...m, seat: map[m.seat]})),
+            ...(gh ? {goshiHolders: gh} : {})};
   }
   function generatePuzzle(band, onProgress, cb) {
     const {mn, mx} = PUZZLE_BANDS[band];
@@ -30638,6 +30742,8 @@ if (typeof document !== "undefined") (() => {
         if (chk && (chk.redeal || chk.needHuman || chk.special)) continue;   // 相談・手役対象の配牌は出題から除外
         const init = {N: hands.N.slice(), W: hands.W.slice(), S: hands.S.slice(), E: hands.E.slice()};
         const st = G.newGameState(init, parent);
+        const gh = G.SEATS.filter(s => init[s].filter(k => k === "し").length === 5);   // v220.18 X12: 5し続行の宣言者（declareGoshi と同じ式）。自己対局の局面と出題の記録の両方に入れる（AI は宣言を見て打つ・練習で作り直した局面と同じにする）
+        st.goshiHolders = gh;
         const acc = [];
         const passedOn = {N: {}, E: {}, S: {}, W: {}};   // 席ごとの「駒Xの攻めにパスした」実績
         let it = 0;
@@ -30649,7 +30755,7 @@ if (typeof document !== "undefined") (() => {
               if (probe) {
                 const raw = {matchNo: app.matchNo, gameNo: Math.max(1, app.gameNo), parent,
                              scoresBefore: {NS: app.scores.NS, EW: app.scores.EW},
-                             initialHands: init, moves: acc.slice()};
+                             initialHands: init, moves: acc.slice(), ...(gh.length ? {goshiHolders: gh.slice()} : {})};   // v220.18 X12
                 app._puzzleDebug = window.__puzzleDebug = {band, stage: null, evidence: null, noOuKyo: null};   // window側はテスト観測用ミラー
                 cb({rec: rotateToSouth(raw, st.actor), idx: acc.length,
                     move: probe.move, why: probe.why});
@@ -30660,7 +30766,7 @@ if (typeof document !== "undefined") (() => {
               if (found) {
                 const raw = {matchNo: app.matchNo, gameNo: Math.max(1, app.gameNo), parent,
                              scoresBefore: {NS: app.scores.NS, EW: app.scores.EW},
-                             initialHands: init, moves: acc.slice()};
+                             initialHands: init, moves: acc.slice(), ...(gh.length ? {goshiHolders: gh.slice()} : {})};   // v220.18 X12
                 app._puzzleDebug = window.__puzzleDebug = {band, stage: found.stage, evidence: found.evidence, noOuKyo: true, why: found.probe.why};   // window側はテスト観測用ミラー
                 cb({rec: rotateToSouth(raw, st.actor), idx: acc.length,
                     move: found.probe.move, why: found.probe.why, stage: found.stage});   // M-4(v92a): stageをcb経由でdrillへ伝播
@@ -30753,7 +30859,7 @@ if (typeof document !== "undefined") (() => {
       if (!p) {
         actionbar("生成できませんでした", [
           {label: "再試行", fn: () => runPuzzleGen(band)},
-          app._fromSetup ? {label: "設定へ戻る", fn: stopToSetup} : {label: "対局を再開", fn: () => { app.stopped = false; step(); }}]);   // v220.11 B1
+          app._fromSetup ? {label: "設定へ戻る", fn: stopToSetup} : {label: "対局を再開", fn: resumeAfterPause}]);   // v220.11 B1／v220.19 N11
         return;
       }
       app.puzzleStats.tried++;
@@ -30787,6 +30893,21 @@ if (typeof document !== "undefined") (() => {
    * tag: fix=不具合修正 / fast=速くなった / read=読みが良くなった / ui=使いやすくなった(v212.1 新設) / (無印)=内部のみ
    * ================================================================ */
   const APP_CHANGELOG = [
+    {v: "v220.19", d: "2026-10-02", tag: "fix", tagJa: "不具合修正", t: "配りの途中で詰めごいたなどを開いたときに対局が止まる不具合を直しました", p: [
+      "次の局が配られるまでのあいだ（五し相談の間など）に詰めごいたを開き、問題を作れずに「対局を再開」を押すと、次の局が配られずに止まっていたのを直しました。",
+      "同じあいだに練習や振り返りを開いて戻ったとき、局の番号が1つ飛んだり、練習の局面が上書きされたりすることがあったのを直しました。",
+      "局の終わりに詰めごいたを開いて「対局を再開」を押したときは、「次の局へ」などのボタンが出るようにしました。",
+      "AIそのもの・ルール・得点は変えていません。"]},
+    {v: "v220.18", d: "2026-10-02", tag: "fix", tagJa: "不具合修正", t: "詰めごいた・手番の案内・受けの助言の案内・カウント表の試しを直しました", p: [
+      "詰めごいたの問題を作るとき、5し続行になった配りでは、実戦と同じく5し続行を宣言してから打つようにしました。これから作る問題のごく一部（1%未満）の中身が変わります。保存した問題は変わりません。",
+      "次の局が配られるまでのあいだ（五し相談の間など）、手番の案内が「結果を確認」になっていたのを「配り中」にしました。",
+      "受けの助言は操作ヒントがOFFのときは働かないため、そのときは「助言あり」と案内しないようにし、設定に「操作ヒントがOFFのときは働きません」と書き足しました。成績の数え方は変えていません。",
+      "カウント表の試しの途中で手でONにした設定を、「やめる」「戻す」で消さないようにしました。",
+      "AIそのもの・ルール・得点は変えていません。"]},
+    {v: "v220.17", d: "2026-10-02", tag: "ui", tagJa: "使いやすくなった", t: "駒の周りから上にはじいても出せるようにしました", p: [
+      "スマホで、駒をタップできる範囲（駒の周りの少し広い範囲）から上にはじいても、その駒を出せるようにしました（フリックのみの設定のとき）。",
+      "長押しで駒の説明を出す範囲も、同じ範囲にそろえました。駒の周りを長く押したときは、どの操作モードでも駒の説明が出て、離しても駒は出ません。",
+      "AIそのもの・ルール・得点は変えていません。"]},
     {v: "v220.16", d: "2026-10-01", tag: "fix", tagJa: "不具合修正", t: "フリックのみの設定でスマホから駒を出せるようにしました", p: [
       "操作モードが「フリックのみ」のとき、スマホで駒を上にはじいても駒が出なかったのを直しました（画面の縦送りとして扱われていました）。1タップ・2タップのときの手触りは変えていません。",
       "フリックのみのときは、手番の案内を「攻める駒を上にはじく」などにし、駒をタップしたときは「駒は上にはじいて出します」と知らせるようにしました。",
@@ -31135,7 +31256,7 @@ if (typeof document !== "undefined") (() => {
       <div class="row"><button class="btn primary" id="s-close">閉じる</button></div>`);
     wireCoachTier("s"); syncCoachTierUI("s");
     const commitAdjust = () => {   // v220.6 F-5: 「閉じる」の中身を関数へ。Esc・背景・閉じるのどれでも閉じる前に 1 回呼ぶ
-      const _advBefore = {advice: app.cfg.advice, assistHi: app.cfg.assistHi, readHint: app.cfg.readHint, missGuard: app.cfg.missGuard};   // UI-3(UX-02): 助言 OFF→ON の判定用(保存前の値)
+      const _advBefore = {advice: app.cfg.advice, assistHi: app.cfg.assistHi, readHint: app.cfg.readHint, missGuard: app.cfg.missGuard, hints: app.cfg.hints};   // UI-3(UX-02): 助言 OFF→ON の判定用(保存前の値)
       app.cfg.mc = m.querySelector("#s-mc").checked;
       app.cfg.ouSignal = m.querySelector("#s-ousig").checked;
       GOITA_ENGINE_REGISTRY.invokeAll("setOuSignal", app.cfg.ouSignal);
@@ -31188,7 +31309,7 @@ if (typeof document !== "undefined") (() => {
       app.cfg.sighonest = m.querySelector("#s-sighonest") ? m.querySelector("#s-sighonest").checked : app.cfg.sighonest;
       app.cfg.autoWorstTour = m.querySelector("#s-autoWorstTour") ? m.querySelector("#s-autoWorstTour").checked : app.cfg.autoWorstTour;
       clearPendingSelection();   // UI-3(UX-02 / MUST 7・rev.3): モード変更を含む設定保存で未確定選択を解除(参照と DOM の両方)
-      if (ADVICE_FLAGS.some(k => !_advBefore[k] && app.cfg[k])) { try { toast("助言をONにしました — 助言が表示された局は成績集計の対象外になります"); } catch (e) {} }   // UI-3(UX-02): 設定変更時に 1 回
+      if (ADVICE_FLAGS.some(k => k === "missGuard" ? (!missGuardActive(_advBefore) && missGuardActive(app.cfg)) : (!_advBefore[k] && app.cfg[k]))) { try { toast("助言をONにしました — 助言が表示された局は成績集計の対象外になります"); } catch (e) {} }   // UI-3(UX-02): 設定変更時に 1 回
       // T-0(v90a): 「調整」で足場をONへ変更した場合は安全側(=「使った」)に倒し_scAtStartを引き上げる。
       // OFFへの変更は引き下げない(終盤だけONにしてすぐ戻す抜け道を塞ぐ)。app._scAtStartが無い
       // (対局が始まっていない)時は何もしない。
