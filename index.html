@@ -5,6 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>ごいた — 能登の伝承遊戯</title>
   <!-- build: v220.6 に短い入門コース（3 場面・5 着手）と助言つきの 1 局練習を当てた（配信候補 v220.7 の元）。計画: docs/PLAN_短い入門コース_rev4_Opus5.5.md（§14 の裁定）・docs/PLAN_v220.7_入門コース配信_rev2_Opus5.5.md。適用: harness/apply_quickstart_v2.py。エンジン区画（G・G_B・T1）は不変。 -->
+  <!-- build: v220.21「不具合の直し（長押しの後のはじき・メニューを開いたままの Esc・前回のつづきのコーチ推移・今日の一局と入門のふだん通らない道）と試験の穴」base=v220.20。
+       計画: docs/PLAN_v220.21_不具合6件と試験の穴_rev2_Opus5.5.md（rev1 と合わせて読む）。
+       変更: harness/apply_v220_21.py → apply_ui_release.py（版数・CHANGELOG・バッジ・sw.js）。G・G_B・T1 の区画は v220.20 と byte 一致。
+       CACHE_NAME: goita-v220.20 → goita-v220.21. -->
   <!-- build: v220.20「小さな不具合の直し 12 件（配りの途中の手駒・研究モード・決着後の対局を再開・駒札の後始末・診断の版・カウント表の名前・チュートリアルのフリック・2タップの選択中の文・トースト・注記）」base=v220.19。
        計画: docs/PLAN_v220.20_小さな不具合の便_rev2_Opus5.5.md（rev1 と合わせて読む）。
        変更: harness/apply_v220_20.py → apply_ui_release.py（版数・CHANGELOG・バッジ・sw.js）。G・G_B・T1 の区画は v220.19 と byte 一致。
@@ -2047,7 +2051,7 @@ body.noto #wincut.show .wc-label{animation:wcFude .62s cubic-bezier(.2,.9,.3,1.2
 <div id="setup-screen">
   <!-- build v208: 版数表示は APP_CHANGELOG[0] から起動時に上書きされる(JS が動かない場合の保険としてここにも同じ版数を書いておく)。 -->
   <button type="button" class="setup-version" id="btn-version"
-          aria-label="バージョン v220.20 — 更新内容を見る" title="更新内容を見る"><span id="btn-version-num">v220.20</span><span class="sv-i" aria-hidden="true">ⓘ</span></button>
+          aria-label="バージョン v220.21 — 更新内容を見る" title="更新内容を見る"><span id="btn-version-num">v220.21</span><span class="sv-i" aria-hidden="true">ⓘ</span></button>
   <div class="title-block">
     <h1 class="serif">ごいた</h1>
     <div class="title-sub">能登・宇出津に伝わる竹駒の伝承遊戯</div>
@@ -19962,9 +19966,10 @@ if (typeof document !== "undefined") (() => {
   }
   function gradThresholdFor(sf) { return sf.concept ? 0.70 : 0.65; }   // 「実力が本物と証明された」ではなく「試す価値がある」の意味。証明用より低く取る
   // 【1】提案条件a〜eを満たすorder最小の1件を返す(候補が無ければnull)
+  function gradInTrial(g) { return !!(g && g.trial && g.trial.phase === "trial"); }   // v220.21 B11c（gradOnGameFinished の 1 か所は v220.11 の静的な検査（run_v220_11_node.js L219）のため元の式のまま）
   function gradPropose() {
     const g = gradLoad();
-    if (g.trial && g.trial.phase === "trial") return null;   // d: 進行中の試行が無い(同時に2つ試さない)
+    if (gradInTrial(g)) return null;   // d: 進行中の試行が無い(同時に2つ試さない)
     for (const sf of SCAFFOLDS) {
       if (!scafOn(sf) || (sf.key === "missGuard" && !missGuardActive(app.cfg))) continue;   // a: その足場が現在ON(v219.2 glue G6: 駒数の長押しを含む)。v220.18 C: 受けの助言は操作ヒントが OFF なら働いていないので提案しない（卒業帳・チェックリストの scafOn は今のまま）
       const cd = g.cooldown[sf.key];
@@ -20153,6 +20158,7 @@ if (typeof document !== "undefined") (() => {
       app.stopped = false; app.matchOver = false; app.review = null; app._fromSetup = false;   // v220.11 B1
       app.kifuLines = []; app.lastRec = null; app.coachHistory = [];
       midLeave(); app.matchId = (_midSaved && _midSaved.at === d.savedAt && _midSaved.no === d.matchNo) ? _midSaved.mid : ++_midSeq;   // v220.13 E-a: このページで最後に保存できた勝負なら同じ印（ほかは新しい印）
+      app.coachHistory = app.career.filter(c => _midOf.get(c) === app.matchId && c.g <= d.gameNo).map(c => { const o = {...c}; delete o.matchNo; return o; });   // v220.21 B05
       app._tourWinRecorded = false;   // A-5(v91a): 復帰したマッチもtourWinRecordの一回性ガードをリセット
       app._matchUndone = d.undone === true;   // v220.11 U-e①
       if (d.tw === true) app._tourWinRecorded = true;   // v220.13 N-8b: 勝ち越しを記録した勝負の続きなら、再開しても二重に数えない
@@ -20996,6 +21002,7 @@ if (typeof document !== "undefined") (() => {
       }
     };
     const tryFlick = e => {   // v220.17 D2: 上フリックの判定（駒の pointerup と輪の pointerup が呼ぶ）
+      if (app._lpFired) return;   // v220.21 B08: 長押しで札が出た後の身振りは着手にしない（札だけ）
       const dy = sy - e.clientY, dx = Math.abs(e.clientX - sx), dt = e.timeStamp - st0;
       if (dy > 28 && dy > dx * 1.4 && dt < 500) {    // 上方向のフリック(全モード共通)
         e.preventDefault(); flicked = true; if ((app.cfg.opMode || "tap") === "confirm") onActivate(); else activate();   // v220.16 U-d: 2タップの上フリックは 1 回目で選ぶだけ（2 回目で確定）。flicked で同じ身振りの click を抑える
@@ -25373,7 +25380,7 @@ if (typeof document !== "undefined") (() => {
     app._dealingSt = null;   // v220.18 X14: 配牌手役で配りが終わった（app.st は前の局のまま＝同一性では外れないので、ここで外す）
     app._dealing = null;   // v220.19 N11
     if (app.daily) {   // v220.12 D-d: 安全網（T-9 で今日の一局に手役は来ないはず）。得点を足さず、2 局目に入らない
-      app.daily.done = true; app.rec = null;
+      app.daily.done = true; app.rec = null;   // v220.21 B11b: done はアプリでは読まない（試験 v220.12 D3・D7 が読む）
       try { toast("今日の一局の配りに手役が出ました"); } catch (e) {}
       actionbar("", [{label: "設定へ戻る", primary: true, fn: stopToSetup}]);
       return;
@@ -25757,7 +25764,7 @@ if (typeof document !== "undefined") (() => {
     }
     if (app.rec && app.rec.practice) { onPracticeOver(res); return; }
     const _dl = (app.rec && app.rec.daily && app.daily) ? app.daily : null;   // v220.12: 今日の一局の局（rec の印で見る。教材・練習の局は上で抜ける）
-    if (_dl) _dl.done = true;
+    if (_dl) _dl.done = true;   // v220.21 B11b: 同上
     app.rec.result = {winner: res.winner, pts: res.pts, dbl: !!res.dbl, draw: !!res.draw};
     app.lastRec = app.rec;
     // A-4(v91a): 研究モードはhumanSeat="S"だが専用の研究分岐(下のresearch.active判定)へ流れるため
@@ -25783,7 +25790,7 @@ if (typeof document !== "undefined") (() => {
         if (!_rep) app.career.push({matchNo: app.matchNo, g: app.gameNo, hinted: !!app.rec.hinted, sc: app.rec.sc, cfv: app.rec.cfv, ...cs, ...(app.rec.undone ? {undone: true} : {})});   // v220.11 U-e①
         if (!_rep) _midOf.set(app.career[app.career.length - 1], midCur());   // v220.13 E-a: 成績の 1 件に勝負の印
         if (!_rep) gradOnGameFinished(cs);   // G-2(v90b): 進行中の試行があれば1局分を記録・3局たまれば判定
-        else { const _g = gradLoad(); if (_g.trial && _g.trial.phase === "trial") { try { toast("今日の一局の2回目以降は、卒業の試しに数えません"); } catch (e) {} } }   // v220.12 D-e: 数えない（中断はしない）
+        else { const _g = gradLoad(); if (gradInTrial(_g)) { try { toast("今日の一局の2回目以降は、卒業の試しに数えません"); } catch (e) {} } }   // v220.12 D-e: 数えない（中断はしない）
         const line = `コーチ集計: AI一致 ${cs.agree}/${cs.h} ・読み切り逃し ${cs.miss}` +
           (cs.hasty ? `（うち早打ち${cs.hasty}）` : "") +
           (cs.avgT != null ? ` ・平均思考 ${cs.avgT.toFixed(1)}秒` : "");
@@ -28846,10 +28853,10 @@ if (typeof document !== "undefined") (() => {
     qsListen(true);
   }
   function startQuickStart(opts) {
-    app.daily = null;   // v220.12 D-i
     opts = opts || {};
     qsCleanupLeftovers();
     if (!qsCanStart(false)) return;
+    app.daily = null;   // v220.12 D-i（v220.21 B11a: 早い return の後へ）
     qsWireBar();
     const q = qsProgress();
     const replay = q.completed;   // 修了した人の「入門をもう一度」: 保存は書かない（X-9）
@@ -29022,10 +29029,11 @@ if (typeof document !== "undefined") (() => {
     // 案内は、フォーカスを移す先の説明として読ませる（上の「読み上げ」の注）。フォーカスの知らせの時点で説明があるよう、focus() の前に結ぶ（第二読者 rev6 の N-24）。
     // 着手の段では、直前の結果（qsi-prev「角で受けました。」など）も結ぶ。実況（#sr-live）が次のフォーカスで切られても、結果が読まれるように（N-25）。
     // 保存できない案内は、出ている最初の 1 回だけ結ぶ
-    const storageFirst = _qsPendingStorageNotice && !_qsStorageAnnounced;
+    const storageFirst = !!target && _qsPendingStorageNotice && !_qsStorageAnnounced;   // v220.21 B13
     if (storageFirst) _qsStorageAnnounced = true;
     const parts = QS_STEPS[t.stepId] ? ["qsi-prev", "qsi-note", "qsi-body"] : ["qsi-body", "qsi-extra"];
     qsDescribe(target, storageFirst ? ["qsi-storage", ...parts] : parts);
+    if (!target) qsAnnounce(parts.map(id => $(id)).filter(e => e && !e.hidden && (e.textContent || "").trim() !== "").map(e => e.textContent.trim()).join(" "));   // v220.21 B13
     if (target) { try { target.focus({preventScroll: true}); } catch (e) { try { target.focus(); } catch (e2) {} } }
     const reduce = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
     // v220.7（検討書 B7・2026-09-26 裁定「第1場面だけ帯を留めない」）: 案内が相方の席に触れる段では、相方の名札も見せる
@@ -29305,10 +29313,10 @@ if (typeof document !== "undefined") (() => {
 
   /* ---------------- 助言つきで1局練習（§5-9） ---------------- */
   function startQuickPractice(opts) {
-    app.daily = null;   // v220.12 D-i
     opts = opts || {};
     qsCleanupLeftovers();
     if (!qsCanStart(!!opts.fromCourse)) return;
+    app.daily = null;   // v220.12 D-i（v220.21 B11a）
     const sc = TUT.quickpractice;
     qsEnter("quickpractice");
     const sid = ++_qsSeq;
@@ -29399,10 +29407,10 @@ if (typeof document !== "undefined") (() => {
   }
   let _tutBackup = null;
   function startTutorial(key, opts) {
-    app.daily = null;   // v220.12 D-i: 教材・定石の「試す」・ドリル
     if (key === "quickstart") { startQuickStart({}); return; }   // 短い入門: 専用の開始へ
     if (key === "quickpractice") { startQuickPractice({}); return; }
     const sc = TUT[key]; if (!sc) return;
+    app.daily = null;   // v220.12 D-i: 教材・定石の「試す」・ドリル（v220.21 B11a）
     settleDealing("keep");   // v220.19 N11
     if (_tutBackup) { if (_tutBackup.kind === "qs") exitQuickStart({silent: true}); else exitTutorial(true); }   // 退避の二重上書きの禁止（D-1c・v220.6 F14c と同じ働き）
     _tutBackup = {kind: "legacy", cfg: Object.assign({}, app.cfg), tiers: Object.assign({}, app.tiers), humanSeat: app.humanSeat};
@@ -30150,7 +30158,7 @@ if (typeof document !== "undefined") (() => {
     }
     // B-1(v91b): 試行中(3局計測中)の状態表示。従来は試行中は何も出ず、進捗が対局画面の成績→卒業帳
     // でしか見えなかった。
-    if (g.trial && g.trial.phase === "trial") {
+    if (gradInTrial(g)) {
       const sf = SCAFFOLDS.find(s => s.key === g.trial.key);
       if (sf) return {kind: "grad_trial", sf: sf, n: g.trial.games.length};
     }
@@ -30326,7 +30334,7 @@ if (typeof document !== "undefined") (() => {
         mark = "─"; statusTxt = scafName(sf) === sf.label ? "使用中" : "使用中（駒数の長押し）";   // v220.20 X01
       } else if (g.graduated[sf.key]) {
         mark = "✓"; statusTxt = fmtMonthDay(g.graduated[sf.key].at) + "に外した"; markStyle = "color:var(--aoi)";
-      } else if (g.trial && g.trial.phase === "trial" && g.trial.key === sf.key) {
+      } else if (gradInTrial(g) && g.trial.key === sf.key) {
         mark = "⋯"; statusTxt = "試し中（" + g.trial.games.length + "/3局）";
       } else if (g.trial && g.trial.phase === "failed_pending" && g.trial.key === sf.key) {
         mark = "⋯"; statusTxt = "判定待ち";   // B-1(v91b): 現状「未使用」に落ちていたのを是正
@@ -30924,6 +30932,12 @@ if (typeof document !== "undefined") (() => {
    * tag: fix=不具合修正 / fast=速くなった / read=読みが良くなった / ui=使いやすくなった(v212.1 新設) / (無印)=内部のみ
    * ================================================================ */
   const APP_CHANGELOG = [
+    {v: "v220.21", d: "2026-10-08", tag: "fix", tagJa: "不具合修正", t: "長押し・メニュー・前回のつづきなどの不具合を直しました", p: [
+      "駒を長押しして説明を出した後に上へはじくと、説明と同時に駒が出てしまうことがあったのを直しました。長押しの後は説明だけになります。",
+      "メニューを開いたまま画面を回すなどして幅が広がったとき、次の Esc が効かなかったのを直しました。",
+      "同じページで「前回のつづき」から勝負に戻ったとき、結果の画面のコーチ推移が出なかったのを直しました。",
+      "短い入門と今日の一局の、ふだんは通らない道の細部を直しました。",
+      "AIそのもの・ルール・得点は変えていません。"]},
     {v: "v220.20", d: "2026-10-03", tag: "fix", tagJa: "不具合修正", t: "小さな不具合をまとめて直しました", p: [
       "次の局が配られるまでのあいだに手駒を押すと、前の局の手として記録されることがあったのを直しました。そのあいだは手番の案内を「配り中」にします。",
       "勝負が決着した後に詰めごいたを開き、問題を作れずに「対局を再開」を押したときは、「結果を見る」が出るようにしました。",
@@ -31386,6 +31400,7 @@ if (typeof document !== "undefined") (() => {
       });
       document.addEventListener("keydown", e => {
         if (e.key !== "Escape" || !more.classList.contains("open")) return;
+        if (!mb.getClientRects().length) { closeMore(false); return; }   // v220.21 B09
         e.preventDefault(); e.stopPropagation(); closeMore(true);
       }, true);
       more.addEventListener("focusout", e => { const to = e.relatedTarget; if (to && !more.contains(to) && to !== mb && more.classList.contains("open")) closeMore(false); });

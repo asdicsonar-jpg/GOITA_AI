@@ -1,5 +1,5 @@
 // ごいた — Service Worker
-// 対象: index.html (build v220.20, SHA-256 e59e2f740e4123488a566f6d2d6a44bb36afb9397d5ae0ba74fdc89ba88739c0)
+// 対象: index.html (build v220.21, SHA-256 ebe38842517919eab82c670acc3cfa10a04ac06e095c6387233b5f145e6d6e32)
 //
 // v205: A-1「ddSolve の Packed 化(PACKED_SOLVE、既定0=legacy)」。出荷既定では1行も
 // 実行されない基盤整備であり、着手列SHA-256 は v204 と完全一致することを機械確認済み。
@@ -54,6 +54,7 @@
 // v220.18: 持ち越しの直し（apply_v220_18.py）。エンジン区画は v220.17 と byte 一致。
 // v220.19: 配りの途中で止まる・局番が飛ぶ不具合の直し（apply_v220_19.py）。エンジン区画は v220.18 と byte 一致。
 // v220.20: 小さな不具合の直し 12 件（apply_v220_20.py）。エンジン区画は v220.19 と byte 一致。
+// v220.21: 不具合の直し（apply_v220_21.py）。エンジン区画は v220.20 と byte 一致。
 //
 // このファイルは index.html と同じディレクトリに配置すること。index.html 側は
 // すでに以下の登録コードを持っている(http(s)配信時のみ有効。file://や未配置時は
@@ -66,7 +67,7 @@
 // アプリを開いたことがある端末には古いキャッシュが残り続け、新しい index.html が
 // 配信されない(PWAの典型的な事故)。
 
-const CACHE_NAME = "goita-v220.20";
+const CACHE_NAME = "goita-v220.21";
 
 // 起動シェルとして必ずキャッシュしたいファイル。存在しないもの(まだ配置していない
 // manifest.json やアイコン等)があっても install 全体を失敗させないよう、
