@@ -5,6 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>ごいた — 能登の伝承遊戯</title>
   <!-- build: v220.6 に短い入門コース（3 場面・5 着手）と助言つきの 1 局練習を当てた（配信候補 v220.7 の元）。計画: docs/PLAN_短い入門コース_rev4_Opus5.5.md（§14 の裁定）・docs/PLAN_v220.7_入門コース配信_rev2_Opus5.5.md。適用: harness/apply_quickstart_v2.py。エンジン区画（G・G_B・T1）は不変。 -->
+  <!-- build: v220.23「キーボードの1手戻す・スマホの手番の枠・駒札の固定表示（BG-15・UI-29・UI-01）」base=v220.22。
+       計画: docs/PLAN_v220.23_残りのすぐ便_rev3_Opus5.5.md（rev1・rev2 と合わせて読む）。
+       変更: harness/apply_v220_23.py → apply_ui_release.py（版数・CHANGELOG・バッジ・sw.js）。G・G_B・T1 の区画は v220.22 と byte 一致。
+       CACHE_NAME: goita-v220.22 → goita-v220.23. -->
+  <!-- build: v220.22「不具合 3 件の直し（1手戻すの連打・別の勝負の局からの再開・相方の席での打ち直し）」base=v220.21。
+       計画: docs/PLAN_v220.22_不具合3件_rev2_Opus5.5.md（rev1 と合わせて読む）。
+       変更: harness/apply_v220_22.py → apply_ui_release.py（版数・CHANGELOG・バッジ・sw.js）。G・G_B・T1 の区画は v220.21 と byte 一致。
+       CACHE_NAME: goita-v220.21 → goita-v220.22. -->
   <!-- build: v220.21「不具合の直し（長押しの後のはじき・メニューを開いたままの Esc・前回のつづきのコーチ推移・今日の一局と入門のふだん通らない道）と試験の穴」base=v220.20。
        計画: docs/PLAN_v220.21_不具合6件と試験の穴_rev2_Opus5.5.md（rev1 と合わせて読む）。
        変更: harness/apply_v220_21.py → apply_ui_release.py（版数・CHANGELOG・バッジ・sw.js）。G・G_B・T1 の区画は v220.20 と byte 一致。
@@ -549,6 +557,9 @@ body.cud #equity-edge .ee-ns{background-image:repeating-linear-gradient(-45deg,r
 #koma-card .kc-pts{font-size:.8rem;color:var(--kin);margin-left:6px}
 #koma-card .kc-sub{font-size:.66rem;color:var(--gin);margin-top:3px;line-height:1.4}
 @media (prefers-reduced-motion:reduce){#koma-card{transition:none}}
+#koma-card.pinned{pointer-events:auto}   /* v220.23 U01: 閉じるまで出す駒札 */
+#koma-card .kc-close{display:none}
+#koma-card.pinned .kc-close{display:block;margin:6px auto 0;min-width:44px;min-height:44px}
 #statusline{padding:6px 12px;display:flex;align-items:center;gap:8px;font-size:.78rem;color:var(--gin);transition:color .2s,border-color .2s}
 #statusline .dot{width:6px;height:6px;border-radius:50%;background:var(--kin);flex:none;transition:transform .2s}
 /* 自分の手番: 抑制された配色思想に沿い、真鍮(手番に許された色)でステータスと手駒枠を強調 */
@@ -1682,7 +1693,7 @@ body.cud .pcard .phead .nm:not(.ally){color:#e8b89f}  /* 敵=暖色系で寒色�
 .tf-step[data-active="true"] .tf-value{color:var(--kinari)}
 .tf-step[data-active="true"] .tf-value::before{content:"▶ ";color:var(--kin)}
 @media (max-width:619px){
-  #turn-focus:not([hidden]){display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px}
+  #turn-focus:not([hidden]){display:grid;grid-template-columns:minmax(0,.8fr) minmax(0,1fr) minmax(0,1.4fr);gap:4px}   /* v220.23 U29: 操作の列を広く（「▶ 同じ駒か王／なし」が 375 幅で 2 行に折れて手駒の欄が画面の外へ出ていた） */
   #actionbar{position:sticky;bottom:0;z-index:25;min-height:44px;padding:6px 4px calc(6px + env(safe-area-inset-bottom));
     margin:0 -2px;background:linear-gradient(180deg,rgba(13,19,29,.96),var(--ink0));border-top:1px solid var(--hair2)}
   #actionbar>span{order:-2;flex:1 0 100%;text-align:left;font-size:.72rem;line-height:1.35}
@@ -2051,7 +2062,7 @@ body.noto #wincut.show .wc-label{animation:wcFude .62s cubic-bezier(.2,.9,.3,1.2
 <div id="setup-screen">
   <!-- build v208: 版数表示は APP_CHANGELOG[0] から起動時に上書きされる(JS が動かない場合の保険としてここにも同じ版数を書いておく)。 -->
   <button type="button" class="setup-version" id="btn-version"
-          aria-label="バージョン v220.21 — 更新内容を見る" title="更新内容を見る"><span id="btn-version-num">v220.21</span><span class="sv-i" aria-hidden="true">ⓘ</span></button>
+          aria-label="バージョン v220.23 — 更新内容を見る" title="更新内容を見る"><span id="btn-version-num">v220.23</span><span class="sv-i" aria-hidden="true">ⓘ</span></button>
   <div class="title-block">
     <h1 class="serif">ごいた</h1>
     <div class="title-sub">能登・宇出津に伝わる竹駒の伝承遊戯</div>
@@ -20071,13 +20082,29 @@ if (typeof document !== "undefined") (() => {
   let _matchNoTop = 0;   // v220.14 X-6: このページで付けた・再開した勝負の番号のいちばん大きい値（resumeSavedMatch より前の行に置く）
   const _midOf = new WeakMap();   // 局の記録（rec）・成績の 1 件 → 勝負の印
   const _midFlags = new Map();    // 勝負の印 → 離れたときの印 {u: 1手戻した, t: 勝ち越しを記録した}
+  const _midCtx = new Map();      // v220.22 B06: 勝負の印 → その勝負の {tiers・hs: 人の席・kifu: 棋譜の配列} と、離れたときの {rng・seed・seq}
+  function midCtxStart() { _midCtx.set(midCur(), {tiers: Object.assign({}, app.tiers), hs: app.humanSeat, kifu: app.kifuLines}); }   // v220.22 B06: 勝負の始まり（席の強さが決まった後）
   function midCur() { if (!app.matchId) app.matchId = ++_midSeq; return app.matchId; }
-  function midLeave() { if (app.matchId) _midFlags.set(app.matchId, {u: app._matchUndone === true, t: app._tourWinRecorded === true}); }
+  function midLeave() {
+    if (!app.matchId) return;
+    _midFlags.set(app.matchId, {u: app._matchUndone === true, t: app._tourWinRecorded === true});
+    const c = _midCtx.get(app.matchId); if (c) { c.rng = app.rng; c.seed = app.matchSeed; c.seq = app.dealSeq; }   // v220.22 B06: 離れる勝負の配りの続き（呼ぶ側はどれも、種を替える前に呼ぶ）
+  }
   function midSwitch(mid, rec) {   // 振り返りの ▶ で別の勝負の局から続けるとき、その勝負に切り替える（番号は呼ぶ側）
     midLeave();
     app.matchId = mid;
     { const f = _midFlags.get(mid); app._matchUndone = !!(f && f.u); app._tourWinRecorded = !!(f && f.t); }   // v220.13 N-8: 1手戻した印・勝ち越しを記録した印も、その勝負のものに
     app.coachHistory = app.career.filter(c => _midOf.get(c) === mid && c.g < rec.gameNo).map(c => { const o = {...c}; delete o.matchNo; return o; });   // コーチ推移もその勝負の行に
+    const cx = _midCtx.get(mid);   // v220.22 B06: 席の強さ・人の席・棋譜・配りの種と通し番号も、その勝負のものに（控えの無い勝負は今までどおり）
+    if (cx) {
+      const hs0 = app.humanSeat;
+      app.tiers = Object.assign({}, cx.tiers); app.humanSeat = cx.hs; app.kifuLines = cx.kifu;
+      if (cx.rng) { app.rng = cx.rng; app.matchSeed = cx.seed; app.dealSeq = cx.seq; }
+      if (hs0 && hs0 !== app.humanSeat) clearHumanLearningBoth(hs0);
+      if (app.humanSeat) { setOuTrustBoth(app.humanSeat); applyOppProfile(); }
+      $("handarea").classList.toggle("show", !!app.humanSeat);
+      if (app._humanSeatBeforeReview !== undefined) app._humanSeatBeforeReview = app.humanSeat;   // v220.22 B06（第二読者 M-1）: ▶ の後の closeReview が振り返りの前の席に戻すので、その控えも勝負の席に
+    }
   }
   function saveMatchProgress(phase) {
     if (!matchSaveAllowed()) return;
@@ -20158,6 +20185,7 @@ if (typeof document !== "undefined") (() => {
       app.stopped = false; app.matchOver = false; app.review = null; app._fromSetup = false;   // v220.11 B1
       app.kifuLines = []; app.lastRec = null; app.coachHistory = [];
       midLeave(); app.matchId = (_midSaved && _midSaved.at === d.savedAt && _midSaved.no === d.matchNo) ? _midSaved.mid : ++_midSeq;   // v220.13 E-a: このページで最後に保存できた勝負なら同じ印（ほかは新しい印）
+      midCtxStart();   // v220.22 B06: 再開した勝負（棋譜はここから）
       app.coachHistory = app.career.filter(c => _midOf.get(c) === app.matchId && c.g <= d.gameNo).map(c => { const o = {...c}; delete o.matchNo; return o; });   // v220.21 B05
       app._tourWinRecorded = false;   // A-5(v91a): 復帰したマッチもtourWinRecordの一回性ガードをリセット
       app._matchUndone = d.undone === true;   // v220.11 U-e①
@@ -20959,6 +20987,34 @@ if (typeof document !== "undefined") (() => {
       if (el) el.classList.remove("show");
     }, 150);
   }
+  // v220.23 U01（仕様書 UX-07 MUST 4〜5）: 駒札を「閉じるまで出す」入口。手駒にフォーカスして i・ContextMenu キー・Shift+F10、またはマウスの右クリック。開いても着手しない。閉じると元の駒へフォーカスを戻す（長押しの札は今までどおり）
+  let _kcPin = null;
+  function openKomaCardPinned(from, koma, opts) {
+    if (!from || !koma || koma === "伏" || app.tutorial) return;
+    showKomaCard(from.getBoundingClientRect(), koma, opts);
+    const el = komaCardEl(); clearTimeout(_komaCardHideT);
+    _kcPin = {from};
+    el.classList.add("pinned"); el.setAttribute("role", "dialog"); el.setAttribute("aria-label", "「" + koma + "」の駒札"); el.removeAttribute("aria-hidden");
+    const b = document.createElement("button"); b.type = "button"; b.className = "btn small kc-close"; b.textContent = "閉じる";
+    b.addEventListener("click", () => closeKomaCardPinned(true));
+    b.addEventListener("keydown", ev => { if (ev.key === "Tab") { ev.preventDefault(); closeKomaCardPinned(true); } });   // 第二読者 S-1: Tab・Shift+Tab は閉じて元の駒へ
+    b.addEventListener("focusout", ev => { const to = ev.relatedTarget; if (!to || !el.contains(to)) closeKomaCardPinned(false); });   // 第二読者 S-1: ページの外へ出ても閉じる
+    el.appendChild(b);
+    try { b.focus({preventScroll: true}); } catch (e) {}
+  }
+  function closeKomaCardPinned(restore) {
+    const p = _kcPin; if (!p) return;
+    _kcPin = null;
+    const el = $("koma-card");
+    if (el) { el.classList.remove("show", "pinned"); el.removeAttribute("role"); el.removeAttribute("aria-label"); el.setAttribute("aria-hidden", "true"); const b = el.querySelector(".kc-close"); if (b) b.remove(); }
+    if (restore) { const t = (p.from && p.from.isConnected) ? p.from : document.querySelector("#hand .koma[role=button]:not(.dis)"); if (t) { try { t.focus({preventScroll: true}); } catch (e) {} } }
+  }
+  document.addEventListener("keydown", e => { if (_kcPin && e.key === "Escape") { e.preventDefault(); e.stopPropagation(); closeKomaCardPinned(true); } }, true);
+  let _kcSwallow = 0;   // 第二読者 S-2: 札の外を押して閉じたその押しの click は、下の駒・ボタンに渡さない（着手しない）
+  document.addEventListener("pointerdown", e => { if (_kcPin && !(e.target && e.target.closest && e.target.closest("#koma-card"))) { _kcSwallow = performance.now(); closeKomaCardPinned(false); } else _kcSwallow = 0; }, true);   // 第二読者 rev2 M-1: 印は閉じた押しの click だけに効く（次の押しで消す）
+  document.addEventListener("pointercancel", () => { _kcSwallow = 0; }, true);
+  document.addEventListener("contextmenu", () => { _kcSwallow = 0; }, true);
+  document.addEventListener("click", e => { if (_kcSwallow && performance.now() - _kcSwallow < 800) { _kcSwallow = 0; e.preventDefault(); e.stopImmediatePropagation(); } }, true);
   // v220.20 B07: マウスは捕捉が無いので、札を出した後に駒・河の外で離すと駒・河の pointerup が来ない。document で拾って消す（_lpFired は戻さない: 駒の上で離した後の click の抑えに使う）
   document.addEventListener("pointerup", () => { if (app._lpFired) scheduleHideKomaCard(); }, true);
   document.addEventListener("pointercancel", () => { if (app._lpFired) scheduleHideKomaCard(); }, true);
@@ -20985,6 +21041,7 @@ if (typeof document !== "undefined") (() => {
     };
     el.addEventListener("click", onActivate);
     el.addEventListener("keydown", e => {
+      if (!e.isComposing && (e.key === "i" || e.key === "I" || e.key === "ContextMenu" || (e.key === "F10" && e.shiftKey))) { e.preventDefault(); openKomaCardPinned(el, el.textContent, {fromHand: true}); return; }   // v220.23 U01: 駒札を閉じるまで出す（着手しない）
       if (e.key === "Enter" || e.key === " " || e.key === "Spacebar") { e.preventDefault(); if ((app.cfg.opMode || "tap") === "flick") { activate(); return; } onActivate(); }   // v220.15 U-c（UX-02 ③）: フリックのみでもキーボードでは出せる（キーボードにフリックは無い）
     });
     // フリック(上スワイプ): Pointer Eventsで上方向の素早い動きを検出
@@ -21008,6 +21065,8 @@ if (typeof document !== "undefined") (() => {
         e.preventDefault(); flicked = true; if ((app.cfg.opMode || "tap") === "confirm") onActivate(); else activate();   // v220.16 U-d: 2タップの上フリックは 1 回目で選ぶだけ（2 回目で確定）。flicked で同じ身振りの click を抑える
       }
     };
+    el.addEventListener("contextmenu", e => { if (el._kcPt === "touch" || el._kcPt === "pen") return; e.preventDefault(); clearLp(); app._lpFired = false; openKomaCardPinned(el, el.textContent, {fromHand: true}); });   // v220.23 U01: マウスの右クリックで駒札を閉じるまで出す（タッチの長押しの contextmenu は今までどおり）
+    el.addEventListener("pointerdown", e => { el._kcPt = e.pointerType; });   // v220.23 U01
     el.addEventListener("pointerdown", e => {
       sx = e.clientX; sy = e.clientY; st0 = e.timeStamp; tracking = true; flicked = false;
       clearLp();
@@ -23339,6 +23398,7 @@ if (typeof document !== "undefined") (() => {
     document.querySelectorAll("#hand .koma.armed, #actionbar .btn.armed").forEach(el => el.classList.remove("armed"));
     armHintClear();   // v220.15 U-b: 選択の解除で選択中の文を戻す
   }
+  const UNDO_GAP_MS = 200;   // v220.22 B04: 「1手戻す」を押した後、同じ場所に描き直した「1手戻す」への次の押しを受けない間（ms）。50ms ほどの連打で 2 手戻るのを防ぐ（続けて戻す人の 0.25 秒おきは止めない）
   function actionbar(html, buttons) {
     const m = $("actionbar");
     m.innerHTML = html ? `<span>${html}</span>` : "";
@@ -23350,6 +23410,7 @@ if (typeof document !== "undefined") (() => {
       // UI-3(UX-02): 2タップ確定モードでは confirm:true のボタン(受けられる局面の「なし」)も駒と同じく 1度目=武装 / 2度目=確定。
       // rev.3: モードは駒側 makeKomaInteractive.onActivate と同じく「押した時点」で読む(対局中に「調整」で変えた直後から効く)。
       el.addEventListener("click", () => {
+        if (b.gap && app._undoAt && performance.now() - app._undoAt < UNDO_GAP_MS) return;   // v220.22 B04: 連打の 2 度目（武装も確定もしない）
         if (b.confirm && (app.cfg.opMode || "tap") === "confirm" && !el.classList.contains("armed")) {
           if (app.armedKoma) { app.armedKoma.classList.remove("armed"); app.armedKoma = null; }
           m.querySelectorAll(".btn.armed").forEach(x => { if (x !== el) x.classList.remove("armed"); });   // v220.15 M-1: ほかのボタンの選択も外す（2 つ同時に選ばれて、先に選んだ方が 1 回で確定しないように）
@@ -23360,6 +23421,7 @@ if (typeof document !== "undefined") (() => {
         el.classList.remove("armed");   // 武装済み、または confirm 以外のモード: そのまま確定
         armHintClear();   // v220.15 U-b: 押したら選択中の文を戻す（1手戻すが早く戻る道でも残さない）
         b.fn();
+        if (b.gap) app._undoAt = performance.now();   // v220.22 B04: 戻して描き終えた時から数える
       });
       m.appendChild(el);
     });
@@ -24162,7 +24224,7 @@ if (typeof document !== "undefined") (() => {
   }
   function undoAllowed() { return undoEnabledHere() && !!undoTarget(); }
   function undoBtnList() {
-    if (undoAllowed()) return [{label: "1手戻す", cls: "undo-btn ghost", confirm: true, fn: undoOneMove}];
+    if (undoAllowed()) return [{label: "1手戻す", cls: "undo-btn ghost", confirm: true, gap: true, fn: undoOneMove}];   // v220.22 B04: gap（帯の押し口で連打を見る）
     // 戻す手がまだ無い番（その局の最初の手・最初まで戻した後）: 同じ大きさの見えない場所取り。「なし」の位置と帯の高さを変えない（U9 の実測）
     if (undoEnabledHere()) return [{label: "1手戻す", cls: "undo-btn ghost undo-ph", ph: true, fn: () => {}}];
     return [];
@@ -24425,6 +24487,7 @@ if (typeof document !== "undefined") (() => {
   document.addEventListener("pointerdown", () => { _kbdPlay = false; }, true);
   function kbdRefocus() {
     if (!_kbdPlay) return;
+    { const w = app._undoAt ? UNDO_GAP_MS - (performance.now() - app._undoAt) : 0; if (w > 0) { setTimeout(kbdRefocus, Math.ceil(w) + 10); return; } }   // v220.23 B15: 1手戻した直後（UNDO_GAP_MS の間）はフォーカスを手駒へ移さない（キーボードの速い 2 回目の Enter が、移った駒を打たない）。間の後に今までどおり戻す
     const a = document.activeElement; if (a && a !== document.body && a !== document.documentElement) return;
     if ($("ov-modal") && $("ov-modal").classList.contains("show")) return;
     const t = document.querySelector("#hand .koma[role=button]:not(.dis)") || document.querySelector("#actionbar .btn:not([disabled])");
@@ -27564,6 +27627,7 @@ if (typeof document !== "undefined") (() => {
     if (prev && prev !== seat) app.tiers[prev] = (app._swap.tiers[seat] && app._swap.tiers[seat] !== "human") ? app._swap.tiers[seat] : "strong";
     app.tiers[seat] = "human";
     app.humanSeat = seat;
+    if (prev !== seat) { if (prev) clearHumanLearningBoth(prev); setOuTrustBoth(seat); applyOppProfile(); }   // v220.22 B12: エンジンの「人の学習」を、人が打つ席へ移す（練習の間だけ・restoreSeatSwap が戻す）
     $("handarea").classList.add("show");
     try {
       startPractice(rec, i, {seatSwap: true, idx: i, judged: true, orig: rec.result || null, team: G.team(seat), seat, label}, label);
@@ -27581,8 +27645,10 @@ if (typeof document !== "undefined") (() => {
   function restoreSeatSwap() {
     const w = app._swap; if (!w) return false;
     app._swap = null;
+    const _swapSeat = app.humanSeat;   // v220.22 B12
     app.humanSeat = w.humanSeat; app.tiers = Object.assign({}, w.tiers);
     $("handarea").classList.toggle("show", !!app.humanSeat);
+    if (_swapSeat && _swapSeat !== app.humanSeat) clearHumanLearningBoth(_swapSeat);   // v220.22 B12: 練習で人が打った席を AI の既定へ戻す
     if (app.humanSeat) { setOuTrustBoth(app.humanSeat); applyOppProfile(); }
     return true;
   }
@@ -27944,6 +28010,7 @@ if (typeof document !== "undefined") (() => {
     app.dealSeq = 0;
     app.rng = G.mulberry32(app.matchSeed);
     app.parent = dp ? dp.parent : G.SEATS[Math.floor(Math.random() * 4)];
+    midCtxStart();   // v220.22 B06
     $("log").innerHTML = "";
     $("handarea").classList.toggle("show", !!app.humanSeat);
     app.daily = dp ? dailyBegin(dp) : null;   // v220.12 D-c（見出しと startGame より前）
@@ -30932,6 +30999,16 @@ if (typeof document !== "undefined") (() => {
    * tag: fix=不具合修正 / fast=速くなった / read=読みが良くなった / ui=使いやすくなった(v212.1 新設) / (無印)=内部のみ
    * ================================================================ */
   const APP_CHANGELOG = [
+    {v: "v220.23", d: "2026-10-10", tag: "fix", tagJa: "不具合修正", t: "キーボードの「1手戻す」・スマホの手番の枠・駒札の表示を直しました", p: [
+      "キーボードで「1手戻す」を素早く 2 回押しても、手駒を打ってしまわないようにしました。",
+      "スマホの幅で、手番の枠の「操作」が 2 行に折れて手駒の欄が画面からはみ出すことがあったのを直しました。",
+      "手駒にフォーカスして i キー（または Shift+F10）を押すか、マウスで右クリックすると、駒札を閉じるまで表示できるようにしました。閉じると元の駒に戻ります。",
+      "AIの打ち筋・ルール・得点は変えていません。"]},
+    {v: "v220.22", d: "2026-10-09", tag: "fix", tagJa: "不具合修正", t: "「1手戻す」の連打・別の勝負の局からの再開・相方の席での打ち直しを直しました", p: [
+      "「1手戻す」を素早く 2 回タップ・クリックしても、戻るのは 1 手だけにしました。",
+      "振り返りで別の勝負の局から続けると、その勝負の席の強さ・棋譜・配りの続きで打てるようにしました。",
+      "相方の席で打ち直す練習の間は、AI が覚えたあなたの打ち方の記録を、あなたが打つ席に付け替えるようにしました。",
+      "AIの打ち筋そのもの・ルール・得点は変えていません。"]},
     {v: "v220.21", d: "2026-10-08", tag: "fix", tagJa: "不具合修正", t: "長押し・メニュー・前回のつづきなどの不具合を直しました", p: [
       "駒を長押しして説明を出した後に上へはじくと、説明と同時に駒が出てしまうことがあったのを直しました。長押しの後は説明だけになります。",
       "メニューを開いたまま画面を回すなどして幅が広がったとき、次の Esc が効かなかったのを直しました。",
