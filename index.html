@@ -5,6 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>ごいた — 能登の伝承遊戯</title>
   <!-- build: v220.6 に短い入門コース（3 場面・5 着手）と助言つきの 1 局練習を当てた（配信候補 v220.7 の元）。計画: docs/PLAN_短い入門コース_rev4_Opus5.5.md（§14 の裁定）・docs/PLAN_v220.7_入門コース配信_rev2_Opus5.5.md。適用: harness/apply_quickstart_v2.py。エンジン区画（G・G_B・T1）は不変。 -->
+  <!-- build: v220.25「今日の一局の戻り・手駒の見出し・練習の5し宣言・振り返りの文字の色を直しました（TX-05・UI-05・UI-16・UI-25）」base=v220.24。
+       計画: docs/PLAN_v220.25_判断の後の便_rev3_Opus5.5.md（rev1・rev2 と合わせて読む）。
+       変更: harness/apply_v220_25.py → apply_ui_release.py（版数・CHANGELOG・バッジ・sw.js）。G・G_B・T1 の区画は v220.24 と byte 一致。
+       CACHE_NAME: goita-v220.24 → goita-v220.25. -->
+  <!-- build: v220.24「読みヒントの数字を 0%・100% と言い切らないようにしました（UI-31）」base=v220.23。
+       計画: docs/PLAN_v220.24_読みヒントの0と100_rev3_Opus5.5.md（rev1・rev2 と合わせて読む）。
+       変更: harness/apply_v220_24.py → apply_ui_release.py（版数・CHANGELOG・バッジ・sw.js）。G・G_B・T1 の区画は v220.23 と byte 一致。
+       CACHE_NAME: goita-v220.23 → goita-v220.24. -->
   <!-- build: v220.23「キーボードの1手戻す・スマホの手番の枠・駒札の固定表示（BG-15・UI-29・UI-01）」base=v220.22。
        計画: docs/PLAN_v220.23_残りのすぐ便_rev3_Opus5.5.md（rev1・rev2 と合わせて読む）。
        変更: harness/apply_v220_23.py → apply_ui_release.py（版数・CHANGELOG・バッジ・sw.js）。G・G_B・T1 の区画は v220.22 と byte 一致。
@@ -914,6 +922,7 @@ body.reviewing #kiriko-fire{display:none!important}   /* Fix(v87.1): キリコ�
 #handarea.show{display:flex}
 #handarea .hd{font-size:.7rem;color:var(--gin);display:flex;gap:10px}
 #handarea .hd #hand-hint{color:var(--kin)}
+#handarea .hd #hand-name{flex:none;white-space:nowrap}   /* v220.25 U05 */
 #hand{display:flex;flex-wrap:wrap;--hand-gap:7px;gap:var(--hand-gap);justify-content:center;min-height:var(--koma-h)}
 #hand .koma{cursor:pointer;transition:transform .12s}
 #hand .koma:not(.dis):active{transform:translateY(-3px)}
@@ -1107,6 +1116,14 @@ body:not(.nashi-left) #actionbar.ab-undo-solo .btn.undo-btn{order:-3}
 @keyframes tourPinPulse{0%,100%{opacity:.5}50%{opacity:1}}
 #rv-graph .gx-head{display:flex;align-items:center;gap:6px;font-size:.58rem;color:var(--gin-d);margin-bottom:2px}
 #rv-graph .gx-head .ns{color:var(--aoi)} #rv-graph .gx-head .ew{color:var(--shu)}
+/* v220.25 U25（UI-25・Sonar 2026-10-16）: 振り返りの淡い文字を 4.5:1 に（axe）。色は振り返りの中だけ替える。生成りの 2 つの枠は夜藍向けの濃い地をそのまま使っていたので紙の色に寄せる */
+body.theme-kinari #review{--gin-d:#675f50;--kin:#745d20;--aoi:#32695b;--shu:#aa3824}
+body.theme-kinari #rv-graph{background:rgba(60,48,24,.05)}
+body.theme-kinari #rv-lesson{background:rgba(143,115,39,.10)}
+body.theme-kinari #rv-worst{background:rgba(60,48,24,.05)}
+body.theme-kinari #rv-tour{background:rgba(60,48,24,.08)}
+body.theme-kinari #rv-graph .gx-pin text{fill:#fff8ec}   /* 第二読者 M-1: 暗くした朱・金の円の上の「!」「★」を淡い字に（濃い字のままだと 2.9:1） */
+@media not (prefers-contrast:more){body:not(.theme-kinari):not(.theme-hc) #review{--gin-d:#8191a3;--shu:#e46b54}}   /* 第二読者 S-1: コントラストを上げる設定の色（L235）を上書きしない */
 #beliefbox{display:none;flex-direction:column;gap:4px;margin:2px 0;padding:8px 10px;
   border:1px solid var(--hair2);border-radius:8px}
 #beliefbox.show{display:flex}
@@ -2062,7 +2079,7 @@ body.noto #wincut.show .wc-label{animation:wcFude .62s cubic-bezier(.2,.9,.3,1.2
 <div id="setup-screen">
   <!-- build v208: 版数表示は APP_CHANGELOG[0] から起動時に上書きされる(JS が動かない場合の保険としてここにも同じ版数を書いておく)。 -->
   <button type="button" class="setup-version" id="btn-version"
-          aria-label="バージョン v220.23 — 更新内容を見る" title="更新内容を見る"><span id="btn-version-num">v220.23</span><span class="sv-i" aria-hidden="true">ⓘ</span></button>
+          aria-label="バージョン v220.25 — 更新内容を見る" title="更新内容を見る"><span id="btn-version-num">v220.25</span><span class="sv-i" aria-hidden="true">ⓘ</span></button>
   <div class="title-block">
     <h1 class="serif">ごいた</h1>
     <div class="title-sub">能登・宇出津に伝わる竹駒の伝承遊戯</div>
@@ -2370,7 +2387,7 @@ body.noto #wincut.show .wc-label{animation:wcFude .62s cubic-bezier(.2,.9,.3,1.2
     <div id="qsi-btns" class="qsi-btns"></div>
   </section>
   <div class="panel" id="handarea">
-    <div class="hd"><span>あなたの手駒</span><span id="hand-hint"></span><span id="count-bar" style="margin-left:auto;color:var(--gin-d);font-variant-numeric:tabular-nums"></span><button type="button" id="count-hold" class="btn small" hidden aria-label="駒数（押している間だけ盤に表示）">駒数</button></div>
+    <div class="hd"><span id="hand-name">あなたの手駒</span><span id="hand-hint"></span><span id="count-bar" style="margin-left:auto;color:var(--gin-d);font-variant-numeric:tabular-nums"></span><button type="button" id="count-hold" class="btn small" hidden aria-label="駒数（押している間だけ盤に表示）">駒数</button></div>
     <div id="hand"></div>
     <div id="rh-legend" hidden>数字=敵2席とも受けられないと推定される割合（推定・誤差あり）。受けられても見送る場合があります　<span class="rh-badge rh-safe">通65%〜</span>=通りやすい　<span class="rh-badge rh-risk">〜通64%</span>=受けられやすい</div>
   </div>
@@ -21553,8 +21570,9 @@ if (typeof document !== "undefined") (() => {
   // 戦略的に見送る(パス)場合があるため、実際に通る確率は表示値(1-pr)以上 — 表示値は保守的な
   // 下限(目安)。色は表示値pctから導出することで、丸め起因の「同じ%表示なのに色が違う」矛盾
   // (旧: pr=0.346→35%緑・pr=0.354→35%赤)を構造的に排除する(pct>=65 ⇔ 緑)。
+  function rhPct(x) { return Math.min(99, Math.max(1, Math.round(x * 100))); }   // v220.24 R31（UI-31・仕様書 UX-06 受け入れ条件・Sonar 2026-10-12）: 読みヒントの数字は 0%・100% と言い切らない（1〜99 に収める）。元の推定値は変えない
   function readHintBadge(pr) {
-    const pct = Math.round((1 - pr) * 100);
+    const pct = rhPct(1 - pr);
     const safe = pct >= 65;
     const el = document.createElement("span");
     el.className = "rh-badge " + (safe ? "rh-safe" : "rh-risk");
@@ -21628,9 +21646,10 @@ if (typeof document !== "undefined") (() => {
     try {
       const L = G.komaLedger(G.makeView(st, app.humanSeat));
       if (!L || !L.pHold) return [];
+      { let c = null; try { c = G.countsFor(st, app.humanSeat); } catch (e) {} if (c && c[koma] === 0) return [`相手の保有推定(${koma})：なし（見えていない残りが0枚）`]; }   // v220.24 R31Z: 残り 0 枚の駒は数でなく「なし」と出す（0% と言い切らず、手がかりは残す）
       const parts = G.SEATS.filter(s => s !== app.humanSeat).map(s => {
         const p = (L.pHold[s] && L.pHold[s][koma]) || 0;
-        return seatDisp(s) + Math.round(p * 100) + "%";
+        return seatDisp(s) + rhPct(p) + "%";   // v220.24 R31H: 0%・100% と言い切らない
       });
       return [`相手の保有推定(${koma})：` + parts.join("・")];
     } catch (e) { return []; }
@@ -21703,7 +21722,7 @@ if (typeof document !== "undefined") (() => {
         if (_ledgerForHint) {
           try {
             const _prA = G.pEnemyReceives(_ledgerForHint, app.humanSeat, k);
-            _prAriaTxt = "（敵2席とも受けられないと推定される割合 約" + Math.round((1 - _prA) * 100) + "%（推定・誤差あり）。受けられても見送る場合があります）";   // v220.15 U-e（裁定 6）
+            _prAriaTxt = "（敵2席とも受けられないと推定される割合 約" + rhPct(1 - _prA) + "%（推定・誤差あり）。受けられても見送る場合があります）";   // v220.15 U-e（裁定 6）
           } catch (e) {}
         }
         makeKomaInteractive(el, k + verb + (isRec ? "（おすすめ" + (app._recPat ? "・" + app._recPat.tag : "") + "）" : "") + _prAriaTxt, () => onHandTap(k));
@@ -22914,6 +22933,7 @@ if (typeof document !== "undefined") (() => {
     if (app._countHold && !(can && app.cfg.countsHold)) hideCountOverlay();
     let sig = "", c = null;
     if (can && app.cfg.counts) { c = G.countsFor(app.st, app.humanSeat); sig = "g:" + countGridSig(c); }
+    { const hn = $("hand-name"); if (hn) { const t = (c && !app.tutorial) ? "手駒" : "あなたの手駒"; if (hn.textContent !== t) hn.textContent = t; } }   // v220.25 U05（UI-05）: カウント表が並ぶと見出しが縦に折れるので短く。入門・教材の文「「あなたの手駒」の欄」と食い違わないよう、教材の間は元のまま
     if (_countRenderSignature === sig) {
       recordRenderWork("count", true);
       return;
@@ -23198,7 +23218,7 @@ if (typeof document !== "undefined") (() => {
     ATK_OCC_TELEMETRY.fires++;
     ATK_OCC_TELEMETRY.log.push({t: Date.now(), koma: hint.koma, src: hint.src, recPct, bestK, bestPct, recvDist});
     if (ATK_OCC_TELEMETRY.log.length > ATK_OCC_TELEMETRY_MAX_LOG) ATK_OCC_TELEMETRY.log.shift();
-    return "※通る目安では" + bestK + "(通" + bestPct + "%)が上。この推奨は占有率(手駒構成)基準で、" +
+    return "※通る目安では" + bestK + "(通" + rhPct(bestPct / 100) + "%)が上。この推奨は占有率(手駒構成)基準で、" +
       "AIの実際の打ち筋と一致させています。";
   }
   function renderAdvice(st) {
@@ -25975,6 +25995,11 @@ if (typeof document !== "undefined") (() => {
     $("stamp").classList.remove("show");
     $("wincut").classList.remove("show", "out");   // L1(v80): 完了ボタン持続化に伴う残留防止
     log(`―― ${label}（練習・得点と成績には反映しません）――`, true);
+    if (app.st && Array.isArray(app.st.goshiHolders) && app.st.goshiHolders.length) {   // v220.25 U16（UI-16）: 詰めごいた・逃し復習・振り返りの練習でも、実戦では全員に見える 5し続行の宣言を出す
+      const names = app.st.goshiHolders.map(s => `${seatDisp(s)}（${G.team(s) === G.team(app.humanSeat || "S") ? "あなた組" : "相手組"}）`).join("・");
+      const msg = `【5し続行】${names}が「し」5枚を宣言 — 続行で開始`;
+      log(msg, true, "goshi"); announce(msg, true);
+    }
     actionbar("");
     undoReset(); undoPush();   // v220.11 U-a②: 練習の始まり（練習を始めた局面より前には戻れない）
     renderAll();
@@ -26048,7 +26073,7 @@ if (typeof document !== "undefined") (() => {
     } else if (d) {
       btns.push({label: "逃し復習へ", fn: () => { openMissDrill(); }});
     }
-    btns.push(app._fromSetup ? {label: "設定へ戻る", fn: stopToSetup} : {label: "対局へ戻る", fn: endPractice});   // v220.11 B1
+    btns.push((app._fromSetup || app.daily) ? {label: "設定へ戻る", fn: stopToSetup} : {label: "対局へ戻る", fn: endPractice});   // v220.11 B1・v220.25 T05: 今日の一局の間の練習も
     actionbar(verdict, btns);
     status("練習終了" + (verdict ? `: ${verdict}` : ""));
   }
@@ -27252,7 +27277,7 @@ if (typeof document !== "undefined") (() => {
   }
   function openReviewOn(rec, idx) {
     if (!rec || !rec.moves.length) return;
-    { const rc = $("rv-close"); if (rc) rc.textContent = app._fromSetup ? "設定へ戻る" : "対局へ戻る"; }   // v220.11 B1
+    { const rc = $("rv-close"); if (rc) rc.textContent = (app._fromSetup || dailyOverNow()) ? "設定へ戻る" : "対局へ戻る"; }   // v220.11 B1・v220.25 T05
     const enteringReview = !app.review;
     if (enteringReview) app._reviewPrevFocus = document.activeElement || null;
     // Q2(v177): 40点以上上がり等の特別演出(#wincut・キリコ)はhold中(完了ボタン待ち)、
@@ -27574,8 +27599,9 @@ if (typeof document !== "undefined") (() => {
       openReviewOn(app.reviewRec, app.review ? app.review.idx : app.reviewRec.moves.length - 1);
     });
   }
+  function dailyOverNow() { return !!(app.daily && app.st && app.st.phase === "over"); }   // v220.25 T05（TX-05）: 今日の一局の終局の後（次の局は無い）
   function closeReviewToGame() {
-    if (app._fromSetup) { stopToSetup(); return; }   // v220.11 B1: 開始画面から入った振り返りは、開始画面へ戻る
+    if (app._fromSetup || dailyOverNow()) { stopToSetup(); return; }   // v220.11 B1: 開始画面から入った振り返りは、開始画面へ戻る。v220.25 T05: 今日の一局の終局の後も（押した後の帯が「設定へ戻る」だけだったのを 1 回で）
     closeReview(true);
     renderAll();
     overBand();
@@ -30999,6 +31025,13 @@ if (typeof document !== "undefined") (() => {
    * tag: fix=不具合修正 / fast=速くなった / read=読みが良くなった / ui=使いやすくなった(v212.1 新設) / (無印)=内部のみ
    * ================================================================ */
   const APP_CHANGELOG = [
+    {v: "v220.25", d: "2026-10-16", tag: "ui", tagJa: "使いやすくなった", t: "今日の一局の戻り・手駒の見出し・練習の5し宣言・振り返りの文字の色を直しました", p: [
+      "今日の一局を打ち終えた後の振り返りと練習は、「設定へ戻る」で設定画面へ戻ります。",
+      "カウント表を出しているときは、手駒の見出しを「手駒」と短くして、縦に折れないようにしました。",
+      "詰めごいたや振り返りの練習でも、5し続行の局では宣言を表示します。",
+      "振り返りの淡い文字（生成り・夜藍）を読みやすい色にしました。"]},
+    {v: "v220.24", d: "2026-10-12", tag: "ui", tagJa: "使いやすくなった", t: "読みヒントの数字を 0%・100% と言い切らないようにしました", p: [
+      "読みヒントのバッジ・読み上げ・推奨の注記・駒札の保有推定は推定なので、0% と 100% は出さず 1%〜99% で示します。自分から見えていない残りが 0 枚の駒は、保有推定を「なし」と示します（計算は変えていません）。"]},
     {v: "v220.23", d: "2026-10-10", tag: "fix", tagJa: "不具合修正", t: "キーボードの「1手戻す」・スマホの手番の枠・駒札の表示を直しました", p: [
       "キーボードで「1手戻す」を素早く 2 回押しても、手駒を打ってしまわないようにしました。",
       "スマホの幅で、手番の枠の「操作」が 2 行に折れて手駒の欄が画面からはみ出すことがあったのを直しました。",
