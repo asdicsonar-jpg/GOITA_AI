@@ -5,6 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>ごいた — 能登の伝承遊戯</title>
   <!-- build: v220.6 に短い入門コース（3 場面・5 着手）と助言つきの 1 局練習を当てた（配信候補 v220.7 の元）。計画: docs/PLAN_短い入門コース_rev4_Opus5.5.md（§14 の裁定）・docs/PLAN_v220.7_入門コース配信_rev2_Opus5.5.md。適用: harness/apply_quickstart_v2.py。エンジン区画（G・G_B・T1）は不変。 -->
+  <!-- build: v220.26「生成りの残りの淡い文字・読みの枠の札と空の枠を直しました（UI-32・R01・R02）」base=v220.25。
+       計画: docs/PLAN_v220.26_生成りの残りと読みの枠_rev2_Opus5.5.md（rev1 と合わせて読む）。
+       変更: harness/apply_v220_26.py → apply_ui_release.py（版数・CHANGELOG・バッジ・sw.js）。G・G_B・T1 の区画は v220.25 と byte 一致。
+       CACHE_NAME: goita-v220.25 → goita-v220.26. -->
   <!-- build: v220.25「今日の一局の戻り・手駒の見出し・練習の5し宣言・振り返りの文字の色を直しました（TX-05・UI-05・UI-16・UI-25）」base=v220.24。
        計画: docs/PLAN_v220.25_判断の後の便_rev3_Opus5.5.md（rev1・rev2 と合わせて読む）。
        変更: harness/apply_v220_25.py → apply_ui_release.py（版数・CHANGELOG・バッジ・sw.js）。G・G_B・T1 の区画は v220.24 と byte 一致。
@@ -1124,6 +1128,21 @@ body.theme-kinari #rv-worst{background:rgba(60,48,24,.05)}
 body.theme-kinari #rv-tour{background:rgba(60,48,24,.08)}
 body.theme-kinari #rv-graph .gx-pin text{fill:#fff8ec}   /* 第二読者 M-1: 暗くした朱・金の円の上の「!」「★」を淡い字に（濃い字のままだと 2.9:1） */
 @media not (prefers-contrast:more){body:not(.theme-kinari):not(.theme-hc) #review{--gin-d:#8191a3;--shu:#e46b54}}   /* 第二読者 S-1: コントラストを上げる設定の色（L235）を上書きしない */
+/* v220.26 U32（UI-32・Sonar 2026-10-17）: 生成りで夜藍向けの濃い地をそのまま使っていた 5 か所（読みの枠・手番の枠・更新内容・助言の枠・助言の札）。地を紙の色に寄せ、文字は UI-25 と同じ 4 色 */
+body.theme-kinari #readingbox{background:rgba(60,48,24,.05)}
+body.theme-kinari .tf-step{background:rgba(255,252,243,.55)}
+body.theme-kinari .tf-step[data-active="true"]{background:rgba(255,248,226,.75)}
+body.theme-kinari #chglog .cl-e{background:rgba(60,48,24,.05)}
+body.theme-kinari #chglog .cl-e.now{background:rgba(143,115,39,.10)}
+body.theme-kinari #advicebox{background:rgba(53,112,97,.07)}
+body.theme-kinari #advicebox .av-coop{background:rgba(53,112,97,.10)}
+body.theme-kinari :is(#advicebox,#advice-pill) .jk-chip:not(:hover){background:rgba(53,112,97,.05)}
+body.theme-kinari :is(#advicebox,#advice-pill) .cl-clear{background:rgba(53,112,97,.04)}   /* rev2（第二読者 M-1）: 難度の札（明確・際どい・互角）の地を薄く */
+body.theme-kinari :is(#advicebox,#advice-pill) .cl-close{background:rgba(143,115,39,.04)}
+body.theme-kinari :is(#advicebox,#advice-pill) .cl-even{background:rgba(60,48,24,.03)}
+body.theme-kinari #advice-pill{background:rgba(255,252,243,.55)}
+body.theme-kinari #readingbox,body.theme-kinari #turn-focus,body.theme-kinari #chglog,body.theme-kinari #advicebox,body.theme-kinari #advice-pill{--gin-d:#675f50;--kin:#745d20;--aoi:#32695b;--shu:#aa3824}
+body.theme-kinari #advice-pill .ap-tag{color:#fff8ec}   /* 暗くした --kin の地の上は淡い字に（濃い字のままだと 2.85:1） */
 #beliefbox{display:none;flex-direction:column;gap:4px;margin:2px 0;padding:8px 10px;
   border:1px solid var(--hair2);border-radius:8px}
 #beliefbox.show{display:flex}
@@ -1141,10 +1160,11 @@ body.theme-kinari #rv-graph .gx-pin text{fill:#fff8ec}   /* 第二読者 M-1: �
 #readingbox.show{display:flex}
 #readingbox .rd-head{font-size:.66rem;color:var(--gin-d);margin-bottom:2px}
 #readingbox .rd-row{display:flex;align-items:baseline;gap:7px;font-size:.72rem;line-height:1.5}
-#readingbox .rd-rel{flex:none;min-width:2.6em;text-align:center;font-size:.64rem;padding:1px 4px;border-radius:4px;color:var(--bg);font-weight:600}
+#readingbox .rd-rel{flex:none;min-width:2.6em;text-align:center;font-size:.64rem;padding:1px 4px;border-radius:4px;color:var(--ink0);font-weight:600}   /* v220.26 R01: var(--bg) は未定義で字が地と同じ色だった。意図どおり「盤の地の色」の字に */
 #readingbox .rd-ally{background:var(--kinari)}
 #readingbox .rd-kami{background:var(--gin)}
 #readingbox .rd-shimo{background:#9a8bb5}
+body.theme-kinari #readingbox .rd-shimo{background:var(--foe)}   /* v220.26 R01: 生成りは淡い字になるので、下家の札の地を濃い紫に（#9a8bb5 のままだと 2.4:1） */
 #readingbox .rd-foe{background:var(--gin-d)}
 #readingbox .rd-txt{color:var(--fg)}
 #readingbox .rd-foot{font-size:.58rem;color:var(--gin-d);margin-top:3px;line-height:1.5}
@@ -1294,6 +1314,15 @@ body.reviewing #board{gap:4px;padding:7px}
 #advice-pill .ap-why:hover{color:var(--kinari);border-color:var(--kin)}
 #advice-pill .ap-reason{flex-basis:100%;width:100%;font-size:.7rem;color:var(--gin);line-height:1.5;margin-top:3px}
 #advice-pill .ap-reason .ap-coop{display:block;margin-top:3px;color:var(--kinari)}
+/* v220.26 U32Y（UI-32 夜藍の追加案・Sonar 2026-10-17）: 同じ 5 か所の中の淡い文字を 4.5:1 に（UI-25 の夜藍と同じ 2 色・地は変えない） */
+@media not (prefers-contrast:more){body:not(.theme-kinari):not(.theme-hc) :is(#readingbox,#turn-focus,#chglog,#advicebox,#advice-pill){--gin-d:#8191a3}}   /* --gin-d は「コントラストを上げる」の色（L235）を上書きしない */
+body:not(.theme-kinari):not(.theme-hc) :is(#readingbox,#turn-focus,#chglog,#advicebox,#advice-pill){--shu:#e46b54}   /* --shu は「コントラストを上げる」でも変わらない（L235 に無い）ので、いつも掛ける */
+body:not(.theme-kinari):not(.theme-hc) :is(#advicebox,#advice-pill) .jk-chip:not(:hover){background:rgba(116,176,161,.08)}
+body:not(.theme-kinari):not(.theme-hc) :is(#advicebox,#advice-pill) .cl-clear{background:rgba(116,176,161,.08)}   /* rev2（第二読者 M-1）: 難度の札の地を薄く・互角は --gin */
+body:not(.theme-kinari):not(.theme-hc) :is(#advicebox,#advice-pill) .cl-close{background:rgba(200,150,80,.08)}
+body:not(.theme-kinari):not(.theme-hc) :is(#advicebox,#advice-pill) .cl-even{background:rgba(150,150,150,.08);color:var(--gin)}
+body:not(.theme-kinari):not(.theme-hc) #advice-pill .ap-more:not(:hover){color:var(--gin)}   /* rev2（第二読者 N）: hover の色（L1289）を消さない */
+body:not(.theme-kinari):not(.theme-hc) .tf-step[data-active="true"] .tf-label{color:var(--gin)}
 #sheet-scrim{position:fixed;inset:0;z-index:39;background:rgba(0,0,0,.42);opacity:0;pointer-events:none;transition:opacity .28s}
 #sheet-scrim.open{opacity:1;pointer-events:auto}
 #analysis-sheet{position:fixed;left:0;right:0;bottom:0;z-index:40;display:flex;flex-direction:column;
@@ -2079,7 +2108,7 @@ body.noto #wincut.show .wc-label{animation:wcFude .62s cubic-bezier(.2,.9,.3,1.2
 <div id="setup-screen">
   <!-- build v208: 版数表示は APP_CHANGELOG[0] から起動時に上書きされる(JS が動かない場合の保険としてここにも同じ版数を書いておく)。 -->
   <button type="button" class="setup-version" id="btn-version"
-          aria-label="バージョン v220.25 — 更新内容を見る" title="更新内容を見る"><span id="btn-version-num">v220.25</span><span class="sv-i" aria-hidden="true">ⓘ</span></button>
+          aria-label="バージョン v220.26 — 更新内容を見る" title="更新内容を見る"><span id="btn-version-num">v220.26</span><span class="sv-i" aria-hidden="true">ⓘ</span></button>
   <div class="title-block">
     <h1 class="serif">ごいた</h1>
     <div class="title-sub">能登・宇出津に伝わる竹駒の伝承遊戯</div>
@@ -23059,7 +23088,7 @@ if (typeof document !== "undefined") (() => {
     const tail = app.review ? ("r" + (app.reviewRec ? app.reviewRec.gameNo : 0) + "-" + app.review.idx)
                             : ("l" + aiGameNo() + "-" + st.history.length);
     const key = tail + "|" + notes.length;
-    if (app.readKey === key) { el.classList.add("show"); return; }
+    if (app.readKey === key) { if (notes.length) el.classList.add("show"); return; }   // v220.26 R02: 中身が 0 件の鍵では show を付けない（空の枠が帯で出ていた）
     app.readKey = key;
     if (!notes.length) { el.classList.remove("show"); el.innerHTML = ""; return; }
     const relCls = r => r === "相方" ? "rd-ally" : r === "上家" ? "rd-kami" : r === "下家" ? "rd-shimo" : "rd-foe";
@@ -31025,6 +31054,11 @@ if (typeof document !== "undefined") (() => {
    * tag: fix=不具合修正 / fast=速くなった / read=読みが良くなった / ui=使いやすくなった(v212.1 新設) / (無印)=内部のみ
    * ================================================================ */
   const APP_CHANGELOG = [
+    {v: "v220.26", d: "2026-10-18", tag: "fix", tagJa: "不具合修正", t: "生成りの残りの淡い文字・読みの枠の札と空の枠を直しました", p: [
+      "生成りのテーマで、読みの枠・手番の枠・更新内容・助言の枠と札の地を紙の色にし、淡い文字を読みやすい色にしました。",
+      "夜藍のテーマでも、同じ場所の淡い文字を読みやすい色にしました。",
+      "読みの枠の「相方」「上家」などの札の文字が、札の地と同じ色で見えなかったのを直しました。",
+      "読みの中身が無いとき、空の読みの枠が細い帯で出ることがあったのを直しました。"]},
     {v: "v220.25", d: "2026-10-16", tag: "ui", tagJa: "使いやすくなった", t: "今日の一局の戻り・手駒の見出し・練習の5し宣言・振り返りの文字の色を直しました", p: [
       "今日の一局を打ち終えた後の振り返りと練習は、「設定へ戻る」で設定画面へ戻ります。",
       "カウント表を出しているときは、手駒の見出しを「手駒」と短くして、縦に折れないようにしました。",
