@@ -5,6 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>ごいた — 能登の伝承遊戯</title>
   <!-- build: v220.6 に短い入門コース（3 場面・5 着手）と助言つきの 1 局練習を当てた（配信候補 v220.7 の元）。計画: docs/PLAN_短い入門コース_rev4_Opus5.5.md（§14 の裁定）・docs/PLAN_v220.7_入門コース配信_rev2_Opus5.5.md。適用: harness/apply_quickstart_v2.py。エンジン区画（G・G_B・T1）は不変。 -->
+  <!-- build: v220.30「開始画面に、はじめての方の順番（短い入門・ガイド・助言つき練習・実戦）を出しました（PATH）」base=v220.29。
+       計画: docs/PLAN_v220.30_入口の順番_rev1_Opus5.5.md。
+       変更: harness/apply_v220_30.py → apply_ui_release.py（版数・CHANGELOG・バッジ・sw.js）。G・G_B・T1 の区画は v220.29 と byte 一致。
+       CACHE_NAME: goita-v220.29 → goita-v220.30. -->
   <!-- build: v220.29「教材の打つ番で光っていない手駒を押したときに案内を出すようにしました（WT）」base=v220.28。
        計画: docs/PLAN_v220.29_教材の押し間違いの案内_rev1_Opus5.5.md。
        変更: harness/apply_v220_29.py → apply_ui_release.py（版数・CHANGELOG・バッジ・sw.js）。G・G_B・T1 の区画は v220.28 と byte 一致。
@@ -1385,6 +1389,15 @@ body.sheet-open{overflow:hidden}
 #goshi-beat.show{opacity:1;transform:translateX(-50%) translateY(0)}
 /* ⑦ チュートリアル: 入口パネル */
 .tutorial-card{border:1px solid rgba(224,85,58,.28);background:linear-gradient(160deg,var(--ink2),var(--ink1));box-shadow:0 4px 20px rgba(0,0,0,.22)}
+.path-card{padding:8px 12px}   /* v220.30 PATH: 1 行（閉じたガイドの枠と同じくらいの高さ） */
+.path-row{display:flex;align-items:center;gap:10px}
+.path-ttl{font-size:.85rem;white-space:nowrap;color:var(--kin)}
+body.theme-kinari #path-panel{--kin:#745d20}   /* 生成りの紙では、振り返りの枠（UI-32）と同じ濃い金（4.5:1 以上） */
+.path-steps{flex:1 1 auto;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;list-style:none;margin:0;padding:0}
+.path-steps .btn{width:100%;padding:6px 2px;font-size:.8rem;white-space:nowrap}
+@media (max-width:619px){
+  .path-ttl{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}   /* 狭い画面は名前を読み上げだけにし、4 つを 1 行に */
+}
 .tutorial-header{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:8px}
 .tutorial-card h2{color:var(--kin);margin-bottom:0!important;font-size:.95rem;letter-spacing:.12em}
 .tutorial-desc{font-size:.78rem;color:var(--gin);line-height:1.6;margin-bottom:14px}
@@ -2124,7 +2137,7 @@ body.noto #wincut.show .wc-label{animation:wcFude .62s cubic-bezier(.2,.9,.3,1.2
 <div id="setup-screen">
   <!-- build v208: 版数表示は APP_CHANGELOG[0] から起動時に上書きされる(JS が動かない場合の保険としてここにも同じ版数を書いておく)。 -->
   <button type="button" class="setup-version" id="btn-version"
-          aria-label="バージョン v220.29 — 更新内容を見る" title="更新内容を見る"><span id="btn-version-num">v220.29</span><span class="sv-i" aria-hidden="true">ⓘ</span></button>
+          aria-label="バージョン v220.30 — 更新内容を見る" title="更新内容を見る"><span id="btn-version-num">v220.30</span><span class="sv-i" aria-hidden="true">ⓘ</span></button>
   <div class="title-block">
     <h1 class="serif">ごいた</h1>
     <div class="title-sub">能登・宇出津に伝わる竹駒の伝承遊戯</div>
@@ -2162,6 +2175,11 @@ body.noto #wincut.show .wc-label{animation:wcFude .62s cubic-bezier(.2,.9,.3,1.2
       <button type="button" class="btn primary" id="resume-continue">再開する</button>
       <button type="button" class="btn" id="resume-discard">破棄</button>
     </div>
+  </div>
+  <!-- v220.30 PATH: はじめての方の順番（① 短い入門 → ② ガイド → ③ 助言つき練習 → ④ 実戦）。1 行。次の 1 つを目立たせ、済んだ所に ✓。4 つとも済んだら隠す。
+       出ている間はガイドの枠を「この設定で」の下へ移し、開始ボタンの位置（入門 S-23・390×844 で上端 798 以下）を変えない -->
+  <div class="panel setup-card path-card" id="path-panel" role="group" aria-labelledby="path-ttl" hidden>
+    <div class="path-row"><span class="path-ttl serif" id="path-ttl">はじめての方の順番</span><ol class="path-steps" id="path-steps"></ol></div>
   </div>
   <details class="panel setup-card tutorial-card" id="tutorial-panel">
     <summary class="tutorial-summary">
@@ -28119,6 +28137,7 @@ if (typeof document !== "undefined") (() => {
     syncSetupFormFromCfg();   // A-1(v91a): 対局中の調整モーダルでの変更をフォームに反映する
     renderKeikoPanel(); keikoEvalWeakAsync(); keikoEvalGradAsync();   // T-1/T-2/G-2(v90a/b): 設定画面へ戻るたびに稽古札を再評価
     renderDailyNote();   // v220.12 D-b
+    renderPathPanel();   // v220.30 PATH: 実戦を 1 局終えたら ✓
     initMatchResumeUI();   // B-4(v91b): 起動時のみだったため、セッション中の中断保存がresume-panelに反映されなかった不具合の是正
   }
   // ===== 4.4 コーチ濃度ティア: 個別トグルを単一ティアへ集約 (基底フラグは各表示ゲートが従来通り参照) =====
@@ -28697,7 +28716,41 @@ if (typeof document !== "undefined") (() => {
   function tutSave(p) { DATA_STORAGE.setItem("goita_tutorial_progress", JSON.stringify(p)); }
   function tutPct(p) { return Math.round((p.cleared || []).filter(k => TUT_ORDER.includes(k)).length / TUT_ORDER.length * 100); }
   function tutNextKey(p) { return TUT_ORDER.find(k => !(p.cleared || []).includes(k)) || null; }
+  // v220.30 PATH: はじめての方の順番。済み = 短い入門の修了／ガイドの序の巻〜四の巻の修了／助言つき練習の修了／成績に 1 局以上（教材・練習の局は成績に入らない）
+  const PATH_GUIDE = ["jo", "uke", "fuse", "ou", "ten"];
+  function renderPathPanel() {
+    const host = $("path-panel"), ol = $("path-steps"); if (!host || !ol) return;
+    let q = {completed: false, practiceCompleted: false}, cl = [];
+    try { q = qsProgress(); cl = tutLoad().cleared || []; } catch (e) {}
+    const steps = [
+      {label: "短い入門", short: "入門", sub: "5つの操作", done: !!q.completed, go: () => startQuickStart({})},
+      {label: "ガイド", short: "ガイド", sub: "序の巻〜四の巻", done: PATH_GUIDE.every(k => cl.includes(k)), go: () => {
+        const tp = $("tutorial-panel"); if (tp) tp.open = true;
+        const h = $("qs-guide-sub"); if (h) { try { h.focus({preventScroll: true}); h.scrollIntoView({block: "center"}); } catch (e) {} } }},
+      {label: "助言つき練習", short: "練習", sub: "1局", done: !!q.practiceCompleted, go: () => startQuickPractice()},
+      {label: "実戦", short: "実戦", sub: "「はじめて」から", done: (app.career || []).length > 0, go: () => {
+        const b = document.querySelector('#ladder-panel .ladder-btn[data-ladder="beginner"]');
+        if (b) { try { b.focus({preventScroll: true}); b.scrollIntoView({block: "center"}); } catch (e) {} } }}
+    ];
+    const next = steps.findIndex(s => !s.done);
+    host.hidden = next < 0;
+    ol.innerHTML = "";
+    const tp = $("tutorial-panel"), go = $("setup-go");   // 出ている間はガイドの枠を「この設定で」の下へ（開始ボタンの位置を変えない）。隠すときは元の場所（この枠の直後）へ戻す
+    if (tp && go) { if (next >= 0) { if (go.nextElementSibling !== tp) go.after(tp); } else if (host.nextElementSibling !== tp) host.after(tp); }
+    if (next < 0) return;
+    steps.forEach((s, i) => {
+      const li = document.createElement("li"); li.className = "path-step" + (s.done ? " done" : "") + (i === next ? " next" : "");
+      const b = document.createElement("button"); b.type = "button";
+      b.className = "btn small " + (i === next ? "primary" : "ghost");
+      b.textContent = (s.done ? "✓" : "①②③④"[i]) + s.short;
+      b.title = s.label + "（" + s.sub + "）";
+      b.setAttribute("aria-label", `${i + 1}つ目 ${s.label}（${s.sub}）${s.done ? "・済み" : i === next ? "・次はここ" : ""}`);
+      b.onclick = s.go;
+      li.appendChild(b); ol.appendChild(li);
+    });
+  }
   function updateTutorialPanel() {
+    renderPathPanel();   // v220.30 PATH: はじめての方の順番
     renderQuickStartEntry();   // 短い入門: ガイド枠の中の入口（11 巻の百分率は使わない）
     const acts = $("tut-actions"); if (!acts) return;
     const p = tutLoad(), wrap = $("tut-progress-wrap"), desc = $("tut-desc");
@@ -31082,6 +31135,9 @@ if (typeof document !== "undefined") (() => {
    * tag: fix=不具合修正 / fast=速くなった / read=読みが良くなった / ui=使いやすくなった(v212.1 新設) / (無印)=内部のみ
    * ================================================================ */
   const APP_CHANGELOG = [
+    {v: "v220.30", d: "2026-10-25", tag: "ui", tagJa: "使いやすくなった", t: "開始画面に、はじめての方の順番を出しました", p: [
+      "開始画面の上に、短い入門、ガイド、助言つき練習、実戦の4つのボタンを、順番どおり1行に並べました。済んだものには印が付き、次に進むものが目立ちます。",
+      "それぞれを押すと、その入口が開きます。この行が出ている間、初心者向け・完全ガイドの枠は「この設定で」の下に移ります。4つとも済むと、この行は出なくなり、枠は元の場所に戻ります。"]},
     {v: "v220.29", d: "2026-10-24", tag: "ui", tagJa: "使いやすくなった", t: "ガイドで光っていない駒を押したときに、何を押せばよいかを出すようにしました", p: [
       "初心者向けガイドで自分が打つ場面のとき、光っていない手駒を押しても何も起きませんでした。押した駒は選べないことと、光っている駒の名前を吹き出しに出すようにしました。",
       "ガイドの説明の文と、ふつうの対局の操作は変わりません。"]},
