@@ -5,6 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>ごいた — 能登の伝承遊戯</title>
   <!-- build: v220.6 に短い入門コース（3 場面・5 着手）と助言つきの 1 局練習を当てた（配信候補 v220.7 の元）。計画: docs/PLAN_短い入門コース_rev4_Opus5.5.md（§14 の裁定）・docs/PLAN_v220.7_入門コース配信_rev2_Opus5.5.md。適用: harness/apply_quickstart_v2.py。エンジン区画（G・G_B・T1）は不変。 -->
+  <!-- build: v220.28「振り返りから定石の試すへ入ったときに手駒が隠れたままになる不具合を直しました（TRY）」base=v220.27。
+       計画: docs/PLAN_v220.28_振り返りからの試す_rev1_Opus5.5.md。
+       変更: harness/apply_v220_28.py → apply_ui_release.py（版数・CHANGELOG・バッジ・sw.js）。G・G_B・T1 の区画は v220.27 と byte 一致。
+       CACHE_NAME: goita-v220.27 → goita-v220.28. -->
   <!-- build: v220.27「振り返りの朱の文字と、助言の定石の札を載せたときの文字を読みやすくしました（Q3・HOV）」base=v220.26。
        計画: docs/PLAN_v220.27_振り返りの朱とhoverとUX測り_rev2_Opus5.5.md（rev1 と合わせて読む）。
        変更: harness/apply_v220_27.py → apply_ui_release.py（版数・CHANGELOG・バッジ・sw.js）。G・G_B・T1 の区画は v220.26 と byte 一致。
@@ -2115,7 +2119,7 @@ body.noto #wincut.show .wc-label{animation:wcFude .62s cubic-bezier(.2,.9,.3,1.2
 <div id="setup-screen">
   <!-- build v208: 版数表示は APP_CHANGELOG[0] から起動時に上書きされる(JS が動かない場合の保険としてここにも同じ版数を書いておく)。 -->
   <button type="button" class="setup-version" id="btn-version"
-          aria-label="バージョン v220.27 — 更新内容を見る" title="更新内容を見る"><span id="btn-version-num">v220.27</span><span class="sv-i" aria-hidden="true">ⓘ</span></button>
+          aria-label="バージョン v220.28 — 更新内容を見る" title="更新内容を見る"><span id="btn-version-num">v220.28</span><span class="sv-i" aria-hidden="true">ⓘ</span></button>
   <div class="title-block">
     <h1 class="serif">ごいた</h1>
     <div class="title-sub">能登・宇出津に伝わる竹駒の伝承遊戯</div>
@@ -29541,6 +29545,7 @@ if (typeof document !== "undefined") (() => {
     const sc = TUT[key]; if (!sc) return;
     app.daily = null;   // v220.12 D-i: 教材・定石の「試す」・ドリル（v220.21 B11a）
     settleDealing("keep");   // v220.19 N11
+    if (app.review || document.body.classList.contains("reviewing")) closeReview();   // v220.28 TRY: 振り返りの中から教材（定石の「▶ 試す」など）へ入るとき、振り返りを閉じる。閉じないと手駒の場が隠れたまま打てない（humanSeat も退避の前に戻す）
     if (_tutBackup) { if (_tutBackup.kind === "qs") exitQuickStart({silent: true}); else exitTutorial(true); }   // 退避の二重上書きの禁止（D-1c・v220.6 F14c と同じ働き）
     _tutBackup = {kind: "legacy", cfg: Object.assign({}, app.cfg), tiers: Object.assign({}, app.tiers), humanSeat: app.humanSeat};
     app.tutorial = {key, idx: 0, awaiting: null, blockStep: true};
@@ -31061,6 +31066,9 @@ if (typeof document !== "undefined") (() => {
    * tag: fix=不具合修正 / fast=速くなった / read=読みが良くなった / ui=使いやすくなった(v212.1 新設) / (無印)=内部のみ
    * ================================================================ */
   const APP_CHANGELOG = [
+    {v: "v220.28", d: "2026-10-24", tag: "fix", tagJa: "不具合修正", t: "振り返りから定石を試すと、手駒が出ずに止まる不具合を直しました", p: [
+      "振り返りの中で定石の画面を開き、試すを押してレッスンを始めると、自分の手駒が表示されず、打つ番で先へ進めなくなっていたのを直しました。",
+      "試すを押すと振り返りを閉じてからレッスンが始まります。"]},
     {v: "v220.27", d: "2026-10-24", tag: "fix", tagJa: "不具合修正", t: "振り返りの朱の文字と、助言の定石の札を読みやすくしました", p: [
       "夜藍のテーマで端末の「コントラストを上げる」設定のとき、振り返りの読み切りの逃しを示す朱の文字が暗くなっていたのを直しました。",
       "助言の中の定石の札にマウスを載せたとき、文字が読みにくくなっていたのを直しました。載せている間は札に細い枠が出ます。"]},
