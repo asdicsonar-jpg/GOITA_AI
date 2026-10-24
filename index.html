@@ -5,6 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>ごいた — 能登の伝承遊戯</title>
   <!-- build: v220.6 に短い入門コース（3 場面・5 着手）と助言つきの 1 局練習を当てた（配信候補 v220.7 の元）。計画: docs/PLAN_短い入門コース_rev4_Opus5.5.md（§14 の裁定）・docs/PLAN_v220.7_入門コース配信_rev2_Opus5.5.md。適用: harness/apply_quickstart_v2.py。エンジン区画（G・G_B・T1）は不変。 -->
+  <!-- build: v220.27「振り返りの朱の文字と、助言の定石の札を載せたときの文字を読みやすくしました（Q3・HOV）」base=v220.26。
+       計画: docs/PLAN_v220.27_振り返りの朱とhoverとUX測り_rev2_Opus5.5.md（rev1 と合わせて読む）。
+       変更: harness/apply_v220_27.py → apply_ui_release.py（版数・CHANGELOG・バッジ・sw.js）。G・G_B・T1 の区画は v220.26 と byte 一致。
+       CACHE_NAME: goita-v220.26 → goita-v220.27. -->
   <!-- build: v220.26「生成りの残りの淡い文字・読みの枠の札と空の枠を直しました（UI-32・R01・R02）」base=v220.25。
        計画: docs/PLAN_v220.26_生成りの残りと読みの枠_rev2_Opus5.5.md（rev1 と合わせて読む）。
        変更: harness/apply_v220_26.py → apply_ui_release.py（版数・CHANGELOG・バッジ・sw.js）。G・G_B・T1 の区画は v220.25 と byte 一致。
@@ -1127,7 +1131,8 @@ body.theme-kinari #rv-lesson{background:rgba(143,115,39,.10)}
 body.theme-kinari #rv-worst{background:rgba(60,48,24,.05)}
 body.theme-kinari #rv-tour{background:rgba(60,48,24,.08)}
 body.theme-kinari #rv-graph .gx-pin text{fill:#fff8ec}   /* 第二読者 M-1: 暗くした朱・金の円の上の「!」「★」を淡い字に（濃い字のままだと 2.9:1） */
-@media not (prefers-contrast:more){body:not(.theme-kinari):not(.theme-hc) #review{--gin-d:#8191a3;--shu:#e46b54}}   /* 第二読者 S-1: コントラストを上げる設定の色（L235）を上書きしない */
+@media not (prefers-contrast:more){body:not(.theme-kinari):not(.theme-hc) #review{--gin-d:#8191a3}}   /* 第二読者 S-1: コントラストを上げる設定の色（L235）を上書きしない（v220.27 Q3: --shu は次の行に分けた） */
+body:not(.theme-kinari):not(.theme-hc) #review{--shu:#e46b54}   /* v220.27 Q3: --shu は「コントラストを上げる」の色（L243）に無いので、いつも掛ける。掛けないと今の項目の地で 3.92:1 */
 /* v220.26 U32（UI-32・Sonar 2026-10-17）: 生成りで夜藍向けの濃い地をそのまま使っていた 5 か所（読みの枠・手番の枠・更新内容・助言の枠・助言の札）。地を紙の色に寄せ、文字は UI-25 と同じ 4 色 */
 body.theme-kinari #readingbox{background:rgba(60,48,24,.05)}
 body.theme-kinari .tf-step{background:rgba(255,252,243,.55)}
@@ -1137,6 +1142,7 @@ body.theme-kinari #chglog .cl-e.now{background:rgba(143,115,39,.10)}
 body.theme-kinari #advicebox{background:rgba(53,112,97,.07)}
 body.theme-kinari #advicebox .av-coop{background:rgba(53,112,97,.10)}
 body.theme-kinari :is(#advicebox,#advice-pill) .jk-chip:not(:hover){background:rgba(53,112,97,.05)}
+body.theme-kinari :is(#advicebox,#advice-pill) .jk-chip:hover{background:rgba(53,112,97,.05);box-shadow:inset 0 0 0 1px var(--aoi)}   /* v220.27 HOV（H-A）: 載せても地を濃くしない（濃くすると 4.30:1）。触れていることは枠の線で示す */
 body.theme-kinari :is(#advicebox,#advice-pill) .cl-clear{background:rgba(53,112,97,.04)}   /* rev2（第二読者 M-1）: 難度の札（明確・際どい・互角）の地を薄く */
 body.theme-kinari :is(#advicebox,#advice-pill) .cl-close{background:rgba(143,115,39,.04)}
 body.theme-kinari :is(#advicebox,#advice-pill) .cl-even{background:rgba(60,48,24,.03)}
@@ -1318,6 +1324,7 @@ body.reviewing #board{gap:4px;padding:7px}
 @media not (prefers-contrast:more){body:not(.theme-kinari):not(.theme-hc) :is(#readingbox,#turn-focus,#chglog,#advicebox,#advice-pill){--gin-d:#8191a3}}   /* --gin-d は「コントラストを上げる」の色（L235）を上書きしない */
 body:not(.theme-kinari):not(.theme-hc) :is(#readingbox,#turn-focus,#chglog,#advicebox,#advice-pill){--shu:#e46b54}   /* --shu は「コントラストを上げる」でも変わらない（L235 に無い）ので、いつも掛ける */
 body:not(.theme-kinari):not(.theme-hc) :is(#advicebox,#advice-pill) .jk-chip:not(:hover){background:rgba(116,176,161,.08)}
+body:not(.theme-kinari):not(.theme-hc) :is(#advicebox,#advice-pill) .jk-chip:hover{background:rgba(116,176,161,.08);box-shadow:inset 0 0 0 1px var(--aoi)}   /* v220.27 HOV（H-A）: 同じく（濃くすると 3.31:1） */
 body:not(.theme-kinari):not(.theme-hc) :is(#advicebox,#advice-pill) .cl-clear{background:rgba(116,176,161,.08)}   /* rev2（第二読者 M-1）: 難度の札の地を薄く・互角は --gin */
 body:not(.theme-kinari):not(.theme-hc) :is(#advicebox,#advice-pill) .cl-close{background:rgba(200,150,80,.08)}
 body:not(.theme-kinari):not(.theme-hc) :is(#advicebox,#advice-pill) .cl-even{background:rgba(150,150,150,.08);color:var(--gin)}
@@ -2108,7 +2115,7 @@ body.noto #wincut.show .wc-label{animation:wcFude .62s cubic-bezier(.2,.9,.3,1.2
 <div id="setup-screen">
   <!-- build v208: 版数表示は APP_CHANGELOG[0] から起動時に上書きされる(JS が動かない場合の保険としてここにも同じ版数を書いておく)。 -->
   <button type="button" class="setup-version" id="btn-version"
-          aria-label="バージョン v220.26 — 更新内容を見る" title="更新内容を見る"><span id="btn-version-num">v220.26</span><span class="sv-i" aria-hidden="true">ⓘ</span></button>
+          aria-label="バージョン v220.27 — 更新内容を見る" title="更新内容を見る"><span id="btn-version-num">v220.27</span><span class="sv-i" aria-hidden="true">ⓘ</span></button>
   <div class="title-block">
     <h1 class="serif">ごいた</h1>
     <div class="title-sub">能登・宇出津に伝わる竹駒の伝承遊戯</div>
@@ -31054,6 +31061,9 @@ if (typeof document !== "undefined") (() => {
    * tag: fix=不具合修正 / fast=速くなった / read=読みが良くなった / ui=使いやすくなった(v212.1 新設) / (無印)=内部のみ
    * ================================================================ */
   const APP_CHANGELOG = [
+    {v: "v220.27", d: "2026-10-24", tag: "fix", tagJa: "不具合修正", t: "振り返りの朱の文字と、助言の定石の札を読みやすくしました", p: [
+      "夜藍のテーマで端末の「コントラストを上げる」設定のとき、振り返りの読み切りの逃しを示す朱の文字が暗くなっていたのを直しました。",
+      "助言の中の定石の札にマウスを載せたとき、文字が読みにくくなっていたのを直しました。載せている間は札に細い枠が出ます。"]},
     {v: "v220.26", d: "2026-10-18", tag: "fix", tagJa: "不具合修正", t: "生成りの残りの淡い文字・読みの枠の札と空の枠を直しました", p: [
       "生成りのテーマで、読みの枠・手番の枠・更新内容・助言の枠と札の地を紙の色にし、淡い文字を読みやすい色にしました。",
       "夜藍のテーマでも、同じ場所の淡い文字を読みやすい色にしました。",
