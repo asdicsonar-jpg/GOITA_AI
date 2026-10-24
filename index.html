@@ -5,6 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>ごいた — 能登の伝承遊戯</title>
   <!-- build: v220.6 に短い入門コース（3 場面・5 着手）と助言つきの 1 局練習を当てた（配信候補 v220.7 の元）。計画: docs/PLAN_短い入門コース_rev4_Opus5.5.md（§14 の裁定）・docs/PLAN_v220.7_入門コース配信_rev2_Opus5.5.md。適用: harness/apply_quickstart_v2.py。エンジン区画（G・G_B・T1）は不変。 -->
+  <!-- build: v220.29「教材の打つ番で光っていない手駒を押したときに案内を出すようにしました（WT）」base=v220.28。
+       計画: docs/PLAN_v220.29_教材の押し間違いの案内_rev1_Opus5.5.md。
+       変更: harness/apply_v220_29.py → apply_ui_release.py（版数・CHANGELOG・バッジ・sw.js）。G・G_B・T1 の区画は v220.28 と byte 一致。
+       CACHE_NAME: goita-v220.28 → goita-v220.29. -->
   <!-- build: v220.28「振り返りから定石の試すへ入ったときに手駒が隠れたままになる不具合を直しました（TRY）」base=v220.27。
        計画: docs/PLAN_v220.28_振り返りからの試す_rev1_Opus5.5.md。
        変更: harness/apply_v220_28.py → apply_ui_release.py（版数・CHANGELOG・バッジ・sw.js）。G・G_B・T1 の区画は v220.27 と byte 一致。
@@ -1431,6 +1435,7 @@ body.theme-kinari .tut-tag,body.theme-kinari .tut-toggle{color:#7a6221}
   max-width:min(92vw,500px);max-height:34vh;display:flex;flex-direction:column;background:var(--ink1);color:var(--kinari);border:1px solid var(--kin);
   border-radius:14px;padding:14px 16px;box-shadow:0 10px 34px rgba(0,0,0,.55);pointer-events:auto;z-index:1501}
 #tut-bubble .tb-txt{font-size:.9rem;line-height:1.7;margin-bottom:12px;overflow-y:auto;flex:1 1 auto;min-height:0}
+#tut-bubble .tb-miss{display:block;margin-top:6px;font-weight:700}   /* v220.29 WT: 光っていない駒を押したときの案内の行 */
 #tut-bubble .tb-row{flex:none}
 /* v220.6 F-4: 吹き出しは幅を明示（left:50% の縮み幅で約半分になっていた）。ボタンの行は折り返す */
 #tut-bubble{width:min(92vw,500px);box-sizing:border-box}
@@ -2119,7 +2124,7 @@ body.noto #wincut.show .wc-label{animation:wcFude .62s cubic-bezier(.2,.9,.3,1.2
 <div id="setup-screen">
   <!-- build v208: 版数表示は APP_CHANGELOG[0] から起動時に上書きされる(JS が動かない場合の保険としてここにも同じ版数を書いておく)。 -->
   <button type="button" class="setup-version" id="btn-version"
-          aria-label="バージョン v220.28 — 更新内容を見る" title="更新内容を見る"><span id="btn-version-num">v220.28</span><span class="sv-i" aria-hidden="true">ⓘ</span></button>
+          aria-label="バージョン v220.29 — 更新内容を見る" title="更新内容を見る"><span id="btn-version-num">v220.29</span><span class="sv-i" aria-hidden="true">ⓘ</span></button>
   <div class="title-block">
     <h1 class="serif">ごいた</h1>
     <div class="title-sub">能登・宇出津に伝わる竹駒の伝承遊戯</div>
@@ -21776,6 +21781,7 @@ if (typeof document !== "undefined") (() => {
         }
       } else {
         el.setAttribute("aria-label", k + (mode === "pick" ? "（選べません）" : ""));
+        if (mode === "pick" && app.tutorial && app.tutorial.awaiting) slot.addEventListener("click", () => tutMissTap(k));   // v220.29 WT: 教材の打つ番で、光っていない駒を押したときの案内（今までは何も起きなかった）
       }
       if (_dealAnim && app.humanSeat) { el.classList.add("deal-in"); el.style.animationDelay = dealDelayMs(app.humanSeat, ki) + "ms"; }
       tray.appendChild(slot);
@@ -29685,6 +29691,16 @@ if (typeof document !== "undefined") (() => {
     }
     return true;   // チュートリアル中は通常のstep継続を止める(差し戻し含む)
   }
+  function tutMissTap(k) {   // v220.29 WT: 教材の打つ番で光っていない駒を押したとき。何を押せば進むかを 1 行で返す（教材の文は変えない）
+    const t = app.tutorial; if (!t || !t.awaiting) return;
+    const e = t.awaiting, fl = (app.cfg.opMode || "tap") === "flick";
+    const msg = e.type === "pass" ? `この場面では駒を出しません。「なし」を${tapWord()}してください。`
+      : `「${k}」は、この場面では選べません。光っている${e.koma ? "「" + e.koma + "」" : "駒"}を${fl ? "上にはじいて" : opTap() + "して"}ください。`;
+    const tx = $("tut-bubble-txt"); if (!tx) return;
+    let m = tx.querySelector(".tb-miss"); if (!m) { m = document.createElement("span"); m.className = "tb-miss"; tx.appendChild(m); }
+    m.textContent = msg; announce(msg);
+    try { m.scrollIntoView({block: "nearest"}); } catch (x) {}
+  }
   function tutFinish() {
     const t = app.tutorial; if (!t) return;
     if (qsIsKey(t.key)) return;   // 短い入門: 11 巻の cleared には足さない
@@ -31066,6 +31082,9 @@ if (typeof document !== "undefined") (() => {
    * tag: fix=不具合修正 / fast=速くなった / read=読みが良くなった / ui=使いやすくなった(v212.1 新設) / (無印)=内部のみ
    * ================================================================ */
   const APP_CHANGELOG = [
+    {v: "v220.29", d: "2026-10-24", tag: "ui", tagJa: "使いやすくなった", t: "ガイドで光っていない駒を押したときに、何を押せばよいかを出すようにしました", p: [
+      "初心者向けガイドで自分が打つ場面のとき、光っていない手駒を押しても何も起きませんでした。押した駒は選べないことと、光っている駒の名前を吹き出しに出すようにしました。",
+      "ガイドの説明の文と、ふつうの対局の操作は変わりません。"]},
     {v: "v220.28", d: "2026-10-24", tag: "fix", tagJa: "不具合修正", t: "振り返りから定石を試すと、手駒が出ずに止まる不具合を直しました", p: [
       "振り返りの中で定石の画面を開き、試すを押してレッスンを始めると、自分の手駒が表示されず、打つ番で先へ進めなくなっていたのを直しました。",
       "試すを押すと振り返りを閉じてからレッスンが始まります。"]},
