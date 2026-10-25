@@ -5,6 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>ごいた — 能登の伝承遊戯</title>
   <!-- build: v220.6 に短い入門コース（3 場面・5 着手）と助言つきの 1 局練習を当てた（配信候補 v220.7 の元）。計画: docs/PLAN_短い入門コース_rev4_Opus5.5.md（§14 の裁定）・docs/PLAN_v220.7_入門コース配信_rev2_Opus5.5.md。適用: harness/apply_quickstart_v2.py。エンジン区画（G・G_B・T1）は不変。 -->
+  <!-- build: v220.31「ガイドに、1つ前に戻るボタンと、実演の一時停止を付けました（BACK・PAUSE）」base=v220.30。
+       計画: docs/PLAN_v220.31_戻ると一時停止_rev1_Opus5.5.md。
+       変更: harness/apply_v220_31.py → apply_ui_release.py（版数・CHANGELOG・バッジ・sw.js）。G・G_B・T1 の区画は v220.30 と byte 一致。
+       CACHE_NAME: goita-v220.30 → goita-v220.31. -->
   <!-- build: v220.30「開始画面に、はじめての方の順番（短い入門・ガイド・助言つき練習・実戦）を出しました（PATH）」base=v220.29。
        計画: docs/PLAN_v220.30_入口の順番_rev1_Opus5.5.md。
        変更: harness/apply_v220_30.py → apply_ui_release.py（版数・CHANGELOG・バッジ・sw.js）。G・G_B・T1 の区画は v220.29 と byte 一致。
@@ -2137,7 +2141,7 @@ body.noto #wincut.show .wc-label{animation:wcFude .62s cubic-bezier(.2,.9,.3,1.2
 <div id="setup-screen">
   <!-- build v208: 版数表示は APP_CHANGELOG[0] から起動時に上書きされる(JS が動かない場合の保険としてここにも同じ版数を書いておく)。 -->
   <button type="button" class="setup-version" id="btn-version"
-          aria-label="バージョン v220.30 — 更新内容を見る" title="更新内容を見る"><span id="btn-version-num">v220.30</span><span class="sv-i" aria-hidden="true">ⓘ</span></button>
+          aria-label="バージョン v220.31 — 更新内容を見る" title="更新内容を見る"><span id="btn-version-num">v220.31</span><span class="sv-i" aria-hidden="true">ⓘ</span></button>
   <div class="title-block">
     <h1 class="serif">ごいた</h1>
     <div class="title-sub">能登・宇出津に伝わる竹駒の伝承遊戯</div>
@@ -29671,6 +29675,8 @@ if (typeof document !== "undefined") (() => {
     const t = app.tutorial; if (!t) return;
     const sc = TUT[t.key]; t.idx = i;
     if (i >= sc.steps.length) { tutFinish(); return; }
+    if (!Array.isArray(t.snaps)) t.snaps = [];
+    t.snaps[i] = {st: undoClone(app.st), rec: app.rec, movesLen: app.rec ? app.rec.moves.length : 0, kifuLen: Array.isArray(app.kifuLines) ? app.kifuLines.length : 0};   // v220.31 BACK: このステップの始めの局面（「◀ 戻る」で 1 つ前のステップへ戻すとき使う）
     const stp = sc.steps[i];
     if (stp.loadDeal) tutResetDeal(stp.loadDeal, stp.loadParent);
     else if (stp.reset) tutResetDeal();
@@ -29684,18 +29690,35 @@ if (typeof document !== "undefined") (() => {
       t.blockStep = true;
       const pace = Math.max(stp.pace || 850, TUT_AUTO_MIN_PACE);
       const movesBefore = app.rec.moves.length;   // もう一度見る(rebuildState経由の巻き戻し)用の基点
+      const replay = () => {   // v220.31 PAUSE: 「最初から見る」（終わった後の「もう一度見る」と同じ巻き戻し）
+        app.st = rebuildState(app.rec, movesBefore);
+        app.rec.moves.length = movesBefore;
+        renderAll(); renderHandTray(null);
+        startPlayback();
+      };
       const startPlayback = () => {
         if (!app.tutorial || t.autoPlaying) return;   // 二重起動ガード(連打対策)
         t.autoPlaying = true;
-        tutBubble(stp.say, [], {announce: null});   // ボタンを消して再生中を明示。読み上げは開始ゲートで済んでいるため抑制
         let j = 0;
         const run = () => {
-          if (!app.tutorial) return;
+          if (!app.tutorial || app.tutorial !== t || t.idx !== i) return;   // v220.31: 戻る・別の巻へ移った後に残った呼び出しは何もしない
           if (j >= stp.auto.length) { t.autoPlaying = false; onDone(); return; }
           const mv = stp.auto[j++];
           applyAndLog({type: mv.type, koma: mv.koma || null}); renderAll();
           t.autoTimer = setTimeout(run, pace);
         };
+        const pause = () => {   // v220.31 PAUSE: 今の手で止める（盤はその手のまま）
+          if (!t.autoPlaying) return;
+          clearTimeout(t.autoTimer); t.autoPlaying = false;
+          tutBubble(stp.say, [{label: "最初から見る", fn: replay}, {label: "▶ 続きを見る", primary: true, fn: resume}], {announce: `一時停止しました（${stp.auto.length}手のうち${j}手まで）。`});
+        };
+        const resume = () => {
+          if (!app.tutorial || app.tutorial !== t || t.idx !== i || t.autoPlaying) return;
+          t.autoPlaying = true;
+          tutBubble(stp.say, [{label: "一時停止", fn: pause}], {announce: null});
+          t.autoTimer = setTimeout(run, 250);
+        };
+        tutBubble(stp.say, [{label: "一時停止", fn: pause}], {announce: null});   // 再生中は「一時停止」だけ（読み上げは開始ゲートで済んでいるため抑制）
         t.autoTimer = setTimeout(run, 400);
       };
       const onDone = () => {
@@ -29734,6 +29757,21 @@ if (typeof document !== "undefined") (() => {
       t.blockStep = true;
       tutBubble(stp.say, [{label: stp.finish ? "修了" : "次へ", primary: true, fn: () => stp.finish ? tutFinish() : tutRunStep(i + 1)}]);
     }
+  }
+  function tutBack() {   // v220.31 BACK: ガイドの吹き出しの「◀ 戻る」。入門・自由対局の教材では出さない
+    const t = app.tutorial; if (!t || t.free || qsIsKey(t.key)) return;
+    const i = t.idx; if (!(i > 0)) return;
+    const sn = Array.isArray(t.snaps) ? t.snaps[i - 1] : null; if (!sn || !sn.st) return;
+    const st = undoClone(sn.st); if (!st) return;
+    clearTimeout(t.autoTimer); t.autoPlaying = false; t.awaiting = null; t.blockStep = true;
+    clearPendingSelection();
+    app.st = st; app.rec = sn.rec;
+    if (app.rec && Array.isArray(app.rec.moves) && app.rec.moves.length > sn.movesLen) app.rec.moves.length = sn.movesLen;
+    if (Array.isArray(app.kifuLines) && app.kifuLines.length > sn.kifuLen) app.kifuLines.length = sn.kifuLen;
+    app._recKey = null; app._rec = null; app._crKey = null; app._cr = null; app.adviceKey = null; app.readKey = null; app.beliefKey = null; app._lbKey = null;
+    app._slideFrom = null; app._slideSeat = null; app._flashKey = null; app._turnTokenNoAnim = true;
+    renderAll(); renderHandTray(null);
+    tutRunStep(i - 1);
   }
   function tutAfterHumanMove(action) {
     const t = app.tutorial;
@@ -29843,6 +29881,10 @@ if (typeof document !== "undefined") (() => {
     const t = app.tutorial;
     $("tut-bubble-step").textContent = (t && TUT[t.key].steps) ? `${TUT[t.key].title}　${t.idx + 1}/${TUT[t.key].steps.length}` : (t ? TUT[t.key].title : "");
     const bb = $("tut-bubble-btns"); bb.innerHTML = "";
+    if (t && !t.free && !qsIsKey(t.key) && t.idx > 0 && !t.autoPlaying) {   // v220.31 BACK
+      const el = document.createElement("button"); el.type = "button"; el.className = "btn small ghost tb-back"; el.textContent = "◀ 戻る";
+      el.setAttribute("aria-label", "1つ前の説明に戻る"); el.onclick = tutBack; bb.appendChild(el);
+    }
     (btns || []).forEach(bn => { const el = document.createElement("button"); el.className = "btn small" + (bn.primary ? " primary" : " ghost"); el.textContent = bn.label; el.onclick = bn.fn; bb.appendChild(el); });
     tutPlaceBubble();
     // build v104(Fable5 PLAN準拠): 第3引数optsで読み上げ文言を制御可能にする(後方互換、省略時は従来どおりtextを読み上げ)。
@@ -31135,6 +31177,9 @@ if (typeof document !== "undefined") (() => {
    * tag: fix=不具合修正 / fast=速くなった / read=読みが良くなった / ui=使いやすくなった(v212.1 新設) / (無印)=内部のみ
    * ================================================================ */
   const APP_CHANGELOG = [
+    {v: "v220.31", d: "2026-10-25", tag: "ui", tagJa: "使いやすくなった", t: "ガイドで1つ前に戻れるようにし、実演を一時停止できるようにしました", p: [
+      "ガイドの吹き出しに「◀ 戻る」を付けました。押すと、1つ前の説明の始めの盤に戻ります。打った駒も手駒に戻ります。",
+      "実演の途中で「一時停止」を押すと、その手で止まります。「▶ 続きを見る」で続きから、「最初から見る」で始めから見られます。短い入門と、ガイドの説明の文は変わりません。"]},
     {v: "v220.30", d: "2026-10-25", tag: "ui", tagJa: "使いやすくなった", t: "開始画面に、はじめての方の順番を出しました", p: [
       "開始画面の上に、短い入門、ガイド、助言つき練習、実戦の4つのボタンを、順番どおり1行に並べました。済んだものには印が付き、次に進むものが目立ちます。",
       "それぞれを押すと、その入口が開きます。この行が出ている間、初心者向け・完全ガイドの枠は「この設定で」の下に移ります。4つとも済むと、この行は出なくなり、枠は元の場所に戻ります。"]},
