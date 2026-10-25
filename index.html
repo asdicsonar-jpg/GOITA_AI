@@ -5,6 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>ごいた — 能登の伝承遊戯</title>
   <!-- build: v220.6 に短い入門コース（3 場面・5 着手）と助言つきの 1 局練習を当てた（配信候補 v220.7 の元）。計画: docs/PLAN_短い入門コース_rev4_Opus5.5.md（§14 の裁定）・docs/PLAN_v220.7_入門コース配信_rev2_Opus5.5.md。適用: harness/apply_quickstart_v2.py。エンジン区画（G・G_B・T1）は不変。 -->
+  <!-- build: v220.33「ガイドの各巻に、学ぶこと・覚えることの1行と、確認の1問を付けました（GUIDE・QUIZ・PAR）」base=v220.32。
+       計画: docs/PLAN_v220.33_学ぶこと覚えること確認_rev1_Opus5.5.md。
+       変更: harness/apply_v220_33.py → apply_ui_release.py（版数・CHANGELOG・バッジ・sw.js）。G・G_B・T1 の区画は v220.32 と byte 一致。
+       CACHE_NAME: goita-v220.32 → goita-v220.33. -->
+  <!-- build: v220.32「ガイドの巻を並べ替え、受けないの巻を3つに分け、序の巻を短くしました（ORD・JO・UKS）」base=v220.31。
+       計画: docs/PLAN_v220.32_巻の並べ替え_rev1_Opus5.5.md。
+       変更: harness/apply_v220_32.py → apply_ui_release.py（版数・CHANGELOG・バッジ・sw.js）。G・G_B・T1 の区画は v220.31 と byte 一致。
+       CACHE_NAME: goita-v220.31 → goita-v220.32. -->
   <!-- build: v220.31「ガイドに、1つ前に戻るボタンと、実演の一時停止を付けました（BACK・PAUSE）」base=v220.30。
        計画: docs/PLAN_v220.31_戻ると一時停止_rev1_Opus5.5.md。
        変更: harness/apply_v220_31.py → apply_ui_release.py（版数・CHANGELOG・バッジ・sw.js）。G・G_B・T1 の区画は v220.30 と byte 一致。
@@ -1453,6 +1461,9 @@ body.theme-kinari .tut-tag,body.theme-kinari .tut-toggle{color:#7a6221}
   border-radius:14px;padding:14px 16px;box-shadow:0 10px 34px rgba(0,0,0,.55);pointer-events:auto;z-index:1501}
 #tut-bubble .tb-txt{font-size:.9rem;line-height:1.7;margin-bottom:12px;overflow-y:auto;flex:1 1 auto;min-height:0}
 #tut-bubble .tb-miss{display:block;margin-top:6px;font-weight:700}   /* v220.29 WT: 光っていない駒を押したときの案内の行 */
+#tut-bubble .tb-learn,#tut-bubble .tb-keep{display:block;font-weight:700}   /* v220.33 GUIDE: この巻で学ぶこと・覚えること（色は本文と同じ） */
+#tut-bubble .tb-learn{margin-bottom:6px}
+#tut-bubble .tb-keep{margin-top:6px}
 #tut-bubble .tb-row{flex:none}
 /* v220.6 F-4: 吹き出しは幅を明示（left:50% の縮み幅で約半分になっていた）。ボタンの行は折り返す */
 #tut-bubble{width:min(92vw,500px);box-sizing:border-box}
@@ -2141,7 +2152,7 @@ body.noto #wincut.show .wc-label{animation:wcFude .62s cubic-bezier(.2,.9,.3,1.2
 <div id="setup-screen">
   <!-- build v208: 版数表示は APP_CHANGELOG[0] から起動時に上書きされる(JS が動かない場合の保険としてここにも同じ版数を書いておく)。 -->
   <button type="button" class="setup-version" id="btn-version"
-          aria-label="バージョン v220.31 — 更新内容を見る" title="更新内容を見る"><span id="btn-version-num">v220.31</span><span class="sv-i" aria-hidden="true">ⓘ</span></button>
+          aria-label="バージョン v220.33 — 更新内容を見る" title="更新内容を見る"><span id="btn-version-num">v220.33</span><span class="sv-i" aria-hidden="true">ⓘ</span></button>
   <div class="title-block">
     <h1 class="serif">ごいた</h1>
     <div class="title-sub">能登・宇出津に伝わる竹駒の伝承遊戯</div>
@@ -2199,7 +2210,7 @@ body.noto #wincut.show .wc-label{animation:wcFude .62s cubic-bezier(.2,.9,.3,1.2
     </summary>
     <div class="tutorial-body">
       <div id="quickstart-panel" class="qs-entry"></div>
-      <h3 class="qs-sub serif" id="qs-guide-sub" tabindex="-1">詳しく学ぶ・全11巻</h3>
+      <h3 class="qs-sub serif" id="qs-guide-sub" tabindex="-1">詳しく学ぶ・全13巻</h3>
       <p class="tutorial-desc" id="tut-desc">盤面の情報量をしぼり、一歩ずつ操作しながら基本を学べる体験型ガイドです。ルールを知らなくても大丈夫。</p>
       <div class="tutorial-actions" id="tut-actions"></div>
     </div>
@@ -28445,7 +28456,7 @@ if (typeof document !== "undefined") (() => {
   // 「最も複雑な場面ほど駆け足で再生される」逆転が生じていた。終了ゲートで急ぐ動機が無くなった
   // ため下限を引き上げる(シナリオ側のpace値そのものは変更しない、Math.maxでクランプするのみ)。
   const TUT_AUTO_MIN_PACE = 550;
-  const TUT_ORDER = ["jo", "uke", "fuse", "ou", "ten", "jissen", "goshi", "yaku", "kakari", "barabara", "ukenai"];
+  const TUT_ORDER = ["jo", "uke", "fuse", "ou", "ten", "goshi", "yaku", "jissen", "kakari", "barabara", "ukenai", "ukenai2", "ukenai3"];   // v220.32: 五し・手役を実戦（五の巻）の前へ。受けないを 3 巻に
   const TUT_DEAL = {
     E: ["角", "香", "銀", "馬", "金", "飛", "し", "し"],
     S: ["角", "飛", "金", "銀", "馬", "香", "し", "し"],
@@ -28545,13 +28556,10 @@ if (typeof document !== "undefined") (() => {
       steps: [
         {say: "ごいたへようこそ。能登・宇出津に伝わる、竹製の駒（竹駒）を使う4人対戦の伝承遊戯です。2人ずつ組んで相方と協力し、自分の手駒8枚を誰より早く打ち切ることを目指します。ルールを知らなくても大丈夫、一歩ずつ一緒に進めましょう。", mode: "next"},
         {say: "盤面は卓を上から見た図です。手前が【自分】。正面が【相方】（味方）。左右が【下家】【上家】という相手チームです。味方は青、相手は紫で色分けしています。", spot: "#board", mode: "next"},
-        {say: "「あなたの手駒」の欄に並ぶ8枚が、あなたの手駒です。この8枚をすべて場に出し切れば「上がり」。相方と力を合わせて、先に打ち切るのが目標です。", spot: "#handarea", mode: "next"},
-        {say: "手番が来たら、手駒から1枚を表向きに出します。これが「攻め」です。攻められた他の3人は、同じ駒を持っていれば「受け」、無ければ「なし」（パス）になります。", spot: "#stage", mode: "next"},
-        {say: "大事なのは、受けた人が次の攻め手になること。受けは“守り”であると同時に、場の主導権を奪い返す手でもあります。", spot: "#stage", mode: "next"},
+        {say: "「あなたの手駒」の欄に並ぶ8枚が、あなたの手駒です。手番が来たら、ここから1枚を表向きに出します。これが「攻め」です。攻められた他の3人は、同じ駒を持っていれば「受け」、無ければ「なし」（パス）になります。", spot: "#handarea", mode: "next"},
         {say: "では実際の流れを見てみましょう。親（その局で最初に打つ人）の下家が、まず要らない駒を1枚“伏せ”（裏向き・中身は秘密）に置き、続けて「角」で攻めます。", mode: "auto", auto: [{seat: "E", type: "bury", koma: "香"}, {seat: "E", type: "attack", koma: "角"}]},
         {say: "相方と上家は「角」を持っていないので「なし」。あなたは手駒に角があるので、同じ「角」で受けられます。見ていてください — あなたが角で受けます。", mode: "auto", auto: [{seat: "N", type: "pass"}, {seat: "W", type: "pass"}, {seat: "S", type: "receive", koma: "角"}]},
-        {say: "受けたあなたが、次の手番になりました。これが基本のリズムです — 「攻め → 受け（または なし）→ 受けた人が次に攻め」の繰り返しで場が進みます。", mode: "next"},
-        {say: "手駒を最後の1枚まで打ち切ると「上がり」。出した駒の点数がチームに入り、先に150点へ届いたチームの勝ちです。では次の巻で、実際にあなたの手で“受け”てみましょう。", mode: "next", finish: true},
+        {say: "受けたあなたが、次の手番です。受けは守りであると同時に、場の主導権を取る手でもあります。「攻め → 受け（または なし）→ 受けた人が次に攻め」の繰り返しで場が進み、手駒8枚を先に打ち切ると「上がり」。出した駒の点数がチームに入り、先に150点へ届いたチームの勝ちです。では次の巻で、実際にあなたの手で“受け”てみましょう。", mode: "next", finish: true},
             ],
     },
     uke: {
@@ -28579,12 +28587,12 @@ if (typeof document !== "undefined") (() => {
       title: "三の巻「王と切れない駒」", reveal: false, deal: TUT_DEAL3, parent: "E",
       tiers: {N: "naive", W: "naive", E: "naive"},
       steps: [
-        {say: "受けの応用です。下家が「飛」で攻めてきますが、あなたの手駒に「飛」はありません。（ちなみに、味方同士が王を1枚ずつ持つ配牌を「はりま王」と呼びます。）", spot: "#stage", mode: "next"},
+        {say: "受けの応用です。下家が「飛」で攻めてきますが、あなたの手駒に「飛」はありません。ちなみに、味方同士が王を1枚ずつ持つ配牌を「はりま王」と呼びます。", spot: "#stage", mode: "next"},
         {say: "見ていてください。下家が伏せて「飛」で攻め、相方と上家は「なし」とします。", mode: "auto", auto: [{seat: "E", type: "bury", koma: "し"}, {seat: "E", type: "attack", koma: "飛"}, {seat: "N", type: "pass"}, {seat: "W", type: "pass"}]},
         {say: "同じ駒が無くても「王」なら受けられます。王は万能の受け札。光った「王」をタップ。", spot: "#handarea", mode: "await", await: {type: "receive", koma: "王"}},
-        {say: "お見事。ただし王にも例外。「香」と「し」だけは王でも受けられません（同じ駒でしか受けられない特別な駒で、この巻の題どおり“切れない駒”と呼びます）。", spot: "#stage", mode: "next"},
+        {say: "お見事。ただし王にも例外。「香」と「し」だけは王でも受けられません。同じ駒でしか受けられない特別な駒で、この巻の題どおり“切れない駒”と呼びます。", spot: "#stage", mode: "next"},
         {say: "受けは万能の王ですが、「攻め」には制限があります。王で攻められるのは「王を2枚持っているとき」か「場にすでに王が出ているとき」だけです。", spot: "#stage", mode: "next"},
-        {say: "まとめ — 王は香・し以外なら何でも受けられる万能の受け札。一方、攻めに使えるのは王2枚を持つか場に王が出ているときだけです（最後の1枚を打ち切る「上がり」札が王になる場合は、この制限の対象外）。三の巻は修了です。", mode: "next", finish: true},
+        {say: "まとめ — 王は香・し以外なら何でも受けられる万能の受け札。一方、攻めに使えるのは王2枚を持つか場に王が出ているときだけです。ただし、最後の1枚を打ち切る「上がり」の札が王のときは、この制限の対象外です。三の巻は修了です。", mode: "next", finish: true},
       ],
     },
     ten: {
@@ -28600,7 +28608,7 @@ if (typeof document !== "undefined") (() => {
         {say: "場面を終盤まで進めました。あなたの手駒は残り「金」と「馬」の2枚、しかもあなたの手番。上がりが目前です。", spot: "#handarea", mode: "next"},
         {say: "残り2枚が違う駒のときは、高い方の駒で上がると点が高くなります。金は30点、馬は20点。低い「馬」を伏せましょう。", spot: "#handarea", mode: "await", await: {type: "bury", koma: "馬"}},
         {say: "伏せました。残った「金」で攻めて上がりです。光った「金」をタップ！", spot: "#handarea", mode: "await", await: {type: "attack", koma: "金"}},
-        {say: "金30点で上がりました。なお、残り2枚が同じ駒で（誰にも受けられず一巡して戻り）上がると、点が2倍になる「同駒（どうごま）」という大技もあります。", spot: "#stage", mode: "next"},
+        {say: "金30点で上がりました。なお、残り2枚が同じ駒のとき、誰にも受けられず一巡して戻って上がると、点が2倍になる「同駒（どうごま）」という大技もあります。", spot: "#stage", mode: "next"},
         {say: "こうして得た点を積み重ね、先に150点に達したチームが勝ちです。四の巻は修了です。", spot: "#stage", mode: "next", finish: true},
       ],
     },
@@ -28610,31 +28618,31 @@ if (typeof document !== "undefined") (() => {
       intro: "いよいよ実戦です。初心者AIを相手に1局プレイしてみましょう。光った駒が今出せる手、画面の「推奨手」も参考にできます。これまで学んだ受け・伏せ・攻め・王・同駒を思い出しながら、自由に打ってみてください。",
     },
     goshi: {
-      title: "応用一「五し」", reveal: true, deal: TUT_DEAL6, parent: "E",
+      title: "特別ルール一「五し」", reveal: true, deal: TUT_DEAL6, parent: "E",
       tiers: {N: "naive", W: "naive", E: "naive"},
       steps: [
-        {say: "ここからは応用編。まず特別ルール「五し（ごし）」です。配牌（＝配られた手駒）で同じ『し』が5枚来ることがあります。相方の手を見てください — し5枚ですね。（実戦では相方の手は見えませんが、説明のため表示しています）", spot: "#card-n", mode: "next"},
+        {say: "実戦の前に、配牌で起きる特別ルールを2つ覚えます。まず「五し（ごし）」です。配牌（＝配られた手駒）で同じ『し』が5枚来ることがあります。相方の手を見てください — し5枚ですね。実戦では相方の手は見えませんが、ここでは説明のため表示しています。", spot: "#card-n", mode: "next"},
         {say: "このとき「続行」か「配り直し」かを決めるのは、5しを持つ本人ではなく相方の“あなた”です。相方の手は見ず、自分の手駒だけを見て判断する — これが公式のやり方です。", spot: "#handarea", mode: "next"},
-        {say: "判断の目安は自分の手の強さ。強ければ続行（5しの相方と連携して攻めれば有利）、弱ければ配り直しが安全策です。両組に5しが出るなどの型もありますが、まずはこの原則を覚えましょう。", spot: "#handarea", mode: "next"},
+        {say: "判断の目安は自分の手の強さ。強ければ続行して、5しの相方と連携して攻めます。弱ければ配り直しが安全策です。両組に5しが出るなどの型もありますが、まずはこの原則を覚えましょう。", spot: "#handarea", mode: "next"},
         {say: "では実際に試してみましょう。『配り直す』は何度でも押せます — いろいろな自分の手を見比べてください。これだと思う手になったら『このまま続行して打つ』を選ぶと、5しの相方と一局打てます。", spot: "#handarea", mode: "goshiPlay"},
             ],
     },
     yaku: {
-      title: "応用二「手役」", reveal: false, deal: TUT_DEAL7, parent: "S",
+      title: "特別ルール二「手役」", reveal: false, deal: TUT_DEAL7, parent: "S",
       tiers: {N: "naive", W: "naive", E: "naive"},
       steps: [
         {say: "もう一つの特別ルール「手役（てやく）」。配牌の時点で「し」が6枚以上あると、対局せずにその場で点が入ります。あなたの手を見てください — し6枚！", spot: "#handarea", mode: "next"},
         {say: "し6枚なら、残り2枚の点が手役の点になります。違う駒なら高い方、同じ駒なら2倍です。あなたは「金」と「馬」なので、高い方の金30点が即得点になります。", spot: "#handarea", mode: "next"},
         {say: "ちなみに、し7枚なら残り1枚の2倍、し8枚なら無条件で大量点。手役は配牌運の見せ場で、狙うものではありませんが、来たらラッキーです。", spot: "#handarea", mode: "next"},
-        {say: "これで応用編は修了です。受け・伏せ・攻め・王・同駒・実戦、そして五しと手役 — 基本はひと通り身につきました。さらに上を目指すなら、続く「中級編（定石）」へ進みましょう。", mode: "next", finish: true},
+        {say: "これで特別ルールは修了です。受け・伏せ・攻め・王・同駒、そして五しと手役 — ルールはひと通り身につきました。次の五の巻「実戦」で、初心者AIと1局打ってみましょう。", mode: "next", finish: true},
       ],
     },
     kakari: {
       title: "中級「かかり応え」", reveal: true, deal: TUT_DEAL_KAKARI, parent: "N",
       tiers: {N: "naive", W: "naive", E: "naive"},
       steps: [
-        {say: "中級編へようこそ。最初の定石（じょうせき＝決まった良い打ち方）は「かかり応え（かかりごたえ）」。味方が1巡目（手が一周する最初のひと回り）に攻めた駒で、相方のあなたも同じ駒で攻め返す — 協力の型です。", mode: "next"},
-        {say: "成立するのは金・銀・馬・香の“4枚ある駒”だけ（角・飛は2枚、王・しは別扱い）。今回は金で見ます。盤を見てください — 味方（自分と相方）で金を3枚握り、相手の金は上家の1枚だけです。", spot: "#board", mode: "next"},
+        {say: "中級編へようこそ。定石（じょうせき）とは、決まった良い打ち方のことです。最初の定石は「かかり応え（かかりごたえ）」。味方が1巡目、つまり手が一周する最初のひと回りに攻めた駒で、相方のあなたも同じ駒で攻め返す — 協力の型です。", mode: "next"},
+        {say: "成立するのは金・銀・馬・香の“4枚ある駒”だけです。角・飛は2枚しかなく、王・しは別扱いです。今回は金で見ます。盤を見てください — 味方（自分と相方）で金を3枚握り、相手の金は上家の1枚だけです。", spot: "#board", mode: "next"},
         {say: "ねらいはシンプル。金は全部で4枚。味方が次々と金を場に出して“枯らす”と、相手は金で受けられなくなり、最強の「王」を出すしかないか、「なし」に追い込まれます。", spot: "#stage", mode: "next"},
         {say: "実演します。親の相方が、いらない駒を伏せて「金」で攻めます（＝かかり）。相手の上家が金で受け、別の駒で攻め返し、場があなたに回ってきます。よく見てください。", mode: "auto", auto: [{seat: "N", type: "bury", koma: "し"}, {seat: "N", type: "attack", koma: "金"}, {seat: "W", type: "receive", koma: "金"}, {seat: "W", type: "attack", koma: "銀"}, {seat: "S", type: "receive", koma: "銀"}]},
         {say: "あなたの番です。相方が見せた「金」に、あなたも金で攻め返しましょう — これが“応え”。光った「金」をタップしてください。", spot: "#handarea", mode: "await", await: {type: "attack", koma: "金"}},
@@ -28649,7 +28657,7 @@ if (typeof document !== "undefined") (() => {
         {say: "中級2つ目は「バラバラの合図」。前回の“かかり応え”の裏返しです。手駒に金銀馬香のペアが無い「バラバラの手」のとき、相方に『私はペアが無い』と伝える打ち方を学びます。", mode: "next"},
         {say: "あなたの手を見てください。金・銀・馬・香がどれも1枚ずつ＝ペア無しの「バラバラ手」。代わりに大駒の角・飛と、し を持っています。", spot: "#handarea", mode: "next"},
         {say: "まず“やってはいけない例”を見ます。1枚しかない金で攻めると、どうなるでしょう。よく見てください。", mode: "auto", pace: 360, auto: [{seat: "S", type: "bury", koma: "し"}, {seat: "S", type: "attack", koma: "金"}, {seat: "E", type: "pass"}, {seat: "N", type: "pass"}, {seat: "W", type: "pass"}]},
-        {say: "相手・下家は金金王王を温存（強い駒をあえて出さず取っておくこと）して受けず、味方も乗れず空回り（伏せ直し）。やがて場が上家経由で相方に渡ると…相方は『あなたは金が2枚あるはず』と誤解し、かかり応えで金攻め。でも相方の金も1枚きり。これも空回りです。", mode: "auto", pace: 360, auto: [{seat: "S", type: "bury", koma: "香"}, {seat: "S", type: "attack", koma: "角"}, {seat: "E", type: "pass"}, {seat: "N", type: "pass"}, {seat: "W", type: "receive", koma: "角"}, {seat: "W", type: "attack", koma: "銀"}, {seat: "S", type: "pass"}, {seat: "E", type: "pass"}, {seat: "N", type: "receive", koma: "銀"}, {seat: "N", type: "attack", koma: "金"}, {seat: "W", type: "pass"}, {seat: "S", type: "pass"}, {seat: "E", type: "pass"}]},
+        {say: "相手・下家は金金王王を温存して受けません。温存とは、強い駒をあえて出さずに取っておくことです。味方も乗れず空回り（伏せ直し）。やがて場が上家経由で相方に渡ると…相方は『あなたは金が2枚あるはず』と誤解し、かかり応えで金攻め。でも相方の金も1枚きり。これも空回りです。", mode: "auto", pace: 360, auto: [{seat: "S", type: "bury", koma: "香"}, {seat: "S", type: "attack", koma: "角"}, {seat: "E", type: "pass"}, {seat: "N", type: "pass"}, {seat: "W", type: "receive", koma: "角"}, {seat: "W", type: "attack", koma: "銀"}, {seat: "S", type: "pass"}, {seat: "E", type: "pass"}, {seat: "N", type: "receive", koma: "銀"}, {seat: "N", type: "attack", koma: "金"}, {seat: "W", type: "pass"}, {seat: "S", type: "pass"}, {seat: "E", type: "pass"}]},
         {say: "金は4枚すべて場に出尽くしました。金金王王を温存していた下家に手番が渡り、誰にも受けられない金で独走を始めます…", mode: "auto", pace: 360, auto: [{seat: "N", type: "bury", koma: "し"}, {seat: "N", type: "attack", koma: "し"}, {seat: "W", type: "pass"}, {seat: "S", type: "pass"}, {seat: "E", type: "receive", koma: "し"}, {seat: "E", type: "attack", koma: "金"}, {seat: "N", type: "pass"}, {seat: "W", type: "pass"}, {seat: "S", type: "pass"}, {seat: "E", type: "bury", koma: "馬"}, {seat: "E", type: "attack", koma: "金"}, {seat: "N", type: "pass"}, {seat: "W", type: "pass"}, {seat: "S", type: "pass"}]},
         {say: "止まりません。下家は王の連打で一気に上がり…", mode: "auto", pace: 360, auto: [{seat: "E", type: "bury", koma: "香"}, {seat: "E", type: "attack", koma: "王"}, {seat: "N", type: "pass"}, {seat: "W", type: "pass"}, {seat: "S", type: "pass"}, {seat: "E", type: "bury", koma: "し"}, {seat: "E", type: "attack", koma: "王"}]},
         {say: "下家が王で50点上がり。あなたが1枚だけの金を不用意に打ったことが相方の誤読を生み、温存していた相手の独走を招きました。これが“バラバラ手で1枚の金銀馬香を打つ”危険です。", spot: "#card-e", mode: "next"},
@@ -28662,7 +28670,7 @@ if (typeof document !== "undefined") (() => {
       ],
     },
     ukenai: {
-      title: "中級「相方の攻めは受けない」", reveal: true, deal: TUT_DEAL_UKENAI1, parent: "N",
+      title: "中級「相方の攻めは受けない・原則」", reveal: true, deal: TUT_DEAL_UKENAI1, parent: "N",
       tiers: {N: "naive", W: "naive", E: "naive"},
       steps: [
         {say: "中級3つ目は「相方の攻めは受けない」。相方が攻めた駒は、たとえ自分が受けられても、原則は受けません。受けると味方の手番（主導権）を奪い、自分の駒も1枚減らして、敵を助けてしまうからです。", mode: "next"},
@@ -28671,21 +28679,33 @@ if (typeof document !== "undefined") (() => {
         {say: "あなたが弱い駒で攻めると、温存していた下家に手番が渡ります。場の銀はもう2枚出てしまい、残りの銀は下家が握っています…", mode: "auto", pace: 380, auto: [{seat: "S", type: "attack", koma: "し"}, {seat: "E", type: "receive", koma: "し"}]},
         {say: "下家は銀銀王王を温存していました。場の銀は誰も受けられず、下家が独走を始めます。", mode: "auto", pace: 360, auto: [{seat: "E", type: "attack", koma: "銀"}, {seat: "N", type: "pass"}, {seat: "W", type: "pass"}, {seat: "S", type: "pass"}, {seat: "E", type: "bury", koma: "馬"}, {seat: "E", type: "attack", koma: "銀"}, {seat: "N", type: "pass"}, {seat: "W", type: "pass"}, {seat: "S", type: "pass"}]},
         {say: "止まりません。下家は王の連打で50点上がり。あなたが相方の銀を受けたばかりに、手番と駒を失い、温存した敵の独走を招きました。", mode: "auto", pace: 360, auto: [{seat: "E", type: "bury", koma: "香"}, {seat: "E", type: "attack", koma: "王"}, {seat: "N", type: "pass"}, {seat: "W", type: "pass"}, {seat: "S", type: "pass"}, {seat: "E", type: "bury", koma: "し"}, {seat: "E", type: "attack", koma: "王"}]},
-        {say: "もしパスしていれば、下家は銀を持っているので、相方の銀を下家が受けて銀を1枚消費したはず。あの銀銀王王の独走（50点上がり）は起きませんでした。受けたせいで下家の銀を温存させてしまったのです。これが“相方の攻めは受けない”という原則です。", spot: "#card-e", mode: "next"},
-        {say: "ただし例外があります。1つ目は「受けて自分が確実に上がれる」とき。場面を変えて見てみましょう。今度はあなたの手に香が4枚あります。", loadDeal: TUT_DEAL_UKENAI2, spot: "#handarea", mode: "next"},
+        {say: "もしパスしていれば、下家は銀を持っているので、相方の銀を下家が受けて銀を1枚消費したはず。あの銀銀王王の独走（50点上がり）は起きませんでした。受けたせいで下家の銀を温存させてしまったのです。これが“相方の攻めは受けない”という原則です。受けてよい例外は、続く2つの巻で見ます。", spot: "#card-e", mode: "next", finish: true},
+      ],
+    },
+    ukenai2: {   // v220.32 UKS: 受けないの例外1（もとの 8〜13 歩）
+      title: "中級「受けない例外1・上がれる時」", reveal: true, deal: TUT_DEAL_UKENAI2, parent: "N",
+      tiers: {N: "naive", W: "naive", E: "naive"},
+      steps: [
+        {say: "相方の攻めは原則受けません。ただし例外があります。1つ目は「受けて自分が確実に上がれる」とき。今度はあなたの手に香が4枚あります。", loadDeal: TUT_DEAL_UKENAI2, spot: "#handarea", mode: "next"},
         {say: "香は4枚すべてあなたの手にあり、しかも香は王でも切れません。つまり誰も受けられない＝出し切れば確実に上がれます。相方が銀で攻めてきました。", mode: "auto", pace: 500, auto: [{seat: "N", type: "bury", koma: "し"}, {seat: "N", type: "attack", koma: "銀"}, {seat: "W", type: "pass"}]},
         {say: "このときは例外的に受けてOK。手番を取りに行きましょう。光った「銀」をタップして受けてください。", spot: "#handarea", mode: "await", await: {type: "receive", koma: "銀"}},
         {say: "手番を取りました。あとは誰も受けられない香を出し切るだけ。まず「香」で攻めましょう。光った「香」をタップ。", spot: "#handarea", mode: "await", await: {type: "attack", koma: "香"}},
         {say: "あとは自動で見ます。香を次々に出し切って…あなたの上がりです！", mode: "auto", pace: 420, auto: [{seat: "E", type: "pass"}, {seat: "N", type: "pass"}, {seat: "W", type: "pass"}, {seat: "S", type: "bury", koma: "金"}, {seat: "S", type: "attack", koma: "香"}, {seat: "E", type: "pass"}, {seat: "N", type: "pass"}, {seat: "W", type: "pass"}, {seat: "S", type: "bury", koma: "馬"}, {seat: "S", type: "attack", koma: "香"}, {seat: "E", type: "pass"}, {seat: "N", type: "pass"}, {seat: "W", type: "pass"}, {seat: "S", type: "bury", koma: "し"}, {seat: "S", type: "attack", koma: "香"}]},
-        {say: "これが例外1。普段は相方の攻めを受けませんが、受けて自分が確実に上がり切れるなら、手番を取りに行ってよいのです。", mode: "next"},
-        {say: "もう一つの例外を見ます。今度は終盤、何度か手が回った場面（3巡目あたり）の競り合い。ここから少し長めに自動で進めます——細かい一手一手は追わなくて大丈夫。場に出ていく駒（特に香）だけ気にして見ていてください。要点はあとでまとめます。", loadDeal: TUT_DEAL_UKENAI3, loadParent: "W", mode: "auto", pace: 340, auto: [{seat: "W", type: "bury", koma: "王"}, {seat: "W", type: "attack", koma: "角"}, {seat: "S", type: "pass"}, {seat: "E", type: "receive", koma: "角"}, {seat: "E", type: "attack", koma: "金"}, {seat: "N", type: "receive", koma: "金"}, {seat: "N", type: "attack", koma: "し"}, {seat: "W", type: "receive", koma: "し"}, {seat: "W", type: "attack", koma: "金"}, {seat: "S", type: "receive", koma: "金"}, {seat: "S", type: "attack", koma: "香"}, {seat: "E", type: "pass"}, {seat: "N", type: "pass"}, {seat: "W", type: "pass"}]},
-        {say: "いま、あなたは香を1枚、場に出しました（誰も受けられず場に残っています）。手元にはまだ香が1枚。さらに数手進めます。", mode: "auto", pace: 340, auto: [{seat: "S", type: "bury", koma: "銀"}, {seat: "S", type: "attack", koma: "馬"}, {seat: "E", type: "receive", koma: "馬"}, {seat: "E", type: "attack", koma: "銀"}, {seat: "N", type: "pass"}, {seat: "W", type: "pass"}, {seat: "S", type: "pass"}, {seat: "E", type: "bury", koma: "し"}, {seat: "E", type: "attack", koma: "銀"}, {seat: "N", type: "receive", koma: "王"}]},
+        {say: "これが例外1。普段は相方の攻めを受けませんが、受けて自分が確実に上がり切れるなら、手番を取りに行ってよいのです。", mode: "next", finish: true},
+      ],
+    },
+    ukenai3: {   // v220.32 UKS: 受けないの例外2（もとの 14〜21 歩）
+      title: "中級「受けない例外2・止める時」", reveal: true, deal: TUT_DEAL_UKENAI3, parent: "W",
+      tiers: {N: "naive", W: "naive", E: "naive"},
+      steps: [
+        {say: "相方の攻めを受けてよい例外の2つ目です。終盤、何度か手が回った場面（3巡目あたり）の競り合い。ここから少し長めに自動で進めます——細かい一手一手は追わなくて大丈夫。場に出ていく駒（特に香）だけ気にして見ていてください。要点はあとでまとめます。", loadDeal: TUT_DEAL_UKENAI3, loadParent: "W", mode: "auto", pace: 340, auto: [{seat: "W", type: "bury", koma: "王"}, {seat: "W", type: "attack", koma: "角"}, {seat: "S", type: "pass"}, {seat: "E", type: "receive", koma: "角"}, {seat: "E", type: "attack", koma: "金"}, {seat: "N", type: "receive", koma: "金"}, {seat: "N", type: "attack", koma: "し"}, {seat: "W", type: "receive", koma: "し"}, {seat: "W", type: "attack", koma: "金"}, {seat: "S", type: "receive", koma: "金"}, {seat: "S", type: "attack", koma: "香"}, {seat: "E", type: "pass"}, {seat: "N", type: "pass"}, {seat: "W", type: "pass"}]},
+        {say: "いま、あなたは香を1枚、場に出しました。誰も受けられず、場に残っています。手元にはまだ香が1枚。さらに数手進めます。", mode: "auto", pace: 340, auto: [{seat: "S", type: "bury", koma: "銀"}, {seat: "S", type: "attack", koma: "馬"}, {seat: "E", type: "receive", koma: "馬"}, {seat: "E", type: "attack", koma: "銀"}, {seat: "N", type: "pass"}, {seat: "W", type: "pass"}, {seat: "S", type: "pass"}, {seat: "E", type: "bury", koma: "し"}, {seat: "E", type: "attack", koma: "銀"}, {seat: "N", type: "receive", koma: "王"}]},
         {say: "相方に手番が回り、ここで初めて「香」で攻めました。上家はパス。さあ、あなたの番です。受けるか、パスか——その前に香を数えましょう。", spot: "#handarea", mode: "auto", pace: 640, auto: [{seat: "N", type: "attack", koma: "香"}, {seat: "W", type: "pass"}]},
-        {say: "香は全部で4枚。①あなたの手に1枚、②いま相方が攻めた1枚、③序盤にあなたが場へ出した1枚——ここまでで3枚が見えています。残り1枚は誰の手に？　上家はいまパスした＝上家は香を持っていません（持っていれば、この競り合いで受けて上がろうとするはず）。しかも相方は3巡目で初めて香を攻めた＝相方の香も多くない。消去法で、上がり目前（あと1枚）の下家が最後の香を握っている、と読めます。", spot: "#handarea", mode: "next"},
-        {say: "もしここでパスすると、下家がこの香を受け、最後のしで上がってしまいます（相方からは下家の香は見えませんが、数えたあなたには見える）。香は王でも切れず、止められるのは香を持つあなただけ。例外的に受けて止めましょう。光った「香」をタップ。", spot: "#handarea", mode: "await", await: {type: "receive", koma: "香"}},
+        {say: "香は全部で4枚。①あなたの手に1枚、②いま相方が攻めた1枚、③序盤にあなたが場へ出した1枚——ここまでで3枚が見えています。残り1枚は誰の手に？　上家はいまパスした＝上家は香を持っていません。持っていれば、この競り合いで受けて上がろうとするはずです。しかも相方は3巡目で初めて香を攻めた＝相方の香も多くない。消去法で、上がり目前（あと1枚）の下家が最後の香を握っている、と読めます。", spot: "#handarea", mode: "next"},
+        {say: "もしここでパスすると、下家がこの香を受け、最後のしで上がってしまいます。相方からは下家の香は見えませんが、数えたあなたには見えます。香は王でも切れず、止められるのは香を持つあなただけ。例外的に受けて止めましょう。光った「香」をタップ。", spot: "#handarea", mode: "await", await: {type: "receive", koma: "香"}},
         {say: "下家の上がりを阻止しました。続けて、下家が持っていない駒で攻め返して主導権を握ります。あなたの「飛」は下家（も上家）も受けられません。光った「飛」をタップ。", spot: "#handarea", mode: "await", await: {type: "attack", koma: "飛"}},
         {say: "下家は飛を受けられず、あなたが主導権を奪い返しました。これが例外2——相方には見えなくても、自分に敵の上がりが読めるなら、相方の攻めを受けて止め、敵の持たない駒で攻め返すのです。", mode: "auto", pace: 440, auto: [{seat: "E", type: "pass"}, {seat: "N", type: "pass"}, {seat: "W", type: "pass"}]},
-        {say: "まとめ：相方の攻めは原則受けない（手番と駒を失い、温存した敵を助ける）。例外は2つだけ——①受けて自分が確実に上がれるとき、②敵の上がりが読めて、それを先に受けて止め、敵の持たない駒で攻め返すとき。この2つを見極めましょう。", mode: "next", finish: true},
+        {say: "まとめ：相方の攻めは原則受けない。受けると手番と駒を失い、温存した敵を助けるからです。例外は2つだけ——①受けて自分が確実に上がれるとき、②敵の上がりが読めて、それを先に受けて止め、敵の持たない駒で攻め返すとき。この2つを見極めましょう。", mode: "next", finish: true},
       ],
     },
     // T-3(v90a): 中級「香の温存」— 香は4枚しかなく、王でも切れない特別な駒(前巻「王と切れない駒」参照)。
@@ -28695,11 +28715,11 @@ if (typeof document !== "undefined") (() => {
       title: "中級「香の温存」", reveal: true, deal: TUT_DEAL_KYO, parent: "N",
       tiers: {N: "naive", W: "naive", E: "naive"},
       steps: [
-        {say: "中級「香の温存」。香は全部で4枚しかなく、しかも王でも受けられない特別な駒（前巻「王と切れない駒」の例外を思い出してください）。だからこそ、香を1枚しか持っていない時に不用意に出すのはもったいない——まず持っておく（温存）のが基本です。", mode: "next"},
+        {say: "中級「香の温存」。香は全部で4枚しかなく、しかも王でも受けられない特別な駒です。三の巻「王と切れない駒」の例外を思い出してください。だからこそ、香を1枚しか持っていない時に不用意に出すのはもったいない——まず持っておく（温存）のが基本です。", mode: "next"},
         {say: "ただし2枚以上ある時は別。あなたの手駒を見てください。香を1枚持っていますね。盤の様子も見てみましょう。", spot: "#handarea", mode: "next"},
         {say: "相方が、いらない駒を伏せて「香」で攻めます。香を2枚以上持っている時に序盤で香を出すのは『私は香を2枚以上持っている』という符丁（合図）です。上家が唯一の香で受け、別の駒で攻め返し、場があなたに回ってきます。よく見てください。", spot: "#board", mode: "auto", auto: [{seat: "N", type: "bury", koma: "し"}, {seat: "N", type: "attack", koma: "香"}, {seat: "W", type: "receive", koma: "香"}, {seat: "W", type: "attack", koma: "銀"}, {seat: "S", type: "receive", koma: "銀"}]},
         {say: "あなたの番です。相方が見せた「香」の符丁に、あなたも香で応えましょう。光った「香」をタップしてください。", spot: "#handarea", mode: "await", await: {type: "attack", koma: "香"}},
-        {say: "だれも受けられません。上家は先ほど唯一の香を使い切り、下家はもともと香を持っていません。相方はまだ香を1枚持っていますが、味方の攻めは受けない原則（中級「相方の攻めは受けない」で学んだ通り）で応えません。4枚のうち3枚を味方で押さえ、相手を締め上げました。", mode: "auto", auto: [{seat: "E", type: "pass"}, {seat: "N", type: "pass"}, {seat: "W", type: "pass"}]},
+        {say: "だれも受けられません。上家は先ほど唯一の香を使い切り、下家はもともと香を持っていません。相方はまだ香を1枚持っていますが、中級「相方の攻めは受けない・原則」で学んだ通り、味方の攻めは受けないので応えません。4枚のうち3枚を味方で押さえ、相手を締め上げました。", mode: "auto", auto: [{seat: "E", type: "pass"}, {seat: "N", type: "pass"}, {seat: "W", type: "pass"}]},
         {say: "これが香の温存と符丁です。1枚の香はむやみに出さず持っておく。2枚以上ある時だけ序盤に香で攻めて相方に伝え、相方が香を持っていれば応える——かかり応えの香版です。中級「香の温存」は修了です。", mode: "next", finish: true},
       ],
     },
@@ -28710,14 +28730,20 @@ if (typeof document !== "undefined") (() => {
     tiers: {N: "naive", W: "naive", E: "naive"},
     intro: "初心者AIと1局練習します。操作の案内と、おすすめの駒を表示します。この練習は成績集計に入りません。"};
   // 短い入門 X-4: 保存値が壊れていても・型が違っても、cleared が配列の素のオブジェクトを返す（未知のフィールドは残す）
+  // v220.33 GUIDE: 巻ごとの「この巻で学ぶこと」（最初の吹き出しの上）・「覚えること」（修了の吹き出しの下）・確認の1問（修了の前）。文は教材の文から作った
+  const TUT_GUIDE = {"jo": {"learn": "盤の見方と、「攻め・受け・なし」の基本の流れ。", "keep": "同じ駒を持っていれば受け、無ければ「なし」。受けた人が次に攻める。手駒8枚を先に打ち切ると上がり。", "quiz": {"q": "攻められたとき、同じ駒を持っていなかったら、どうなりますか。", "c": ["「なし」になる", "手駒をもう1枚出して攻め返す", "相手の駒を1枚もらう"], "a": 0, "why": "同じ駒を持っていれば「受け」、無ければ「なし」です。"}}, "uke": {"learn": "攻めてきた駒を、同じ駒で受けること。", "keep": "受けは、攻めと同じ駒で。受けた人が次の手番になる。", "quiz": {"q": "一の巻で学んだ、受けの基本はどれですか。", "c": ["攻めより点の低い駒で受ける", "攻めと同じ駒で受ける", "攻めより強い駒で受ける"], "a": 1, "why": "攻めと同じ駒で受けるのが基本です。受けた人が次の手番になります。"}}, "fuse": {"learn": "親が、駒を1枚伏せてから攻める流れ。", "keep": "伏せは、要らない駒を1枚、裏向きに出すこと。中身は相手に見えない。", "quiz": {"q": "親が最初の手番で、まずすることはどれですか。", "c": ["「なし」と言う", "駒を2枚続けて攻める", "駒を1枚伏せる"], "a": 2, "why": "親はまず駒を1枚伏せてから攻めます。"}}, "ou": {"learn": "王で受けるとき・王で攻めるときの決まり。", "keep": "王は香・し以外なら受けられる。王で攻められるのは、王を2枚持つときか、場に王が出ているときだけ。最後の1枚で上がるときは別。", "quiz": {"q": "王でも受けられない駒はどれですか。", "c": ["香と、し", "金と銀", "飛と角"], "a": 0, "why": "香と、しは同じ駒でしか受けられない“切れない駒”です。"}}, "ten": {"learn": "駒の点数と、上がったときに入る点。", "keep": "王50・飛角40・金銀30・馬香20・し10。最後に攻めた駒の点が入る。同じ駒2枚で上がると2倍。", "quiz": {"q": "残りが「金」と「馬」の2枚で、あなたの番です。点を高くして上がるには。", "c": ["どちらでも同じ点", "馬を伏せて、金で上がる", "金を伏せて、馬で上がる"], "a": 1, "why": "最後に攻めた駒の点が入ります。金は30点、馬は20点です。"}}, "goshi": {"learn": "配牌で「し」が5枚来たとき、続行か配り直しかの決め方。"}, "yaku": {"learn": "配牌で「し」が6枚以上あるときの点、手役。", "keep": "し6枚は残り2枚の点。違う駒なら高い方、同じ駒なら2倍。し7枚は残り1枚の2倍。", "quiz": {"q": "配牌が、し6枚と「金」「馬」。手役の点はいくつですか。", "c": ["30点", "20点", "50点"], "a": 0, "why": "違う駒なら高い方の点です。金は30点です。"}}, "kakari": {"learn": "相方の1巡目の攻めに、同じ駒で応える定石。", "keep": "4枚ある駒、金・銀・馬・香で相方が攻めたら、自分も同じ駒で攻め返す。", "quiz": {"q": "かかり応えが成り立つ駒はどれですか。", "c": ["王・し", "金・銀・馬・香", "角・飛"], "a": 1, "why": "4枚ある駒、金・銀・馬・香だけです。"}}, "barabara": {"learn": "ペアの無い手であることを、相方に伝える打ち方。", "keep": "ペアが無い手は、1巡目に角・飛か、しを打つ。1枚しかない金銀馬香は打たない。", "quiz": {"q": "金・銀・馬・香が1枚ずつの手です。1巡目に攻めるとよい駒はどれですか。", "c": ["金", "香", "角"], "a": 2, "why": "大駒の角・飛か、しを打つのがペア無しの合図です。1枚しかない金銀馬香を打つと、相方がかかり応えと読み違えます。"}}, "ukenai": {"learn": "相方の攻めを受けない理由。", "keep": "相方の攻めは原則受けない。受けると手番と駒を失い、温存した敵を助ける。", "quiz": {"q": "相方が銀で攻めました。あなたも銀を持っています。原則はどうしますか。", "c": ["受けずに「なし」", "銀で受ける", "王で受ける"], "a": 0, "why": "相方の攻めは原則受けません。受けると手番と駒を失い、敵を助けます。"}}, "ukenai2": {"learn": "受けてよい例外の1つ目、受けて確実に上がれるとき。", "keep": "受けて自分が確実に上がり切れるなら、相方の攻めを受けて手番を取ってよい。", "quiz": {"q": "相方の攻めを受けてよいのは、どんなときですか。", "c": ["自分の手が弱いとき", "受けて自分が確実に上がれるとき", "受けられる駒を持っているときは、いつでも"], "a": 1, "why": "例外の1つ目は、受けて自分が確実に上がり切れるときです。"}}, "ukenai3": {"learn": "受けてよい例外の2つ目、敵の上がりを止めるとき。", "keep": "駒を数えて敵の上がりが読めたら、相方の攻めを受けて止め、敵の持たない駒で攻め返す。", "quiz": {"q": "例外の2つ目で、相方の攻めを受けた後に攻める駒はどれですか。", "c": ["一番点の低い駒", "相方が攻めたのと同じ駒", "敵が持っていない駒"], "a": 2, "why": "敵が受けられない駒で攻め返して、主導権を取り戻します。"}}, "kyo": {"learn": "香を温存する理由と、香の合図。", "keep": "香が1枚なら、むやみに出さず持っておく。2枚以上あれば序盤に香で攻めて相方に伝える。", "quiz": {"q": "香を1枚だけ持っているときは、どうしますか。", "c": ["むやみに出さず持っておく", "最初の攻めに使う", "すぐに伏せる"], "a": 0, "why": "香は4枚しかなく、王でも受けられない駒です。1枚なら温存が基本です。"}}};
   function tutLoad() {
     let p = null;
     try { p = JSON.parse(DATA_STORAGE.getItem("goita_tutorial_progress")); } catch (e) { p = null; }
     if (!p || typeof p !== "object" || Array.isArray(p)) p = {};
     if (!Array.isArray(p.cleared)) p.cleared = [];
+    if (!p.ukSplit && p.cleared.includes("ukenai")) {   // v220.32 UKS: 前の版で 1 巻だった「受けない」を修了していた人は、分けた 2 巻も修了にする
+      ["ukenai2", "ukenai3"].forEach(k => { if (!p.cleared.includes(k)) p.cleared.push(k); });
+      try { tutSave(p); } catch (e) {}
+    }
     return p;
   }
-  function tutSave(p) { DATA_STORAGE.setItem("goita_tutorial_progress", JSON.stringify(p)); }
+  function tutSave(p) { if (p && typeof p === "object") p.ukSplit = 1; DATA_STORAGE.setItem("goita_tutorial_progress", JSON.stringify(p)); }   // v220.32 UKS: 受けないを 3 巻に分けた後の保存の印
   function tutPct(p) { return Math.round((p.cleared || []).filter(k => TUT_ORDER.includes(k)).length / TUT_ORDER.length * 100); }
   function tutNextKey(p) { return TUT_ORDER.find(k => !(p.cleared || []).includes(k)) || null; }
   // v220.30 PATH: はじめての方の順番。済み = 短い入門の修了／ガイドの序の巻〜四の巻の修了／助言つき練習の修了／成績に 1 局以上（教材・練習の局は成績に入らない）
@@ -28773,7 +28799,7 @@ if (typeof document !== "undefined") (() => {
       b.onclick = () => startTutorial(nk); acts.appendChild(b);
       if (!first) {
         const row = document.createElement("div"); row.className = "tutorial-actions-row";
-        const r = document.createElement("button"); r.className = "btn ghost small"; r.textContent = "全11巻の進捗をリセット";
+        const r = document.createElement("button"); r.className = "btn ghost small"; r.textContent = "全13巻の進捗をリセット";
         r.onclick = () => { setLegacyTutorialCleared([]); updateTutorialPanel(); }; row.appendChild(r); acts.appendChild(row);
       }
     } else {
@@ -28790,7 +28816,7 @@ if (typeof document !== "undefined") (() => {
     // T1(v69): 巻マップ — 全消去せずに任意の巻を単独で選べる入口(常設)
     const mapRow = document.createElement("div"); mapRow.className = "tutorial-actions-row";
     const mapBtn = document.createElement("button"); mapBtn.className = "btn ghost small"; mapBtn.id = "tut-map-btn";
-    mapBtn.textContent = "全11巻から選ぶ";
+    mapBtn.textContent = "全13巻から選ぶ";
     mapBtn.onclick = openTutorialMap; mapRow.appendChild(mapBtn); acts.appendChild(mapRow);
   }
   function openTutorialMap() {
@@ -28809,7 +28835,7 @@ if (typeof document !== "undefined") (() => {
     const m = modal(`<h2 class="serif">巻を選ぶ</h2>
       <p class="note">好きな巻から始められます。修了済みの巻を選んで復習しても、進捗は消えません。</p>
       <div class="tut-map-list">${rows}</div>
-      <div class="row"><button class="btn" id="tm-reset">全11巻の進捗をリセット</button><button class="btn primary" id="tm-close">閉じる</button></div>`);
+      <div class="row"><button class="btn" id="tm-reset">全13巻の進捗をリセット</button><button class="btn primary" id="tm-close">閉じる</button></div>`);
     const list = m.querySelector(".tut-map-list");
     if (list) list.addEventListener("click", (ev) => {
       const b = ev.target.closest("button[data-tk]"); if (!b) return;
@@ -29792,9 +29818,20 @@ if (typeof document !== "undefined") (() => {
     m.textContent = msg; announce(msg);
     try { m.scrollIntoView({block: "nearest"}); } catch (x) {}
   }
+  function tutQuiz() {   // v220.33 QUIZ: 修了の前の確認の1問（3 択）。正しく選ぶと修了。ちがうときは説明を出して選び直す
+    const t = app.tutorial; if (!t) return; const qz = (TUT_GUIDE[t.key] || {}).quiz; if (!qz) return;
+    t.quiz = true; tutSpotlight(null);
+    const pick = j => {
+      if (j === qz.a) { t.quizOk = true; tutBubble("正解です。" + qz.why, [{label: "修了", primary: true, fn: tutFinish}]); }
+      else tutBubble("ちがいます。" + qz.why, [{label: "もう一度選ぶ", primary: true, fn: tutQuiz}]);
+    };
+    tutBubble("確認の1問 — " + qz.q, qz.c.map((c, j) => ({label: c, fn: () => pick(j)})));
+  }
   function tutFinish() {
     const t = app.tutorial; if (!t) return;
     if (qsIsKey(t.key)) return;   // 短い入門: 11 巻の cleared には足さない
+    if (!t.quizOk && !t.free && (TUT_GUIDE[t.key] || {}).quiz && !app._mixQueue) { tutQuiz(); return; }   // v220.33 QUIZ: 混ぜ稽古の中では出さない
+    t.finished = true;   // v220.33: 修了の吹き出しには「◀ 戻る」を出さない
     const p = tutLoad(); p.cleared = Array.from(new Set([...(p.cleared || []), t.key])); tutSave(p);
     // T-4(v90a): 混ぜ稽古の一環なら、通常の課程UI(次のレッスンへ/設定に戻る)ではなく専用の開示+連結UIを出す
     if (app._mixQueue && app._mixQueue.drills[app._mixQueue.idx] && app._mixQueue.drills[app._mixQueue.idx].tut === t.key) {
@@ -29875,13 +29912,21 @@ if (typeof document !== "undefined") (() => {
   }
   function tutBubble(text, btns, opts) {
     const b = $("tut-bubble"); if (!b) return;
+    const rawText = text;   // v220.33 GUIDE: 押し方で言い換える前の文（その段の文かを見る）
     if ((app.cfg.opMode || "tap") === "flick") text = String(text).replace(/をタップして/g, "を上にはじいて").replace(/をタップ(?=[。！]|$)/g, "を上にはじく");   // v220.20 X03: フリックのみは「上にはじく」（opTap と同じ語）
     // T6(v72): 用語集の語があればタップ可能なチップに変換して表示する(SR向けには元のプレーンテキストを読み上げる)
     $("tut-bubble-txt").innerHTML = linkifyGlossary(text);
     const t = app.tutorial;
+    let gAnn = null;   // v220.33 GUIDE: 巻の最初の吹き出しに「この巻で学ぶこと」、修了の吹き出しに「覚えること」（その段の文を出すときだけ）
+    { const gd = t && !t.free && !qsIsKey(t.key) && !t.quiz ? TUT_GUIDE[t.key] : null, sc = t ? TUT[t.key] : null, stp = sc && sc.steps ? sc.steps[t.idx] : null;
+      if (gd && stp && rawText === stp.say) {
+        const tx = $("tut-bubble-txt");
+        if (t.idx === 0 && gd.learn) { const e = document.createElement("span"); e.className = "tb-learn"; e.textContent = "この巻で学ぶこと：" + gd.learn; tx.insertBefore(e, tx.firstChild); gAnn = e.textContent + " " + text; }
+        if (stp.finish && gd.keep) { const e = document.createElement("span"); e.className = "tb-keep"; e.textContent = "覚えること：" + gd.keep; tx.appendChild(e); gAnn = (gAnn || text) + " " + e.textContent; }
+      } }
     $("tut-bubble-step").textContent = (t && TUT[t.key].steps) ? `${TUT[t.key].title}　${t.idx + 1}/${TUT[t.key].steps.length}` : (t ? TUT[t.key].title : "");
     const bb = $("tut-bubble-btns"); bb.innerHTML = "";
-    if (t && !t.free && !qsIsKey(t.key) && t.idx > 0 && !t.autoPlaying) {   // v220.31 BACK
+    if (t && !t.free && !qsIsKey(t.key) && t.idx > 0 && !t.autoPlaying && !t.quiz && !t.finished) {   // v220.31 BACK（v220.33: 確認の1問と修了の後は出さない）
       const el = document.createElement("button"); el.type = "button"; el.className = "btn small ghost tb-back"; el.textContent = "◀ 戻る";
       el.setAttribute("aria-label", "1つ前の説明に戻る"); el.onclick = tutBack; bb.appendChild(el);
     }
@@ -29889,7 +29934,7 @@ if (typeof document !== "undefined") (() => {
     tutPlaceBubble();
     // build v104(Fable5 PLAN準拠): 第3引数optsで読み上げ文言を制御可能にする(後方互換、省略時は従来どおりtextを読み上げ)。
     // opts.announce === null なら読み上げを抑制(同一文の二重読み上げ防止)、文字列ならその文言を読み上げる。
-    if (!opts || opts.announce === undefined) announce(text);
+    if (!opts || opts.announce === undefined) announce(gAnn || text);   // v220.33 GUIDE: 足した 1 行も読み上げる
     else if (opts.announce !== null) announce(opts.announce);
     // A7(v71): ボタンが表示される場合はキーボードユーザーのために自動でフォーカスする。
     // 受け操作等(await)の直後にフォーカスが失われ、次のボタンまでTabで延々とたどる必要があった問題を解消。
@@ -31177,6 +31222,12 @@ if (typeof document !== "undefined") (() => {
    * tag: fix=不具合修正 / fast=速くなった / read=読みが良くなった / ui=使いやすくなった(v212.1 新設) / (無印)=内部のみ
    * ================================================================ */
   const APP_CHANGELOG = [
+    {v: "v220.33", d: "2026-10-25", tag: "ui", tagJa: "使いやすくなった", t: "ガイドの各巻に、学ぶこと・覚えることと、確認の1問を付けました", p: [
+      "巻の最初の説明に「この巻で学ぶこと」、最後の説明に「覚えること」を1行で出します。「修了」を押すと、3つから選ぶ確認の1問が出ます。正しく選ぶと修了です。",
+      "説明の文の中の長いかっこ書きを、ふつうの文に直しました。修了の後には「◀ 戻る」を出さないようにしました。"]},
+    {v: "v220.32", d: "2026-10-25", tag: "ui", tagJa: "使いやすくなった", t: "ガイドの巻の順を見直し、全13巻にしました", p: [
+      "五しと手役を、五の巻「実戦」の前に移しました。名前は「特別ルール」です。長かった中級「相方の攻めは受けない」は、原則・例外1・例外2の3つの巻に分けました。",
+      "序の巻は9つの説明を6つにまとめました。前の版で「相方の攻めは受けない」を修了していた方は、分けた3つの巻とも修了になります。"]},
     {v: "v220.31", d: "2026-10-25", tag: "ui", tagJa: "使いやすくなった", t: "ガイドで1つ前に戻れるようにし、実演を一時停止できるようにしました", p: [
       "ガイドの吹き出しに「◀ 戻る」を付けました。押すと、1つ前の説明の始めの盤に戻ります。打った駒も手駒に戻ります。",
       "実演の途中で「一時停止」を押すと、その手で止まります。「▶ 続きを見る」で続きから、「最初から見る」で始めから見られます。短い入門と、ガイドの説明の文は変わりません。"]},
