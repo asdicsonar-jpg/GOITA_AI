@@ -5,6 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>ごいた — 能登の伝承遊戯</title>
   <!-- build: v220.6 に短い入門コース（3 場面・5 着手）と助言つきの 1 局練習を当てた（配信候補 v220.7 の元）。計画: docs/PLAN_短い入門コース_rev4_Opus5.5.md（§14 の裁定）・docs/PLAN_v220.7_入門コース配信_rev2_Opus5.5.md。適用: harness/apply_quickstart_v2.py。エンジン区画（G・G_B・T1）は不変。 -->
+  <!-- build: v220.37「狭い画面で、上家と下家の強さの札を名前の下の行に出すようにしました（AIN）」base=v220.36。
+       計画: docs/PLAN_v220.37_席の札_rev1_Opus5.5.md。
+       変更: harness/spec/v220_37_apply.py（lib/apply_core.py）→ lib/release.py（版数・CHANGELOG・バッジ・sw.js）。G・G_B・T1 の区画は v220.36 と byte 一致。
+       CACHE_NAME: goita-v220.36 → goita-v220.37. -->
   <!-- build: v220.36「小さい字を少し大きくし、同じ駒が2枚並ぶ所で押した駒が選ばれるようにしました（FS・PAIR）」base=v220.35。
        計画: docs/PLAN_v220.36_MSR-AB_rev1_Opus5.5.md。
        変更: harness/apply_v220_36.py → apply_ui_release_r2.py（版数・CHANGELOG・バッジ・sw.js）。G・G_B・T1 の区画は v220.35 と byte 一致。
@@ -1478,6 +1482,8 @@ body.cud .pcard .phead .nm:not(.ally){color:#e8b89f}
   .pcard .phead{flex-wrap:nowrap;gap:5px;font-size:.62rem;overflow:hidden}
   .pcard .phead .nm{font-size:.94rem;font-weight:700;flex:none;letter-spacing:.04em}
   .pcard .phead .ainame{font-size:.56rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+  #card-w .phead,#card-e .phead{flex-wrap:wrap;row-gap:0}
+  #card-w .phead .ainame,#card-e .phead .ainame{flex:0 0 100%;order:9;line-height:1.15}
   .pcard .phead .cnt{flex:none}
   .pcard{padding:6px;gap:4px}
    
@@ -2014,7 +2020,7 @@ body.noto #wincut.show .wc-label{animation:wcFude .62s cubic-bezier(.2,.9,.3,1.2
 <div id="setup-screen">
   <!-- build v208: 版数表示は APP_CHANGELOG[0] から起動時に上書きされる(JS が動かない場合の保険としてここにも同じ版数を書いておく)。 -->
   <button type="button" class="setup-version" id="btn-version"
-          aria-label="バージョン v220.36 — 更新内容を見る" title="更新内容を見る"><span id="btn-version-num">v220.36</span><span class="sv-i" aria-hidden="true">ⓘ</span></button>
+          aria-label="バージョン v220.37 — 更新内容を見る" title="更新内容を見る"><span id="btn-version-num">v220.37</span><span class="sv-i" aria-hidden="true">ⓘ</span></button>
   <div class="title-block">
     <h1 class="serif">ごいた</h1>
     <div class="title-sub">能登・宇出津に伝わる竹駒の伝承遊戯</div>
@@ -31084,6 +31090,9 @@ if (typeof document !== "undefined") (() => {
 
 
   const APP_CHANGELOG = [
+    {v: "v220.37", d: "2026-10-31", tag: "ui", tagJa: "使いやすくなった", t: "狭い画面で、上家と下家の強さの札が切れずに見えるようにしました", p: [
+      "スマートフォンなど幅の狭い画面では、上家と下家の札の強さの表示（AI・強い など）が途中で切れていました。名前の下の行に出すようにしたので、最後まで読めます。",
+      "相方と自分の札、広い画面の見た目は前と同じです。"]},
     {v: "v220.36", d: "2026-10-29", tag: "ui", tagJa: "使いやすくなった", t: "小さい字を少し大きくし、同じ駒が2枚並ぶ所で押した駒が選ばれるようにしました", p: [
       "手番の枠の見出しや盤の中央の局の番号など、いちばん小さかった字を、ほかの小さい字と同じ大きさにそろえました。",
       "同じ駒が2枚寄せて並ぶ所で、左の駒の右の端を押すと右の駒が選ばれていたのを、押した駒が選ばれるように直しました。打つ駒は前と同じです。"]},
