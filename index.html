@@ -5,6 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>ごいた — 能登の伝承遊戯</title>
   <!-- build: v220.6 に短い入門コース（3 場面・5 着手）と助言つきの 1 局練習を当てた（配信候補 v220.7 の元）。計画: docs/PLAN_短い入門コース_rev4_Opus5.5.md（§14 の裁定）・docs/PLAN_v220.7_入門コース配信_rev2_Opus5.5.md。適用: harness/apply_quickstart_v2.py。エンジン区画（G・G_B・T1）は不変。 -->
+  <!-- build: v220.41「巻を選ぶ画面に巻ごとのおおよその時間を出し、教材で光らせた所に名前の札を付けました（TMN・SPN）」base=v220.40。
+       計画: docs/PLAN_v220.41_巻の時間と光の名前_rev1_Opus5.5.md。
+       変更: harness/spec/v220_41_apply.py（lib/apply_core.py）→ lib/release.py（版数・CHANGELOG・バッジ・sw.js）。G・G_B・T1 の区画は v220.40 と byte 一致。
+       CACHE_NAME: goita-v220.40 → goita-v220.41. -->
   <!-- build: v220.40「狭い画面で、上家と下家の札の 2 行目の分だけ盤が伸びていたのを戻しました（AIN2）」base=v220.39。
        計画: docs/PLAN_v220.40_席の札の高さ_rev1_Opus5.5.md。
        変更: harness/spec/v220_40_apply.py（lib/apply_core.py）→ lib/release.py（版数・CHANGELOG・バッジ・sw.js）。G・G_B・T1 の区画は v220.39 と byte 一致。
@@ -1316,6 +1320,9 @@ body.theme-kinari .tut-tag,body.theme-kinari .tut-toggle{color:#7a6221}
   border-radius:50%;border:1px solid var(--gin-d);font-size:.72rem;color:var(--gin)}
 .tut-map-row .tmr-title{flex:1 1 auto;font-size:.85rem}
 .tut-map-row .tmr-status{flex:0 0 auto;font-size:.68rem;color:var(--gin)}
+.tut-map-row .tmr-side{flex:0 0 auto;display:flex;flex-direction:row-reverse;align-items:center;gap:10px}
+@media (max-width:619px){.tut-map-row .tmr-side{flex-direction:column;align-items:flex-end;gap:1px}}
+.tut-map-row .tmr-min{font-size:.68rem;color:var(--gin)}
 .tut-map-row.done .tmr-num{border-color:var(--kin);color:var(--kin)}
 .tut-map-row.done .tmr-status{color:var(--kin)}
  
@@ -1323,6 +1330,10 @@ body.theme-kinari .tut-tag,body.theme-kinari .tut-toggle{color:#7a6221}
 #tut-overlay.on{display:block}
 #tut-spot{position:fixed;left:50%;top:50%;width:0;height:0;border-radius:13px;
   box-shadow:0 0 0 9999px rgba(8,12,20,.55);border:2px solid var(--kin);transition:all .3s ease;pointer-events:none}
+#tut-spot-name{position:fixed;left:0;top:0;z-index:1501;pointer-events:none;font-size:.72rem;font-weight:700;line-height:1.5;white-space:nowrap;
+  background:var(--ink1);color:var(--kinari);border:1px solid var(--kin);border-radius:7px 7px 7px 0;padding:0 8px;transition:left .3s ease,top .3s ease}
+#tut-spot-name.in{border-radius:0 0 7px 0}
+#tut-spot-name[hidden]{display:none}
 #tut-bubble{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom));transform:translateX(-50%);
   max-width:min(92vw,500px);max-height:34vh;display:flex;flex-direction:column;background:var(--ink1);color:var(--kinari);border:1px solid var(--kin);
   border-radius:14px;padding:14px 16px;box-shadow:0 10px 34px rgba(0,0,0,.55);pointer-events:auto;z-index:1501}
@@ -2030,6 +2041,7 @@ body.noto #wincut.show .wc-label{animation:wcFude .62s cubic-bezier(.2,.9,.3,1.2
 <a href="#board" class="skip-link">対局盤面へスキップ</a>
 <div id="tut-overlay" aria-live="polite">
   <div id="tut-spot"></div>
+  <div id="tut-spot-name" aria-hidden="true" hidden></div>
   <div id="tut-bubble"><div class="tb-txt" id="tut-bubble-txt" tabindex="0"></div><div class="tb-row"><span class="tb-step" id="tut-bubble-step"></span><span id="tut-bubble-btns"></span></div></div>
 </div>
 
@@ -2037,7 +2049,7 @@ body.noto #wincut.show .wc-label{animation:wcFude .62s cubic-bezier(.2,.9,.3,1.2
 <div id="setup-screen">
   <!-- build v208: 版数表示は APP_CHANGELOG[0] から起動時に上書きされる(JS が動かない場合の保険としてここにも同じ版数を書いておく)。 -->
   <button type="button" class="setup-version" id="btn-version"
-          aria-label="バージョン v220.40 — 更新内容を見る" title="更新内容を見る"><span id="btn-version-num">v220.40</span><span class="sv-i" aria-hidden="true">ⓘ</span></button>
+          aria-label="バージョン v220.41 — 更新内容を見る" title="更新内容を見る"><span id="btn-version-num">v220.41</span><span class="sv-i" aria-hidden="true">ⓘ</span></button>
   <div class="title-block">
     <h1 class="serif">ごいた</h1>
     <div class="title-sub">能登・宇出津に伝わる竹駒の伝承遊戯</div>
@@ -21433,6 +21445,17 @@ if (typeof document !== "undefined") (() => {
     mapBtn.textContent = "全13巻から選ぶ";
     mapBtn.onclick = openTutorialMap; mapRow.appendChild(mapBtn); acts.appendChild(mapRow);
   }
+  function tutMinutesLabel(k) {   // v220.41 TMN（P1-8）: 文字数÷300 字/分＋実演の手数×間＋打つ番 1 回 10 秒（Sonar 11-01「300 字/分」）
+    const sc = TUT[k]; const st = (sc && sc.steps) || [];
+    if (!st.length) return "1局";
+    let sec = 0;
+    for (const s of st) {
+      sec += String(s.say || "").replace(/<[^>]+>/g, "").length / 300 * 60;
+      if (s.mode === "auto") sec += (s.auto || []).length * Math.max(s.pace || 850, TUT_AUTO_MIN_PACE) / 1000;
+      if (s.mode === "await") sec += 10;
+    }
+    return "約" + Math.max(1, Math.round(sec / 60)) + "分";
+  }
   function openTutorialMap() {
     
     const p = tutLoad();
@@ -21443,7 +21466,7 @@ if (typeof document !== "undefined") (() => {
       return `<button type="button" class="btn tut-map-row${done ? " done" : ""}" data-tk="${k}">
         <span class="tmr-num">${i + 1}</span>
         <span class="tmr-title">${sc.title}</span>
-        <span class="tmr-status">${done ? "✓ 修了" : "未修了"}</span>
+        <span class="tmr-side"><span class="tmr-status">${done ? "✓ 修了" : "未修了"}</span><span class="tmr-min">${tutMinutesLabel(k)}</span></span>
       </button>`;
     }).join("");
     const m = modal(`<h2 class="serif">巻を選ぶ</h2>
@@ -22507,7 +22530,22 @@ if (typeof document !== "undefined") (() => {
       spot.style.left = (r.left - pad) + "px"; spot.style.top = (r.top - pad) + "px";
       spot.style.width = (r.width + pad * 2) + "px"; spot.style.height = (r.height + pad * 2) + "px";
     } else { spot.style.left = "50%"; spot.style.top = "50%"; spot.style.width = "0"; spot.style.height = "0"; }
+    tutSpotSel = el ? sel : null;   // v220.41 SPN
     tutPlaceBubble();
+  }
+  const TUT_SPOT_NAME = {"#board": "盤", "#stage": "場", "#card-n": "相方の席", "#card-e": "下家の席", "#card-w": "上家の席"};   // v220.41 SPN（P1-7）。手駒の欄は見出しがあるので出さない
+  let tutSpotSel = null;
+  function tutSpotName() {   // 光の上 → 光の内側の左下 → 内側の左上 の順に（席の名前は左上にあるので、左下を先に）、吹き出しと重ならない所へ
+    const nm = $("tut-spot-name"); if (!nm) return;
+    const txt = tutSpotSel ? (TUT_SPOT_NAME[tutSpotSel] || "") : "", el = txt ? document.querySelector(tutSpotSel) : null;
+    if (!el) { nm.hidden = true; nm.textContent = ""; return; }
+    nm.textContent = txt; nm.hidden = false;
+    const r = el.getBoundingClientRect(), pad = 8, h = nm.offsetHeight || 20, w = nm.offsetWidth || 60, x = Math.max(4, r.left - pad);
+    const bu = $("tut-bubble"), b = bu ? bu.getBoundingClientRect() : null;
+    const free = y => y >= 2 && y + h <= window.innerHeight - 2 && !(b && b.width > 0 && x < b.right && b.left < x + w && y < b.bottom && b.top < y + h);
+    const cand = [[r.top - pad - h, false], [Math.min(r.bottom + pad, window.innerHeight) - h - 2, true], [Math.max(r.top - pad, 0) + 2, true]];
+    const c = cand.find(([y]) => free(y)) || cand[2];
+    nm.style.left = x + "px"; nm.style.top = c[0] + "px"; nm.classList.toggle("in", c[1]);
   }
   function tutPlaceBubble() {
     const b = $("tut-bubble"), spot = $("tut-spot"); if (!b || !spot) return;
@@ -22523,6 +22561,7 @@ if (typeof document !== "undefined") (() => {
     let _bl = "";
     try { if (TWO_COL_MQ && TWO_COL_MQ.matches && $("board")) { const br = $("board").getBoundingClientRect(); if (br.width > 0) _bl = Math.round(br.left + br.width / 2) + "px"; } } catch (e) {}
     b.style.left = _bl;
+    tutSpotName();   // v220.41 SPN
   }
   function tutBubble(text, btns, opts) {
     const b = $("tut-bubble"); if (!b) return;
@@ -23836,6 +23875,9 @@ if (typeof document !== "undefined") (() => {
 
 
   const APP_CHANGELOG = [
+    {v: "v220.41", d: "2026-11-01", tag: "ui", tagJa: "使いやすくなった", t: "ガイドの巻を選ぶ画面に、おおよその時間を出しました", p: [
+      "「全13巻から選ぶ」の各巻に、ゆっくり読んだときのおおよその時間（約1〜3分）を出しました。五の巻「実戦」は1局ぶんです。",
+      "教材の中で盤・場・相方や相手の席を光らせるときに、光らせた所の名前を小さな札で出すようにしました。"]},
     {v: "v220.40", d: "2026-11-01", tag: "fix", tagJa: "直した", t: "狭い画面で、自分の手駒が前より下に押し出されていたのを直しました", p: [
       "v220.37 で上家と下家の強さの札を名前の下の行に出したとき、その分だけ盤が伸び、375×667 などの画面で自分の手駒の欄が画面の下にはみ出していました。札を駒の置き場の上の余白に置くようにして、盤の高さを前と同じに戻しました。",
       "札は前と同じく最後まで読めます。"]},
