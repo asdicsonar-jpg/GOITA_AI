@@ -5,6 +5,18 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>ごいた — 能登の伝承遊戯</title>
   <!-- build: v220.6 に短い入門コース（3 場面・5 着手）と助言つきの 1 局練習を当てた（配信候補 v220.7 の元）。計画: docs/PLAN_短い入門コース_rev4_Opus5.5.md（§14 の裁定）・docs/PLAN_v220.7_入門コース配信_rev2_Opus5.5.md。適用: harness/apply_quickstart_v2.py。エンジン区画（G・G_B・T1）は不変。 -->
+  <!-- build: v220.44「AIの王持ちの合図のしを、敵が残り2枚以下でしを受けて上がれる時は打たないようにし、棋譜に上がりの駒を出しました（OSR・KFX）」base=v220.43。
+       計画: docs/PLAN_v220.44_王持ち合図のリーチ守り_rev1_Opus5.5.md。
+       変更: harness/spec/v220_44_apply.py（lib/apply_core.py・エンジン A の 1 行と UI の 1 行）→ lib/release.py（版数・CHANGELOG・バッジ・sw.js）。G は v220.43 から OSR-1 の 1 行だけ違う（G_B は G から組み立てる）。
+       CACHE_NAME: goita-v220.43 → goita-v220.44. -->
+  <!-- build: v220.43「教材の文に、答えを見る前の問いと、失敗例との違いを足しました（TXQ）」base=v220.42。
+       計画: docs/PLAN_v220.43_教材の問いと違い_rev1_Opus5.5.md。
+       変更: harness/spec/v220_43_apply.py（lib/apply_core.py）→ lib/release.py（版数・CHANGELOG・バッジ・sw.js）。G・G_B・T1 の区画は v220.42 と byte 一致。
+       CACHE_NAME: goita-v220.42 → goita-v220.43. -->
+  <!-- build: v220.42「狭い画面で、自分の手駒が下の操作の帯に隠れないように盤を縮めました（HFT）」base=v220.41。
+       計画: docs/PLAN_v220.42_手駒を帯の上に_rev1_Opus5.5.md。
+       変更: harness/spec/v220_42_apply.py（lib/apply_core.py）→ lib/release.py（版数・CHANGELOG・バッジ・sw.js）。G・G_B・T1 の区画は v220.41 と byte 一致。
+       CACHE_NAME: goita-v220.41 → goita-v220.42. -->
   <!-- build: v220.41「巻を選ぶ画面に巻ごとのおおよその時間を出し、教材で光らせた所に名前の札を付けました（TMN・SPN）」base=v220.40。
        計画: docs/PLAN_v220.41_巻の時間と光の名前_rev1_Opus5.5.md。
        変更: harness/spec/v220_41_apply.py（lib/apply_core.py）→ lib/release.py（版数・CHANGELOG・バッジ・sw.js）。G・G_B・T1 の区画は v220.40 と byte 一致。
@@ -2049,7 +2061,7 @@ body.noto #wincut.show .wc-label{animation:wcFude .62s cubic-bezier(.2,.9,.3,1.2
 <div id="setup-screen">
   <!-- build v208: 版数表示は APP_CHANGELOG[0] から起動時に上書きされる(JS が動かない場合の保険としてここにも同じ版数を書いておく)。 -->
   <button type="button" class="setup-version" id="btn-version"
-          aria-label="バージョン v220.41 — 更新内容を見る" title="更新内容を見る"><span id="btn-version-num">v220.41</span><span class="sv-i" aria-hidden="true">ⓘ</span></button>
+          aria-label="バージョン v220.44 — 更新内容を見る" title="更新内容を見る"><span id="btn-version-num">v220.44</span><span class="sv-i" aria-hidden="true">ⓘ</span></button>
   <div class="title-block">
     <h1 class="serif">ごいた</h1>
     <div class="title-sub">能登・宇出津に伝わる竹駒の伝承遊戯</div>
@@ -3216,7 +3228,7 @@ const G = (() => {
     if (ouOn(seat) && (c["王"] || 0) >= 1 && (c["し"] || 0) >= 1 && (c["し"] || 0) <= 3 &&
         !shiStarted(hist, seat) && !partnerSignaledShi(hist, seat) &&
         ouSignalContextNow(hist, seat) && ouMixDraw(hist, seat) &&
-        !(OU_SIG_SHI_GUARD && enemyLikelyHoldsUncut(hist, seat, c, "し")))   // 敵がし攻め中(受け可)なら合図を見送り主導権保持
+        !(OU_SIG_SHI_GUARD && enemyLikelyHoldsUncut(hist, seat, c, "し")) && !(SEATS.some(s => team(s) !== team(seat) && view.sizes[s] <= 2) && (unseenCounts(view.hand, view.hist)["し"] || 0) > 0))   /* v220.44 OSR: 敵が残り2枚以下で見えないしがあれば、しを受けて上がられる(残り2枚は受けて攻め・残り1枚は受け上がり)ので合図を見送る(C-14・C-08・K-19) */   // 敵がし攻め中(受け可)なら合図を見送り主導権保持
       return {koma: "し", why: "王持ちの合図 — しを早捨てし王での高得点上がりへ", src: "rule"};
     // バラバラ宣言/でか順(coop・honest符丁): 非しペアなしの初攻めは最大の合法攻め(飛角優先)を先打ちし
     // 「ペア無し」を人間の相方が読みやすい形で伝える。し先打ち(ごめんなさいのし)は人間にし攻めと誤読
@@ -17218,12 +17230,23 @@ if (typeof document !== "undefined") (() => {
     const t = document.querySelector("#hand .koma[role=button]:not(.dis)") || document.querySelector("#actionbar .btn:not([disabled])");
     if (t) { try { t.focus({preventScroll: true}); } catch (e) {} }
   }
+  function handIntoView() {   // v220.42 HFT: 幅 620 未満で、自分の手駒が操作の帯の下に入っていれば、帯の上に出るだけ送る（教材・短い入門は除く）
+    try {
+      if (app.tutorial || !(ONE_COL_FIT_MQ && ONE_COL_FIT_MQ.matches) || (TWO_COL_MQ && TWO_COL_MQ.matches)) return;
+      const hd = $("hand"), ab = $("actionbar"); if (!hd || !ab) return;
+      const r = hd.getBoundingClientRect(); if (!(r.height > 0)) return;
+      const abTop = getComputedStyle(ab).position === "sticky" ? Math.min(ab.getBoundingClientRect().top, window.innerHeight) : window.innerHeight;
+      const need = Math.ceil(r.bottom + 6 - abTop);
+      if (need > 0) window.scrollBy({top: need, behavior: _flipReduced() ? "auto" : "smooth"});
+    } catch (e) {}
+  }
   function humanTurn() {
     if (app.tutorial && app.tutorial.key === "quickstart") return;   
     const st = app.st, me = app.humanSeat;
     app.turnT0 = performance.now();   
     setMyTurn(true);
     setTimeout(kbdRefocus, 0);   
+    setTimeout(() => { fitBoardToHeight(); handIntoView(); }, 60);   // v220.42 HFT（手駒と帯の文を描いてから、縮めを測り直して送る）
     if (st.phase === "bury") {
       status("あなたの番 — 伏せる駒を選んでください");
       actionbar(app.cfg.hints ? `伏せる駒を${opTap()}（裏向きで場に置きます）` : "", undoBtnList());   
@@ -17389,15 +17412,26 @@ if (typeof document !== "undefined") (() => {
   
   
   const TWO_COL_MQ = (typeof matchMedia === "function") ? matchMedia("(min-width:1024px) and (hover:hover) and (pointer:fine)") : null;
+  const ONE_COL_FIT_MQ = (typeof matchMedia === "function") ? matchMedia("(max-width:619px)") : null;   // v220.42 HFT（Sonar 11-01「案B」）
   let _fitBusy = false;
   function fitBoardToHeight() {
     const bd = $("board"), ms = $("main-screen"); if (!bd || !ms || _fitBusy) return;
-    if (!TWO_COL_MQ || !TWO_COL_MQ.matches || !ms.classList.contains("show")) { if (bd.style.zoom) bd.style.zoom = ""; return; }
+    const _two = !!(TWO_COL_MQ && TWO_COL_MQ.matches);
+    const _one = !_two && !!(ONE_COL_FIT_MQ && ONE_COL_FIT_MQ.matches) && !document.body.classList.contains("tut-quickstart");   // v220.42 HFT
+    if ((!_two && !_one) || !ms.classList.contains("show")) { if (bd.style.zoom) bd.style.zoom = ""; return; }
     _fitBusy = true;
     try {
       const z0 = bd.style.zoom; bd.style.zoom = "";
       const r = bd.getBoundingClientRect(); const h = r.height, top = r.top + (window.scrollY || 0);
-      let z = 1; if (h > 0 && top + h + 8 > window.innerHeight) z = Math.max(0.75, (window.innerHeight - top - 8) / h);
+      let z = 1;
+      if (_one) {   // v220.42 HFT: 操作の帯は画面の下に張り付くので、その上に手駒が出るまで盤を縮める（下限 0.75・足りない分は自分の番に送る）
+        const hd = $("hand"), ab = $("actionbar"), hr = hd ? hd.getBoundingClientRect() : null;
+        const abH = (ab && getComputedStyle(ab).position === "sticky") ? ab.getBoundingClientRect().height : 0;
+        if (h > 0 && hr && hr.height > 0) { const over = hr.bottom + (window.scrollY || 0) + 6 - (window.innerHeight - abH); if (over > 0) z = Math.max(0.75, (h - over) / h); }
+        const _g = app.matchNo + ":" + app.gameNo;   // 同じ局の中では縮めるだけ（操作の帯の文や手駒の段が変わるたびに盤が伸び縮みしないように）
+        if (bd.dataset.fitG === _g) z = Math.min(z, parseFloat(z0) || 1);
+        bd.dataset.fitG = _g;
+      } else if (h > 0 && top + h + 8 > window.innerHeight) z = Math.max(0.75, (window.innerHeight - top - 8) / h);
       z = Math.round(z * 1000) / 1000;
       bd.style.zoom = z >= 1 ? "" : String(z);
       
@@ -17410,6 +17444,7 @@ if (typeof document !== "undefined") (() => {
     window.addEventListener("resize", _fitOnViewport);
     if (TWO_COL_MQ) TWO_COL_MQ.addEventListener("change", _fitOnViewport);
     if (typeof ResizeObserver === "function" && $("board")) new ResizeObserver(() => fitBoardToHeight()).observe($("board"));
+    if (typeof ResizeObserver === "function" && $("hand") && $("actionbar")) { const _ro = new ResizeObserver(() => { if (ONE_COL_FIT_MQ && ONE_COL_FIT_MQ.matches) fitBoardToHeight(); }); _ro.observe($("hand")); _ro.observe($("actionbar")); }   // v220.42 HFT
     if ($("main-screen") && typeof MutationObserver === "function") new MutationObserver(() => fitBoardToHeight()).observe($("main-screen"), {attributes: true, attributeFilter: ["class"]});
   } catch (e) {}
   const LANDSCAPE_MQ = (typeof matchMedia === "function") ? matchMedia("(orientation:landscape) and (max-height:600px) and (pointer:coarse)") : null;
@@ -18553,7 +18588,7 @@ if (typeof document !== "undefined") (() => {
     if (app.rec && app.rec.practice) { onPracticeOver(res); return; }
     const _dl = (app.rec && app.rec.daily && app.daily) ? app.daily : null;   
     if (_dl) _dl.done = true;   
-    app.rec.result = {winner: res.winner, pts: res.pts, dbl: !!res.dbl, draw: !!res.draw};
+    app.rec.result = {winner: res.winner, pts: res.pts, dbl: !!res.dbl, draw: !!res.draw, koma: res.koma || null};   // v220.44 KFX: 棋譜の「上がり 〇〇「駒」」に駒を出す
     app.lastRec = app.rec;
     
     
@@ -21192,7 +21227,7 @@ if (typeof document !== "undefined") (() => {
       title: "一の巻「受けの基本」", reveal: false, deal: TUT_DEAL, parent: "E",
       tiers: {N: "naive", W: "naive", E: "naive"},
       steps: [
-        {say: "下家が「角」で攻めてきました。よく見てください。", mode: "auto", auto: [{seat: "E", type: "bury", koma: "香"}, {seat: "E", type: "attack", koma: "角"}, {seat: "N", type: "pass"}, {seat: "W", type: "pass"}]},
+        {say: "下家が「角」で攻めてきました。どの駒なら受けられるでしょう？", mode: "auto", auto: [{seat: "E", type: "bury", koma: "香"}, {seat: "E", type: "attack", koma: "角"}, {seat: "N", type: "pass"}, {seat: "W", type: "pass"}]},
         {say: "同じ「角」で受けましょう。受けられる駒だけが光っています。手駒の「角」をタップしてください。", spot: "#handarea", mode: "await", await: {type: "receive", koma: "角"}},
         {say: "お見事！『攻めと同じ駒で受ける』のが基本です。受けたあなたが次の手番になります。これで一の巻は修了です。", mode: "next", finish: true},
       ],
@@ -21214,7 +21249,7 @@ if (typeof document !== "undefined") (() => {
       tiers: {N: "naive", W: "naive", E: "naive"},
       steps: [
         {say: "受けの応用です。下家が「飛」で攻めてきますが、あなたの手駒に「飛」はありません。ちなみに、味方同士が王を1枚ずつ持つ配牌を「はりま王」と呼びます。", spot: "#stage", mode: "next"},
-        {say: "見ていてください。下家が伏せて「飛」で攻め、相方と上家は「なし」とします。", mode: "auto", auto: [{seat: "E", type: "bury", koma: "し"}, {seat: "E", type: "attack", koma: "飛"}, {seat: "N", type: "pass"}, {seat: "W", type: "pass"}]},
+        {say: "下家が伏せて「飛」で攻め、相方と上家は「なし」。あなたに飛はありません。受ける手はあるでしょうか？", mode: "auto", auto: [{seat: "E", type: "bury", koma: "し"}, {seat: "E", type: "attack", koma: "飛"}, {seat: "N", type: "pass"}, {seat: "W", type: "pass"}]},
         {say: "同じ駒が無くても「王」なら受けられます。王は万能の受け札。光った「王」をタップ。", spot: "#handarea", mode: "await", await: {type: "receive", koma: "王"}},
         {say: "お見事。ただし王にも例外。「香」と「し」だけは王でも受けられません。同じ駒でしか受けられない特別な駒で、この巻の題どおり“切れない駒”と呼びます。", spot: "#stage", mode: "next"},
         {say: "受けは万能の王ですが、「攻め」には制限があります。王で攻められるのは「王を2枚持っているとき」か「場にすでに王が出ているとき」だけです。", spot: "#stage", mode: "next"},
@@ -21231,7 +21266,7 @@ if (typeof document !== "undefined") (() => {
       tiers: {N: "naive", W: "naive", E: "naive"},
       steps: [
         {say: "駒には点数があります。王50・飛角40・金銀30・馬香20・し10。手駒を打ち切って「上がった」とき、最後に攻めた駒の点が入ります。", spot: "#handarea", mode: "next"},
-        {say: "場面を終盤まで進めました。あなたの手駒は残り「金」と「馬」の2枚、しかもあなたの手番。上がりが目前です。", spot: "#handarea", mode: "next"},
+        {say: "場面を終盤まで進めました。あなたの手駒は残り「金」と「馬」の2枚、しかもあなたの手番。上がりが目前です。どちらを伏せ、どちらで上がると点が高くなるでしょう？", spot: "#handarea", mode: "next"},
         {say: "残り2枚が違う駒のときは、高い方の駒で上がると点が高くなります。金は30点、馬は20点。低い「馬」を伏せましょう。", spot: "#handarea", mode: "await", await: {type: "bury", koma: "馬"}},
         {say: "伏せました。残った「金」で攻めて上がりです。光った「金」をタップ！", spot: "#handarea", mode: "await", await: {type: "attack", koma: "金"}},
         {say: "金30点で上がりました。なお、残り2枚が同じ駒のとき、誰にも受けられず一巡して戻って上がると、点が2倍になる「同駒（どうごま）」という大技もあります。", spot: "#stage", mode: "next"},
@@ -21289,7 +21324,7 @@ if (typeof document !== "undefined") (() => {
         {say: "下家が王で50点上がり。あなたが1枚だけの金を不用意に打ったことが相方の誤読を生み、温存していた相手の独走を招きました。これが“バラバラ手で1枚の金銀馬香を打つ”危険です。", spot: "#card-e", mode: "next"},
         {say: "では正しい打ち方を。場面を最初に戻します。バラバラのときは大駒（角・飛）を打つのが合図。まず し を伏せます。", mode: "auto", reset: true, pace: 500, auto: [{seat: "S", type: "bury", koma: "し"}]},
         {say: "角で攻めて、相方に『ペア無し』を伝えましょう。光った「角」をタップ。", spot: "#handarea", mode: "await", await: {type: "attack", koma: "角"}},
-        {say: "これで合図完了。角は金銀馬香ではないので、相方は“かかり応え”をしません。誤読を防げました。", mode: "next"},
+        {say: "これで合図完了。さっきの失敗例との違いは、最初の1枚が「1枚だけの金」か「角」かだけ。角は金銀馬香ではないので、相方は“かかり応え”をせず、誤読を防げます。", mode: "next"},
         {say: "もう一つの正解は「し」。し も金銀馬香のペアではないので同じく合図になります。もう一度、場面を戻します。香を伏せます。", mode: "auto", reset: true, pace: 500, auto: [{seat: "S", type: "bury", koma: "香"}]},
         {say: "今度は「し」で攻めてみましょう。光った「し」をタップ。", spot: "#handarea", mode: "await", await: {type: "attack", koma: "し"}},
         {say: "これが「バラバラの合図」。ペアの無い手は、1巡目に大駒（角・飛）か し を打って『ペア無し』と伝える。1枚しかない金銀馬香を打つと、相方が誤ってかかり応えし、今見たような大失点を招きます。かかり応えと対で覚えましょう。", mode: "next", finish: true},
@@ -23875,6 +23910,15 @@ if (typeof document !== "undefined") (() => {
 
 
   const APP_CHANGELOG = [
+    {v: "v220.44", d: "2026-11-04", tag: "fix", tagJa: "直した", t: "敵がリーチの時に、AIがしを勧めていたのを直しました", p: [
+      "王を持つAIは、3巡目に王持ちの合図としてしを打つことがあります。敵が残り2枚以下でしを受けて上がれる時もこの合図を打ち、推奨にも出ていました。その時は合図を打たず、ほかの手と比べて選ぶようにしました。",
+      "棋譜の最後の行で、上がりの駒が空欄になっていたのを直しました。"]},
+    {v: "v220.43", d: "2026-11-02", tag: "ui", tagJa: "使いやすくなった", t: "ガイドの文に、答えを見る前の問いを足しました", p: [
+      "一の巻・三の巻・四の巻で、答えを見る前に、どの駒で受けられるか、どちらで上がると点が高いかを問う一言を足しました。",
+      "バラバラの合図では、正しい打ち方の後に、さっきの失敗例とどこが違うのかを一言で添えました。巻を選ぶ画面の時間は、四の巻が約2分、バラバラの合図が約4分になりました。"]},
+    {v: "v220.42", d: "2026-11-02", tag: "fix", tagJa: "直した", t: "スマホで、自分の手駒が下の操作の帯に隠れていたのを直しました", p: [
+      "画面の高さが足りないスマホやブラウザで、自分の手駒の一部または全部が下の帯（なしなどのボタン）の下に入り、押せないことがありました。",
+      "その時は盤を少し小さくして（最小0.75倍）、手駒が帯の上に見えるようにしました。それでも足りない小さな画面では、自分の番に手駒が見える所までページを送ります。"]},
     {v: "v220.41", d: "2026-11-01", tag: "ui", tagJa: "使いやすくなった", t: "ガイドの巻を選ぶ画面に、おおよその時間を出しました", p: [
       "「全13巻から選ぶ」の各巻に、ゆっくり読んだときのおおよその時間（約1〜3分）を出しました。五の巻「実戦」は1局ぶんです。",
       "教材の中で盤・場・相方や相手の席を光らせるときに、光らせた所の名前を小さな札で出すようにしました。"]},
