@@ -1,5 +1,5 @@
 // ごいた — Service Worker
-// 対象: index.html (build v220.44, SHA-256 2a7d795cb12c0f3baf8133ccb2d5beb31a7f561037abb70f4d6157ac4c5e286a)
+// 対象: index.html (build v220.46, SHA-256 ad0d696c7c715bdcf9deee5839917e748c0e3c669aff571a7a5e1f584b55c4f6)
 //
 // v205: A-1「ddSolve の Packed 化(PACKED_SOLVE、既定0=legacy)」。出荷既定では1行も
 // 実行されない基盤整備であり、着手列SHA-256 は v204 と完全一致することを機械確認済み。
@@ -78,6 +78,8 @@
 // v220.42: 狭い画面で手駒を操作の帯の上に（spec v220_42_apply.py）。エンジン区画は v220.41 と一致。
 // v220.43: 教材の文に予測の問いと失敗例との違い（spec v220_43_apply.py）。エンジン区画は v220.42 と一致。
 // v220.44: 王持ちの合図のしのリーチ守り・棋譜の上がりの駒（spec v220_44_apply.py）。エンジン A の 1 行を変えた。
+// v220.45: 受け上がりを外す（spec v220_45_apply.py）。エンジン A の 7 か所を変えた。
+// v220.46: 逆し攻めとバラバラの手（spec v220_46_apply.py）。エンジン A の 5 か所と教材の 2 か所を変えた。
 //
 // このファイルは index.html と同じディレクトリに配置すること。index.html 側は
 // すでに以下の登録コードを持っている(http(s)配信時のみ有効。file://や未配置時は
@@ -90,7 +92,7 @@
 // アプリを開いたことがある端末には古いキャッシュが残り続け、新しい index.html が
 // 配信されない(PWAの典型的な事故)。
 
-const CACHE_NAME = "goita-v220.44";
+const CACHE_NAME = "goita-v220.46";
 
 // 起動シェルとして必ずキャッシュしたいファイル。存在しないもの(まだ配置していない
 // manifest.json やアイコン等)があっても install 全体を失敗させないよう、

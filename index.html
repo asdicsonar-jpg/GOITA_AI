@@ -5,6 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>ごいた — 能登の伝承遊戯</title>
   <!-- build: v220.6 に短い入門コース（3 場面・5 着手）と助言つきの 1 局練習を当てた（配信候補 v220.7 の元）。計画: docs/PLAN_短い入門コース_rev4_Opus5.5.md（§14 の裁定）・docs/PLAN_v220.7_入門コース配信_rev2_Opus5.5.md。適用: harness/apply_quickstart_v2.py。エンジン区画（G・G_B・T1）は不変。 -->
+  <!-- build: v220.46「逆し攻めを正しい形に（敵のし攻めはしで受けずにパス・RVS）・バラバラの手は大駒1枚までで、その大駒で合図（BRB）・バラバラの巻の配り（TUT）」base=v220.45。
+       計画: docs/PLAN_v220.46_逆し攻めとバラバラ_rev1_Opus5.5.md。条文: docs/PROTOCOL_し攻め_v1.4.md（§1・C-01・C-13）。
+       変更: harness/spec/v220_46_apply.py（lib/apply_core.py・エンジン A の 5 か所と教材の 2 か所。行の数は変えない）→ lib/release.py（版数・CHANGELOG・バッジ・sw.js）。G_B は G から組み立てる。
+       CACHE_NAME: goita-v220.45 → goita-v220.46. -->
+  <!-- build: v220.45「最後の1枚で受けて上がる（受け上がり）を外し、手駒1枚では受けられないようにしました（UAG）」base=v220.44。
+       計画: docs/PLAN_v220.45_受け上がりを外す_rev1_Opus5.5.md。
+       変更: harness/spec/v220_45_apply.py（lib/apply_core.py・エンジン A の 7 か所。行の数は変えない）→ lib/release.py（版数・CHANGELOG・バッジ・sw.js）。G_B は G から組み立てる。
+       CACHE_NAME: goita-v220.44 → goita-v220.45. -->
   <!-- build: v220.44「AIの王持ちの合図のしを、敵が残り2枚以下でしを受けて上がれる時は打たないようにし、棋譜に上がりの駒を出しました（OSR・KFX）」base=v220.43。
        計画: docs/PLAN_v220.44_王持ち合図のリーチ守り_rev1_Opus5.5.md。
        変更: harness/spec/v220_44_apply.py（lib/apply_core.py・エンジン A の 1 行と UI の 1 行）→ lib/release.py（版数・CHANGELOG・バッジ・sw.js）。G は v220.43 から OSR-1 の 1 行だけ違う（G_B は G から組み立てる）。
@@ -2061,7 +2069,7 @@ body.noto #wincut.show .wc-label{animation:wcFude .62s cubic-bezier(.2,.9,.3,1.2
 <div id="setup-screen">
   <!-- build v208: 版数表示は APP_CHANGELOG[0] から起動時に上書きされる(JS が動かない場合の保険としてここにも同じ版数を書いておく)。 -->
   <button type="button" class="setup-version" id="btn-version"
-          aria-label="バージョン v220.44 — 更新内容を見る" title="更新内容を見る"><span id="btn-version-num">v220.44</span><span class="sv-i" aria-hidden="true">ⓘ</span></button>
+          aria-label="バージョン v220.46 — 更新内容を見る" title="更新内容を見る"><span id="btn-version-num">v220.46</span><span class="sv-i" aria-hidden="true">ⓘ</span></button>
   <div class="title-block">
     <h1 class="serif">ごいた</h1>
     <div class="title-sub">能登・宇出津に伝わる竹駒の伝承遊戯</div>
@@ -2733,7 +2741,7 @@ const G = (() => {
     return false;
   }
   function legalReceives(hand, attack) {
-    const out = [];
+    const out = []; if (hand.length < 2) return out;   /* v220.45 UAG: 手番は受け+攻めの2枚を使う。受けたら攻める駒が要るので、手駒1枚では受けられない */
     if (hand.includes(attack)) out.push(attack);
     if (attack !== "王" && !UNCUTTABLE.has(attack) && hand.includes("王") && attack !== "王") {
       if (!out.includes("王")) out.push("王");
@@ -2796,7 +2804,7 @@ const G = (() => {
       st.history.push({seat: st.actor, koma: a.koma, act: "receive"});
       if (a.intent && a.intent.rejectShi) { if (!st.rejShi) st.rejShi = {}; st.rejShi[st.actor] = true; if (!st.rejShiAt) st.rejShiAt = {}; if (st.rejShiAt[st.actor] === undefined) st.rejShiAt[st.actor] = st.history.length - 1; }   // [A項] why文字列依存を撤廃しintentで判定 / build v218: 最初に立てた時点の添字(整合再生用)
       // 【受け上がり】最後の1枚で受けて手駒0 → 受けた側の勝ち (得点=攻め駒・2倍なし)
-      if (st.hands[st.actor].length === 0) {
+      if (st.hands[st.actor].length === 0) {   /* v220.45 UAG: 来ない(手駒1枚では受けられない)。上の注釈の「受け上がり」はルールに無い(上がりは最後の攻めだけ) */
         ev.gameOver = {winner: st.actor, pts: POINTS[st.pendingAttack], dbl: false,
                        koma: st.pendingAttack, recvFinish: true};
         st.phase = "over";
@@ -3116,7 +3124,7 @@ const G = (() => {
     const u = unseenCounts(view.hand, view.hist);
     for (const k in u) { if (k !== "し" && u[k] > 0) return false; }
     const seat = view.seat;
-    return SEATS.some(s => team(s) !== team(seat) && view.sizes[s] === 1);
+    return SEATS.some(s => team(s) !== team(seat) && view.sizes[s] === 2);   /* v220.45 UAG: 敵がリーチ(残り2枚)で見えない駒が全部し → その2枚はしし → しで受けて最後のしで攻めて上がる。前の「残1で受け上がり」(上の注釈)はルールに無い */
   }
   function attackChoice(st, seat, view, o) {
     const hand = view.hand, c = counter(hand), hist = view.hist;
@@ -3190,7 +3198,7 @@ const G = (() => {
     if (SHI_PROTO >= 6 && rl >= 1 && !shiStarted(hist, seat) && shiStarted(hist, nextSeat(seat)) && (c["し"] || 0) >= 1 &&
         enemyShiExhausted(hist, seat, c) && [...new Set(legalAttacks(hand, hist, seat))].includes("し")) {
       SHI_PROTO6_DIAG.c13Reverse++;
-      return {koma: "し", why: "逆し攻め(C-13) — 敵のし攻めを受けて枯らしたので、しで攻めに転じる"};
+      return {koma: "し", why: "逆し攻め(C-13) — 敵のし が枯れた(推定)ので、しで攻めに転じる"};
     }
     // し攻め拒否の二段: 拒否の受け直後は非しで攻めて「し薄」を確定させる
     if (rl >= 1 && SHI_KYO_FIX && (st.rejShi && st.rejShi[seat])) {
@@ -3228,7 +3236,7 @@ const G = (() => {
     if (ouOn(seat) && (c["王"] || 0) >= 1 && (c["し"] || 0) >= 1 && (c["し"] || 0) <= 3 &&
         !shiStarted(hist, seat) && !partnerSignaledShi(hist, seat) &&
         ouSignalContextNow(hist, seat) && ouMixDraw(hist, seat) &&
-        !(OU_SIG_SHI_GUARD && enemyLikelyHoldsUncut(hist, seat, c, "し")) && !(SEATS.some(s => team(s) !== team(seat) && view.sizes[s] <= 2) && (unseenCounts(view.hand, view.hist)["し"] || 0) > 0))   /* v220.44 OSR: 敵が残り2枚以下で見えないしがあれば、しを受けて上がられる(残り2枚は受けて攻め・残り1枚は受け上がり)ので合図を見送る(C-14・C-08・K-19) */   // 敵がし攻め中(受け可)なら合図を見送り主導権保持
+        !(OU_SIG_SHI_GUARD && enemyLikelyHoldsUncut(hist, seat, c, "し")) && !(SEATS.some(s => team(s) !== team(seat) && view.sizes[s] === 2) && (unseenCounts(view.hand, view.hist)["し"] || 0) > 0))   /* v220.45 UAG: 残り2枚(リーチ)だけ。次の注釈の「残り1枚は受け上がり」はルールに無い */   /* v220.44 OSR: 敵が残り2枚以下で見えないしがあれば、しを受けて上がられる(残り2枚は受けて攻め・残り1枚は受け上がり)ので合図を見送る(C-14・C-08・K-19) */   // 敵がし攻め中(受け可)なら合図を見送り主導権保持
       return {koma: "し", why: "王持ちの合図 — しを早捨てし王での高得点上がりへ", src: "rule"};
     // バラバラ宣言/でか順(coop・honest符丁): 非しペアなしの初攻めは最大の合法攻め(飛角優先)を先打ちし
     // 「ペア無し」を人間の相方が読みやすい形で伝える。し先打ち(ごめんなさいのし)は人間にし攻めと誤読
@@ -3248,7 +3256,7 @@ const G = (() => {
     // v151: 下段の !(ouOn && 王なし && …) 節は恒真(到達不能)。shouldGomenShiがisFirstAttackForMe
     // かつisFirstRound(totalAttackCount<=4)を要求するため next<=5 で3巡目枝は不成立、
     // 自分の攻めが履歴に無いためfirstAttackKyouR1も常にfalse。Phase0-Eで発火0件を実測確認済み。
-    if (rl >= 1 && shouldGomenShi(view, c) && !shiCommitReleased(hist, seat) && !(ouOn(seat) && partnerSignaledOu(hist, partnerOf(seat))) &&   // build v220.0: C-17 中止後は送らない
+    { const _bb = rl >= 1 && BRB_BIG ? baraBigPick(view, c, hand) : null; if (_bb) return {koma: _bb, why: "バラバラの合図 — ペア無し・大駒1枚の手は、その大駒で攻めて相方に伝える(§1・v1.4)", src: "rule"}; }   /* v220.46 BRB */ if (rl >= 1 && shouldGomenShi(view, c) && !shiCommitReleased(hist, seat) && !(ouOn(seat) && partnerSignaledOu(hist, partnerOf(seat))) &&   // build v220.0: C-17 中止後は送らない
         !(ouOn(seat) && !(c["王"] || 0) && ouSigAvoidNow(hist, seat)))
       return {koma: "し", why: "ごめんなさいのし — バラバラの手を味方に誤読させない"};
     // ペア信号 (1巡目): 金銀馬ペアを持つ1巡目は、通りやすい単騎(角・飛等)でなくペアを攻めて「ペアあり」を
@@ -4306,7 +4314,7 @@ const G = (() => {
   //   SHI_PROTO: 0 = v219.5 と着手列が 1 手も変わらない / 1 = C-06・C-16・C-07・C-13 例外・C-17 / 2(既定) = 1 ＋ C-10 の受け規則。
   //   監査: docs/AUDIT_し攻め適合_v1.1.md(M1〜M9)。切り戻し: setShiProto(0) / #shiproto=0。
   let SHI_PROTO = 7;   // build v220.5: 既定を段 7(Q14 C-18 を C-07 に優先・Q15 H-6 と Solver の門の整合・Q17 K-17 の確定上がり)に上げる。6 = v220.4 / 5 = v220.3 / 4 = v220.2 / 3 = v220.1 / 2 = v220.0 / 0 = v219.5
-  function setShiProto(n) { SHI_PROTO = Math.max(0, Math.min(7, n | 0)); }
+  function setShiProto(n) { SHI_PROTO = Math.max(0, Math.min(7, n | 0)); }   let RVS_PASS = 1; const RVS_DIAG = {pass: 0, reach: 0, less: 0}; function rvsPassRule(view, attack, isPartnerAtk, st, lr) {   /* v220.46 RVS(逆し攻め・C-13 v1.4・Sonar 11-04): 敵の し攻めを し で受けられても、自軍の し の見込みが敵を上回るならパスして敵の し を枯らす */ if (RVS_PASS < 1 || SHI_PROTO < 7 || isPartnerAtk || attack !== "し" || !lr.includes("し")) return null; const hist = view.hist, seat = view.seat, sizes = view.sizes || {}; let X = null; for (let i = hist.length - 1; i >= 0; i--) if (hist[i].act === "attack") { X = hist[i].seat; break; } if (X === null || team(X) === team(seat) || shiStarted(hist, seat)) return null; if (!shiStarted(hist, X) || !teamAttacks(hist, X).every(h => h.koma === "し")) return null;   /* 本物の し攻め(§1: チームの最初の 2 攻めが し・し)で、し が続いている */ if ((sizes[X] != null ? sizes[X] : 8) <= 2) { RVS_DIAG.reach++; return null; }   /* 攻め手が残り 2 枚: パスすると伏せ＋攻めで上がられる */ const c = counter(view.hand), p = partnerOf(seat), myShi = c["し"] || 0; const u = Math.max(0, 10 - myShi - hist.filter(h => h.seat === seat && h.koma === "し").length - hist.filter(h => h.seat !== seat && h.koma === "し").length); const pE = Math.min(u, estimatePartnerShi(hist, seat, c, view, st)), pFree = Math.max(0, (sizes[p] != null ? sizes[p] : 8) - pE); let eK = 0, eFree = 0; for (const e of SEATS) { if (team(e) === team(seat)) continue; const sz = sizes[e] != null ? sizes[e] : 8; const k = Math.min(sz, Math.max(0, (inferPartnerHoldings(hist, e)["し"] || 0) - hist.filter(h => h.seat === e && h.koma === "し").length)); eK += k; eFree += Math.max(0, sz - k); } eK = Math.min(eK, Math.max(0, u - pE)); const r = Math.max(0, u - pE - eK), H = pFree + eFree + hist.filter(h => h.act === "bury" && h.koma === null).length; const tS = myShi + pE + (H > 0 ? r * pFree / H : 0), eS = eK + (H > 0 ? r * eFree / H : 0);   /* 見込み: 推定できる分(相方の合図・敵の し攻め=4 枚)＋残りを見えない枠の数で割り振る */ if (!(tS > eS)) { RVS_DIAG.less++; return null; } RVS_DIAG.pass++; return {type: "pass", src: "rule", why: "逆し攻め(C-13) — 敵のし攻めは し で受けずにパスして枯らす（自軍のし 見込み" + tS.toFixed(1) + "枚 ＞ 敵 " + eS.toFixed(1) + "枚）"}; }
   const SHI_PROTO_DIAG = {planGate: 0, defendPlanGate: 0, certainGate: 0, certainPass: 0, recvRule: 0, atkFilter: 0};
   function shiProtoDiag(reset) {
     const out = Object.assign({level: SHI_PROTO}, SHI_PROTO_DIAG, SHI_PROTO3_DIAG, SHI_PROTO4_DIAG, SHI_PROTO5_DIAG, SHI_PROTO6_DIAG, SHI_PROTO7_DIAG);
@@ -4495,7 +4503,7 @@ const G = (() => {
   }
   // C-05(K-9・K-17)・C-18 の応答規則。発火時は決定を、しないときは null を返す
   function shiProtoRespondRule(view, attack, isPartnerAtk, st, o, lr) {
-    if (SHI_PROTO < 3 || !isPartnerAtk || attack !== "し") return null;
+    { const _rv = rvsPassRule(view, attack, isPartnerAtk, st, lr); if (_rv) return _rv; }   /* v220.46 RVS: 敵の し攻めは し で受けずにパス(逆し攻め・C-13 v1.4) */ if (SHI_PROTO < 3 || !isPartnerAtk || attack !== "し") return null;
     const hand = view.hand, hist = view.hist, seat = view.seat;
     const c = counter(hand);
     const nShi = c["し"] || 0;
@@ -5649,9 +5657,9 @@ const G = (() => {
     if (!isFirstRound(view.hist)) return false;
     if ((c["し"] || 0) < 1) return false;
     if (["金", "銀", "馬", "香"].some(k => (c[k] || 0) >= 2)) return false;
-    if ((c["飛"] || 0) > 0 || (c["角"] || 0) > 0) return false;
+    if ((c["飛"] || 0) > 0 || (c["角"] || 0) > 0) return false;   /* v220.46 BRB: 大駒 1 枚のバラバラは下の baraBigPick(大駒で攻める)。2 枚はバラバラでない */
     return true;
-  }
+  }   let BRB_BIG = 1; function baraBigPick(view, c, hand) {   /* v220.46 BRB(§1 v1.4・Sonar 11-04): 金銀馬香のペアなし・飛角は合わせて 1 枚・王は可 = バラバラ。1 巡目の初めの攻めはその大駒 */ if (!isFirstAttackForMe(view.hist, view.seat) || !isFirstRound(view.hist)) return null; if (["金", "銀", "馬", "香"].some(k => (c[k] || 0) >= 2) || (c["飛"] || 0) + (c["角"] || 0) !== 1 || (c["し"] || 0) > 2) return null;   /* し 3 枚は C-01 どおり し の先導も許し、手の比べに任せる(Sonar 11-04) */ const k = (c["飛"] || 0) ? "飛" : "角"; return legalAttacks(hand, view.hist, view.seat).includes(k) ? k : null; }
   // 最後の香ガード: 単騎香攻めが敵に「受け不能の香」を渡す危険か
   function dangerousLastKyou(view) {
     let seen = 0;
@@ -5771,7 +5779,7 @@ const G = (() => {
         u.rejShiPrevVal = st.rejShi[actor];
         st.rejShi[actor] = true;
       }
-      if (hand.length === 0) {
+      if (hand.length === 0) {   /* v220.45 UAG: 来ない(手駒1枚では受けられない) */
         ev.gameOver = {winner: actor, pts: POINTS[st.pendingAttack], dbl: false,
                        koma: st.pendingAttack, recvFinish: true};
         st.phase = "over";
@@ -6087,7 +6095,7 @@ const G = (() => {
       const base = depth*10; let n=0;
       if (phase===2){                                   // respond: legacy legalReceives の順序
         ACTBUF[base]= (2<<3); n=1;                      //   pass が先頭
-        if (pending>=0){
+        if (pending>=0 && hlen[actor]>=2){   /* v220.45 UAG: 手駒1枚では受けの手を作らない(受けたら攻める駒が要る) */
           if (seatTypeMask[actor*8+pending] & occ) ACTBUF[base+n++] = (3<<3)|pending;   // 同駒受け
           if (pending!==0 && !UNCUT[pending] && (seatTypeMask[actor*8] & occ)) ACTBUF[base+n++] = (3<<3);  // 王切り
         }
@@ -6150,7 +6158,7 @@ const G = (() => {
       }
       if (t===0) kingPub=1;                             // receive
       openKind[actor]=2; openKoma[actor]=t;
-      if (hlen[actor]===0){ phase=3; TERMV = termVal(1,actor,PTS[pending],0,pending,-1); return 1; }  // 受け上がり
+      if (hlen[actor]===0){ phase=3; TERMV = termVal(1,actor,PTS[pending],0,pending,-1); return 1; }   /* v220.45 UAG: 来ない(手駒2枚未満は受けの手を作らない) */  // 受け上がり
       pending = -1; phase = 1;
       return 0;
     }
@@ -21171,9 +21179,9 @@ if (typeof document !== "undefined") (() => {
   
   
   const TUT_DEAL_BARABARA = {
-    N: ["金", "銀", "馬", "香", "し", "し", "し", "し"],
+    N: ["金", "銀", "馬", "香", "飛", "し", "し", "し"],
     W: ["角", "飛", "銀", "銀", "馬", "香", "し", "し"],
-    S: ["金", "銀", "角", "飛", "馬", "香", "し", "し"],
+    S: ["金", "銀", "角", "し", "馬", "香", "し", "し"],
     E: ["金", "金", "王", "王", "馬", "香", "し", "し"],
   };
   
@@ -21316,7 +21324,7 @@ if (typeof document !== "undefined") (() => {
       tiers: {N: "naive", W: "naive", E: "naive"},
       steps: [
         {say: "中級2つ目は「バラバラの合図」。前回の“かかり応え”の裏返しです。手駒に金銀馬香のペアが無い「バラバラの手」のとき、相方に『私はペアが無い』と伝える打ち方を学びます。", mode: "next"},
-        {say: "あなたの手を見てください。金・銀・馬・香がどれも1枚ずつ＝ペア無しの「バラバラ手」。代わりに大駒の角・飛と、し を持っています。", spot: "#handarea", mode: "next"},
+        {say: "あなたの手を見てください。金・銀・馬・香がどれも1枚ずつ＝ペア無しの「バラバラ手」。代わりに大駒の角1枚と、し を持っています。", spot: "#handarea", mode: "next"},
         {say: "まず“やってはいけない例”を見ます。1枚しかない金で攻めると、どうなるでしょう。よく見てください。", mode: "auto", pace: 360, auto: [{seat: "S", type: "bury", koma: "し"}, {seat: "S", type: "attack", koma: "金"}, {seat: "E", type: "pass"}, {seat: "N", type: "pass"}, {seat: "W", type: "pass"}]},
         {say: "相手・下家は金金王王を温存して受けません。温存とは、強い駒をあえて出さずに取っておくことです。味方も乗れず空回り（伏せ直し）。やがて場が上家経由で相方に渡ると…相方は『あなたは金が2枚あるはず』と誤解し、かかり応えで金攻め。でも相方の金も1枚きり。これも空回りです。", mode: "auto", pace: 360, auto: [{seat: "S", type: "bury", koma: "香"}, {seat: "S", type: "attack", koma: "角"}, {seat: "E", type: "pass"}, {seat: "N", type: "pass"}, {seat: "W", type: "receive", koma: "角"}, {seat: "W", type: "attack", koma: "銀"}, {seat: "S", type: "pass"}, {seat: "E", type: "pass"}, {seat: "N", type: "receive", koma: "銀"}, {seat: "N", type: "attack", koma: "金"}, {seat: "W", type: "pass"}, {seat: "S", type: "pass"}, {seat: "E", type: "pass"}]},
         {say: "金は4枚すべて場に出尽くしました。金金王王を温存していた下家に手番が渡り、誰にも受けられない金で独走を始めます…", mode: "auto", pace: 360, auto: [{seat: "N", type: "bury", koma: "し"}, {seat: "N", type: "attack", koma: "し"}, {seat: "W", type: "pass"}, {seat: "S", type: "pass"}, {seat: "E", type: "receive", koma: "し"}, {seat: "E", type: "attack", koma: "金"}, {seat: "N", type: "pass"}, {seat: "W", type: "pass"}, {seat: "S", type: "pass"}, {seat: "E", type: "bury", koma: "馬"}, {seat: "E", type: "attack", koma: "金"}, {seat: "N", type: "pass"}, {seat: "W", type: "pass"}, {seat: "S", type: "pass"}]},
@@ -23910,6 +23918,12 @@ if (typeof document !== "undefined") (() => {
 
 
   const APP_CHANGELOG = [
+    {v: "v220.46", d: "2026-11-04", tag: "fix", tagJa: "直した", t: "逆し攻めとバラバラの手を、正しい決まりに合わせました", p: [
+      "逆し攻めは、敵のし攻めをしで受けずにあえてパスし、敵のしを枯らしてから自分たちのし攻めを始めることです。AIは、自分たちのしが敵より多いと見込めるときは、敵のし攻めをしで受けずにパスします。敵が残り2枚のときは上がられないように受けます。",
+      "バラバラの手は、金銀馬香のペアがない手で、王は持っていてよく、飛と角は合わせて1枚までです。大駒を1枚持ち、しが2枚以下のバラバラの手では、AIは1巡目にその大駒で攻めて相方に伝えます。中級「バラバラの合図」の配りも、この決まりに合わせました。"]},
+    {v: "v220.45", d: "2026-11-04", tag: "fix", tagJa: "直した", t: "AIのルールから、最後の1枚で受けて上がるという誤りを取り除きました", p: [
+      "手番では受けと攻め、または伏せと攻めの2枚を使い、上がりは最後の攻めだけです。AIの中に、最後の1枚で受けて上がるというルールに無い決まりが残っていたので取り除き、手駒1枚では受けられないようにしました。",
+      "ふだんの対局ではこの形にならないので、AIの打ち方はほとんど変わりません。あわせて、敵がリーチで確実に上がられる時のしの守りを、正しいルールに合わせて直しました。"]},
     {v: "v220.44", d: "2026-11-04", tag: "fix", tagJa: "直した", t: "敵がリーチの時に、AIがしを勧めていたのを直しました", p: [
       "王を持つAIは、3巡目に王持ちの合図としてしを打つことがあります。敵が残り2枚以下でしを受けて上がれる時もこの合図を打ち、推奨にも出ていました。その時は合図を打たず、ほかの手と比べて選ぶようにしました。",
       "棋譜の最後の行で、上がりの駒が空欄になっていたのを直しました。"]},
