@@ -5,6 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>ごいた — 能登の伝承遊戯</title>
   <!-- build: v220.6 に短い入門コース（3 場面・5 着手）と助言つきの 1 局練習を当てた（配信候補 v220.7 の元）。計画: docs/PLAN_短い入門コース_rev4_Opus5.5.md（§14 の裁定）・docs/PLAN_v220.7_入門コース配信_rev2_Opus5.5.md。適用: harness/apply_quickstart_v2.py。エンジン区画（G・G_B・T1）は不変。 -->
+  <!-- build: v220.47「攻め安全牌しか残らない時は、敵に受けられうる香を伏せる（BRY）・共有リンクの棋譜の上がりの駒（KFS）」base=v220.46。
+       計画: docs/PLAN_v220.47_安全牌を残す伏せ_rev1_Opus5.5.md。
+       変更: harness/spec/v220_47_apply.py（lib/apply_core.py・エンジン A の 2 か所と UI の 1 か所。行の数は変えない）→ lib/release.py（版数・CHANGELOG・バッジ・sw.js）。G_B は G から組み立てる。
+       CACHE_NAME: goita-v220.46 → goita-v220.47. -->
   <!-- build: v220.46「逆し攻めを正しい形に（敵のし攻めはしで受けずにパス・RVS）・バラバラの手は大駒1枚までで、その大駒で合図（BRB）・バラバラの巻の配り（TUT）」base=v220.45。
        計画: docs/PLAN_v220.46_逆し攻めとバラバラ_rev1_Opus5.5.md。条文: docs/PROTOCOL_し攻め_v1.4.md（§1・C-01・C-13）。
        変更: harness/spec/v220_46_apply.py（lib/apply_core.py・エンジン A の 5 か所と教材の 2 か所。行の数は変えない）→ lib/release.py（版数・CHANGELOG・バッジ・sw.js）。G_B は G から組み立てる。
@@ -2069,7 +2073,7 @@ body.noto #wincut.show .wc-label{animation:wcFude .62s cubic-bezier(.2,.9,.3,1.2
 <div id="setup-screen">
   <!-- build v208: 版数表示は APP_CHANGELOG[0] から起動時に上書きされる(JS が動かない場合の保険としてここにも同じ版数を書いておく)。 -->
   <button type="button" class="setup-version" id="btn-version"
-          aria-label="バージョン v220.46 — 更新内容を見る" title="更新内容を見る"><span id="btn-version-num">v220.46</span><span class="sv-i" aria-hidden="true">ⓘ</span></button>
+          aria-label="バージョン v220.47 — 更新内容を見る" title="更新内容を見る"><span id="btn-version-num">v220.47</span><span class="sv-i" aria-hidden="true">ⓘ</span></button>
   <div class="title-block">
     <h1 class="serif">ごいた</h1>
     <div class="title-sub">能登・宇出津に伝わる竹駒の伝承遊戯</div>
@@ -3093,7 +3097,7 @@ const G = (() => {
     if (!enemyShiActive && (SHI_KEEP2 ? (nShi === 1) : (nShi >= 1))) return {koma: "し", why: "しの処分"};
     const nonProtAll = hand.filter(k => !["王", "飛", "角", "香"].includes(k));
     let nonProt = nonProtAll.filter(k => !komaSafeToAttack(hist, seat, c, k));   // 攻め安全牌(馬/金/銀等)は伏せず温存
-    if (!nonProt.length) nonProt = nonProtAll;   // 全て安全 → 従来通り最安値を伏せる
+    if (!nonProt.length && nonProtAll.length && BRY_KYO && (c["香"] || 0) >= 1 && !komaSafeToAttack(hist, seat, c, "香")) return {koma: "香", why: "攻め安全牌(" + [...new Set(nonProtAll)].join("・") + ")を攻めに残し、敵に受けられうる香を伏せる"};   /* v220.47 BRY(Sonar 11-04): 保護しない駒が全部攻め安全牌なら、それを伏せずに受けられうる香を伏せる */ if (!nonProt.length) nonProt = nonProtAll;   // 全て安全 → 従来通り最安値を伏せる
     if (nonProt.length) {
       if (BURY_COVER) {
         const d = buryCoverDecision(nonProt, c, hist, seat);
@@ -5659,7 +5663,7 @@ const G = (() => {
     if (["金", "銀", "馬", "香"].some(k => (c[k] || 0) >= 2)) return false;
     if ((c["飛"] || 0) > 0 || (c["角"] || 0) > 0) return false;   /* v220.46 BRB: 大駒 1 枚のバラバラは下の baraBigPick(大駒で攻める)。2 枚はバラバラでない */
     return true;
-  }   let BRB_BIG = 1; function baraBigPick(view, c, hand) {   /* v220.46 BRB(§1 v1.4・Sonar 11-04): 金銀馬香のペアなし・飛角は合わせて 1 枚・王は可 = バラバラ。1 巡目の初めの攻めはその大駒 */ if (!isFirstAttackForMe(view.hist, view.seat) || !isFirstRound(view.hist)) return null; if (["金", "銀", "馬", "香"].some(k => (c[k] || 0) >= 2) || (c["飛"] || 0) + (c["角"] || 0) !== 1 || (c["し"] || 0) > 2) return null;   /* し 3 枚は C-01 どおり し の先導も許し、手の比べに任せる(Sonar 11-04) */ const k = (c["飛"] || 0) ? "飛" : "角"; return legalAttacks(hand, view.hist, view.seat).includes(k) ? k : null; }
+  }   let BRB_BIG = 1; let BRY_KYO = 1; function baraBigPick(view, c, hand) {   /* v220.46 BRB(§1 v1.4・Sonar 11-04): 金銀馬香のペアなし・飛角は合わせて 1 枚・王は可 = バラバラ。1 巡目の初めの攻めはその大駒 */ if (!isFirstAttackForMe(view.hist, view.seat) || !isFirstRound(view.hist)) return null; if (["金", "銀", "馬", "香"].some(k => (c[k] || 0) >= 2) || (c["飛"] || 0) + (c["角"] || 0) !== 1 || (c["し"] || 0) > 2) return null;   /* し 3 枚は C-01 どおり し の先導も許し、手の比べに任せる(Sonar 11-04) */ const k = (c["飛"] || 0) ? "飛" : "角"; return legalAttacks(hand, view.hist, view.seat).includes(k) ? k : null; }
   // 最後の香ガード: 単騎香攻めが敵に「受け不能の香」を渡す危険か
   function dangerousLastKyou(view) {
     let seen = 0;
@@ -19250,7 +19254,7 @@ if (typeof document !== "undefined") (() => {
       gameNo: pl.g || 1, matchNo: pl.m || undefined, parent: pl.pa,
       scoresBefore: pl.sb || {NS: 0, EW: 0},
       initialHands: {N: pl.ih.N.slice(), W: pl.ih.W.slice(), S: pl.ih.S.slice(), E: pl.ih.E.slice()},
-      result: pl.rs ? {winner: pl.rs.w, pts: pl.rs.p, draw: !!pl.rs.d} : undefined,
+      result: pl.rs ? {winner: pl.rs.w, pts: pl.rs.p, draw: !!pl.rs.d, koma: pl.rs.d ? null : ((pl.mv || []).filter(a => _SHARE_TYPE[a[1]] === "attack").slice(-1).map(a => a[2])[0] || null)} : undefined,   /* v220.47 KFS: 局面コードの上がりの記録には駒が無いので、最後の攻めの駒を上がりの駒にする */
       moves: (pl.mv || []).map(a => ({
         seat: _SHARE_SEAT[a[0]], action: {type: _SHARE_TYPE[a[1]], koma: a[2] || null},
         human: !!a[3], thinkMs: a[4] || 0
@@ -23918,6 +23922,9 @@ if (typeof document !== "undefined") (() => {
 
 
   const APP_CHANGELOG = [
+    {v: "v220.47", d: "2026-11-04", tag: "fix", tagJa: "直した", t: "敵に受けられない駒を伏せてしまう伏せ方を直しました", p: [
+      "伏せる駒の候補が、敵がもう受けられない駒（攻め安全牌）だけで、手に敵に受けられうる香があるとき、AIは安全牌を伏せていました。安全牌は攻めに残し、香を伏せるように直しました。",
+      "共有リンクから開いた対局の棋譜で、最後の行の上がりの駒が空になっていたのを直しました。"]},
     {v: "v220.46", d: "2026-11-04", tag: "fix", tagJa: "直した", t: "逆し攻めとバラバラの手を、正しい決まりに合わせました", p: [
       "逆し攻めは、敵のし攻めをしで受けずにあえてパスし、敵のしを枯らしてから自分たちのし攻めを始めることです。AIは、自分たちのしが敵より多いと見込めるときは、敵のし攻めをしで受けずにパスします。敵が残り2枚のときは上がられないように受けます。",
       "バラバラの手は、金銀馬香のペアがない手で、王は持っていてよく、飛と角は合わせて1枚までです。大駒を1枚持ち、しが2枚以下のバラバラの手では、AIは1巡目にその大駒で攻めて相方に伝えます。中級「バラバラの合図」の配りも、この決まりに合わせました。"]},
