@@ -5,6 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>ごいた — 能登の伝承遊戯</title>
   <!-- build: v220.6 に短い入門コース（3 場面・5 着手）と助言つきの 1 局練習を当てた（配信候補 v220.7 の元）。計画: docs/PLAN_短い入門コース_rev4_Opus5.5.md（§14 の裁定）・docs/PLAN_v220.7_入門コース配信_rev2_Opus5.5.md。適用: harness/apply_quickstart_v2.py。エンジン区画（G・G_B・T1）は不変。 -->
+  <!-- build: v220.51「強いAIの悪手を減らす 第1便（REJ・OSA・ODF・BRY2・SAT）」base=v220.50。
+       計画: docs/PLAN_v220.51-53_強いAIの悪手を減らす_rev1_Opus5.5.md §4-1。報告: docs/IMPLEMENTATION_REPORT_v220.51_試作_rev1_Opus5.5.md。
+       変更: mk_v220_51.py（エンジン A の 8 行・行の数は同じ・B は差の表 D で組み上がる）→ release_v220_51.py（版数・CHANGELOG・バッジ・sw.js。harness の release.py が手元に無いので同じ 4 か所を写した）。T1 は v220.50 と byte 一致。
+       CACHE_NAME: goita-v220.50 → goita-v220.51. -->
   <!-- build: v220.50「中級バラバラの合図の1歩目と4歩目の文を短くし、吹き出しに収めました（TFT）」base=v220.49。
        計画: docs/PLAN_v220.50_1と4歩目を短く_rev1_Opus5.5.md。
        変更: harness/spec/v220_50_apply.py（lib/apply_core.py・教材の文 2 本）→ lib/release.py（版数・CHANGELOG・バッジ・sw.js）。G・G_B・T1 の区画は v220.49 と byte 一致。
@@ -2085,7 +2089,7 @@ body.noto #wincut.show .wc-label{animation:wcFude .62s cubic-bezier(.2,.9,.3,1.2
 <div id="setup-screen">
   <!-- build v208: 版数表示は APP_CHANGELOG[0] から起動時に上書きされる(JS が動かない場合の保険としてここにも同じ版数を書いておく)。 -->
   <button type="button" class="setup-version" id="btn-version"
-          aria-label="バージョン v220.50 — 更新内容を見る" title="更新内容を見る"><span id="btn-version-num">v220.50</span><span class="sv-i" aria-hidden="true">ⓘ</span></button>
+          aria-label="バージョン v220.51 — 更新内容を見る" title="更新内容を見る"><span id="btn-version-num">v220.51</span><span class="sv-i" aria-hidden="true">ⓘ</span></button>
   <div class="title-block">
     <h1 class="serif">ごいた</h1>
     <div class="title-sub">能登・宇出津に伝わる竹駒の伝承遊戯</div>
@@ -2896,7 +2900,7 @@ const G = (() => {
         for (const bury of new Set(temp)) {
           const next = temp.slice(); removeOne(next, bury);
           const res = solveWin(next, true, null, unseen, kingOk);
-          if (res && (!best || res.score > best.score))
+          if (res && (!best || res.score > best.score || (OU_DEFER_ATTACK && res.score === best.score && (best.second === "王" || best.first === "王") && atk !== "王" && bury !== "王")))   /* v220.51 ODF: 同点は王を攻めにも伏せにも使わない手順を先に(王を最後に残す・solveAttackTurn と同じ考え) */
             best = {score: res.score, first: bury, second: atk};
         }
       }
@@ -2920,7 +2924,7 @@ const G = (() => {
           if (!isUnblockable(a, unseen)) continue;
           const next = temp.slice(); removeOne(next, a);
           const res = solveWin(next, true, null, unseen, nextKingOk);
-          if (res && (!best || res.score > best.score))
+          if (res && (!best || res.score > best.score || (OU_DEFER_ATTACK && res.score === best.score && (best.second === "王" || best.first === "王") && a !== "王" && r !== "王")))   /* v220.51 ODF */
             best = {score: res.score, first: r, second: a};
         }
       }
@@ -2960,7 +2964,7 @@ const G = (() => {
    * AI ルール中核 (K2系の主要定石を移植)
    * ================================================================ */
     function buryChoice(view, st, o) {
-    const hand = view.hand, c = counter(hand), hist = view.hist, seat = view.seat;
+    const hand = view.hand, c = counter(hand), hist = view.hist, seat = view.seat;   if (hand.length === 2 && !(o && o.noMC)) { const _b2 = (POINTS[hand[1]] || 0) >= (POINTS[hand[0]] || 0) ? hand[0] : hand[1]; return {koma: _b2, why: "残り2枚 — 点の高い駒を上がりに残す", src: "rule"}; }   /* v220.51 BRY2: 本番の決定だけ(ロールアウトは今のまま) */
     const rl = (o && o.noMC) ? 2 : RULE_LEVEL;   // ロールアウト内は常に全規則 (評価器の安定)
     // 【5し続行の予兆】敵チームに5し宣言の保持者がいるなら、受け用にしを温存(し伏せ抑制)。
     // 公開確定情報なので伏せMCより優先。ただし自陣のし攻め中/発動予定は消費して攻める。
@@ -3217,10 +3221,10 @@ const G = (() => {
       return {koma: "し", why: "逆し攻め(C-13) — 敵のし が枯れた(推定)ので、しで攻めに転じる"};
     }
     // し攻め拒否の二段: 拒否の受け直後は非しで攻めて「し薄」を確定させる
-    if (rl >= 1 && SHI_KYO_FIX && (st.rejShi && st.rejShi[seat])) {
+    if (rl >= 1 && SHI_KYO_FIX && (st.rejShi && st.rejShi[seat]) && ((o && o.noMC) || shiProtoC04Want(view, c) === "非し")) {   /* v220.51 REJ: 二段は し受けの直後の攻めだけ(C-04 (c))。ロールアウトは今のまま */
       let legalNon = [...new Set(legalAttacks(hand, hist, seat))].filter(k => k !== "し");
       // 王ペア秘匿: 非王の非し手があれば王を除外し王ペアを温存（安易な王で2枚を晒さない）
-      if (SHI_REJ_OU_HIDE && legalNon.some(k => k !== "王")) legalNon = legalNon.filter(k => k !== "王");
+      if (SHI_REJ_OU_HIDE && legalNon.some(k => k !== "王")) legalNon = legalNon.filter(k => k !== "王");   if (o && o.attackMC && !o.noMC && hand.length >= 2 && hand.length <= 4 && legalNon.length >= 2) { const _bm = attackMC(st, seat, view, legalNon, o); if (_bm !== null && hand.includes(_bm)) return {koma: _bm, why: "し攻め拒否の二段 — し以外の中からMC評価で最良", src: "mc"}; }   /* v220.51 REJ */
       if (legalNon.length) {
         const pairs = legalNon.filter(k => (c[k] || 0) >= 2);
         if (pairs.length) {
@@ -3289,11 +3293,11 @@ const G = (() => {
       if (shiCommitReleased(hist, seat)) { const nz = cands.filter(k => k !== "し"); if (nz.length && nz.length < cands.length) { SHI_PROTO_DIAG.atkFilter++; cands = nz; } }   // build v220.0: C-17 中止後は し で攻めない
       if (SHI_PROTO >= 3) { const w = shiProtoC04Want(view, c); if (w) { const nz = w === "し" ? cands.filter(k => k === "し") : cands.filter(k => k !== "し"); if (nz.length && nz.length < cands.length) { SHI_PROTO3_DIAG.c04Atk++; cands = nz; } } }   // build v220.1: C-04 の符丁の意味
       // [UNCUT除外を撤廃] 敵保有の香/し除外はDD/MCの最適手(テンポ捨て・同駒上がり布石等)を粗いハードルールで奪い勝率を下げるため削除（本番head-to-head検証: 撤廃で +1.9点/deal, z=4.28）
-      if (ouOn(seat) && (c["し"] || 0) < 4 && cands.includes("し") &&
+      if (ouOn(seat) && (c["し"] || 0) < 4 && cands.includes("し") && hist.filter(h => h.koma === "王" && (h.act === "attack" || h.act === "receive")).length < 2 &&   /* v220.51 OSA: 王が2枚出ていれば偽信号にならない */
           (partnerSignaledOu(hist, partnerOf(seat)) ||
            (!(c["王"] || 0) && ouSigAvoidNow(hist, seat)))) {   // v151: 偽信号回避を読み手側と一致(OU_SIG_MIRROR)
         const rest = cands.filter(k => k !== "し");
-        if (rest.length) cands = rest;     // 相方の合図→温存 / 王なし→偽信号の回避
+        if (rest.length >= 2) cands = rest;     // 相方の合図→温存 / 王なし→偽信号の回避 / v220.51 OSA: 1 つに潰して MC を飛ばさない
       }
       if (_forcePairLead) { const pp = cands.filter(k => (c[k] || 0) >= 2); if (pp.length) cands = pp; }
       if (cands.length >= 2) {
@@ -8161,7 +8165,7 @@ const G = (() => {
         const la = legalAttacks(view.hand, view.hist, seat);
         return {type: "attack", koma: la[Math.floor(Math.random() * la.length)], src: "naive"};
       }
-      const ac = attackChoice(st, seat, view, o);
+      if (o.solver !== false && view.hand.length >= 3) { const _uA = unseenCounts(view.hand, view.hist); const _sA = solveAttackTurn(view.hand, _uA, checkKingAtkOk(view.hand, _uA)); if (_sA && view.hand.includes(_sA.first) && legalAttacks(view.hand, view.hist, seat).includes(_sA.first) && !(_sA.first === "王" && isFirstRound(view.hist)) && shiProtoCertainOk(view, {first: null, second: _sA.first, score: _sA.score}, "attack", st)) return {type: "attack", koma: _sA.first, src: "solver", why: "Solver — " + _sA.score + "点の確実な上がり手順を読み切り"}; }   /* v220.51 SAT: 控えが無い攻め番でも確定上がりを探す(C-07 の門つき) */   const ac = attackChoice(st, seat, view, o);
       let koma = ac.koma;
       if (koma === "王" && !canAttackKing(view.hand, view.hist, seat)) {
         const nonOu = view.hand.filter(k => k !== "王");
@@ -23934,6 +23938,8 @@ if (typeof document !== "undefined") (() => {
 
 
   const APP_CHANGELOG = [
+    {v: "v220.51", d: "2026-11-05", tag: "fix", tagJa: "直した", t: "強いAIの攻めと伏せの選び方を直しました", p: [
+      "相方のしをしで受けて乗れないと伝えた後、次の番からは読みで攻め駒を選ぶようにしました。王が2枚とも出た後は、しで攻める手も比べます。確実に上がれる手順が同じ点なら王を最後に残し、振り返りや続きからでも確実な上がりを見つけます。普通のAIは、残り2枚のとき点の高い駒を上がりに残します。"]},
     {v: "v220.50", d: "2026-11-05", tag: "fix", tagJa: "直した", t: "中級バラバラの合図の1歩目と4歩目の説明を、吹き出しに収まる長さにしました", p: [
       "スマホの画面で吹き出しの中をスクロールしないと読めなかった2つの歩の説明を短くし、この巻のすべての歩がスクロールせずに読めるようにしました。"]},
     {v: "v220.49", d: "2026-11-05", tag: "fix", tagJa: "直した", t: "中級バラバラの合図の最後の説明を、吹き出しに収まる長さにしました", p: [
