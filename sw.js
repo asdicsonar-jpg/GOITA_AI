@@ -1,5 +1,5 @@
 // ごいた — Service Worker
-// 対象: index.html (build v220.51, SHA-256 3599ca1d923efaf492ef6c631727e06347df0695cdd12aa383ba656eb305fd7c)
+// 対象: index.html (build v220.53, SHA-256 a1d6401deac57990cd7cc0bd217e999a08deca8cfa178373a4e9e1e05d6bdd37)
 //
 // v205: A-1「ddSolve の Packed 化(PACKED_SOLVE、既定0=legacy)」。出荷既定では1行も
 // 実行されない基盤整備であり、着手列SHA-256 は v204 と完全一致することを機械確認済み。
@@ -84,7 +84,9 @@
 // v220.48: バラバラの手と逆し攻めの文（spec v220_48_apply.py）。教材・定石の文とエンジン A の理由の文を変えた。
 // v220.49: バラバラの巻の最後の歩の文（spec v220_49_apply.py）。教材の文 1 本を変えた。
 // v220.50: バラバラの巻の 1・4 歩目の文（spec v220_50_apply.py）。教材の文 2 本を変えた。
-// v220.51: 強いAIの悪手を減らす 第1便（mk_v220_51.py）。エンジン A の 8 行を変えた。
+// v220.51: 強いAIの悪手を減らす 第1便（spec v220_51_apply.py）。エンジン A の 8 行を変えた。
+// v220.52: 手駒 5 枚の攻めも全読みの MC（spec v220_52_apply.py）。エンジン A の 2 行を変えた。
+// v220.53: 相方リーチの し は敵が受ける見込みが低いときだけ通す（spec v220_53_apply.py・C-18 v1.5）。エンジン A の 3 行を変えた。
 //
 // このファイルは index.html と同じディレクトリに配置すること。index.html 側は
 // すでに以下の登録コードを持っている(http(s)配信時のみ有効。file://や未配置時は
@@ -97,90 +99,90 @@
 // アプリを開いたことがある端末には古いキャッシュが残り続け、新しい index.html が
 // 配信されない(PWAの典型的な事故)。
 
-const CACHE_NAME = "goita-v220.51";
+// Web 公開版: 重みは assets/t1w.8094b077f6ec.js（sha256 8094b077f6ec5b7983d2ff45ff7a2613aed1267b714749727414cf0de6f2dec6）。
 
-// 起動シェルとして必ずキャッシュしたいファイル。存在しないもの(まだ配置していない
-// manifest.json やアイコン等)があっても install 全体を失敗させないよう、
-// 1件ずつ catch して無視する。
-// v220.8 F8-14（検討書 H3）: 本体は "./" の 1 本だけにする（"index.html" と二重に 9MB を持たない）
-const PRECACHE_URLS = [
-  "./",
+// ===== Web 公開版（harness/kit/mkweb.py が作る・軽量化 W1）=====
+// 単一 HTML 版との違い: T1 の重みの script を内容の sha で名づけた別ファイル（ASSETS）にし、版をまたいで
+// 1 つのキャッシュ（ASSET_CACHE）に持つ。T1 が変わらない更新では、重み（約 4.5 MB）を取り直さない。
+//   - 必須（SHELL_REQUIRED・ASSETS）が 1 つでも取れなければ、install を失敗させる（不完全な版を有効にしない）。
+//   - 消すキャッシュは、このアプリの物（名前が "goita-" で始まる）だけ。同じオリジンのほかのアプリの物は消さない。
+//   - 重みのキャッシュからは、今の版の ASSETS に無い物だけを消す（activate の時）。
+const CACHE_NAME = "goita-v220.53";
+const ASSET_CACHE = "goita-assets";
+const SHELL_REQUIRED = ["./"];
+const ASSETS = ["assets/t1w.8094b077f6ec.js"];
+const PRECACHE_OPTIONAL = [
   "manifest.json",
   "icons/apple-touch-icon.png",
   "icons/icon-192.png"
 ];
 
 self.addEventListener("install", (event) => {
-  self.skipWaiting(); // 新しいSWをすぐ有効化(タブを閉じ直すのを待たない)
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) =>
-      Promise.all(
-        PRECACHE_URLS.map((url) => cache.add(url).catch(() => {
-          // 個別のファイルが404/未配置でも他のプリキャッシュは続行する
-        }))
-      )
-    )
-  );
+  self.skipWaiting();
+  event.waitUntil((async () => {
+    try {
+      const ac = await caches.open(ASSET_CACHE);
+      for (const u of ASSETS) {
+        const abs = new URL(u, self.registration.scope).href;
+        if (await ac.match(abs)) continue;                       // 同じ名前（同じ中身）がもうあれば取り直さない
+        const res = await fetch(abs, {cache: "force-cache"});    // ページがいま読んだ物（ブラウザのキャッシュ）を先に使う
+        if (!res || !res.ok) throw new Error("重みを取れない: " + u);
+        await ac.put(abs, res);
+      }
+      const shell = await caches.open(CACHE_NAME);
+      await shell.addAll(SHELL_REQUIRED);                        // 失敗すれば install も失敗する
+      await Promise.all(PRECACHE_OPTIONAL.map((u) => shell.add(u).catch(() => {})));   // 無くてもよい物
+    } catch (e) {
+      await caches.delete(CACHE_NAME);                           // 半端な版のキャッシュを残さない（重みのキャッシュは前の版の物なので残す）
+      throw e;                                                   // install を失敗させる（前の版の SW のまま）
+    }
+  })());
 });
 
 self.addEventListener("activate", (event) => {
-  event.waitUntil(
-    caches.keys()
-      .then((keys) => Promise.all(
-        keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k))
-      ))
-      .then(() => self.clients.claim()) // 既存タブにもすぐ新しいSWを効かせる
-  );
+  event.waitUntil((async () => {
+    const keys = await caches.keys();
+    await Promise.all(keys.filter((k) => k.startsWith("goita-") && k !== CACHE_NAME && k !== ASSET_CACHE).map((k) => caches.delete(k)));
+    const ac = await caches.open(ASSET_CACHE);
+    const keep = new Set(ASSETS.map((u) => new URL(u, self.registration.scope).href));
+    for (const r of await ac.keys()) if (!keep.has(r.url)) await ac.delete(r);
+    await self.clients.claim();
+  })());
 });
 
 self.addEventListener("fetch", (event) => {
   const req = event.request;
-  if (req.method !== "GET") return; // POST等はSWを介さずそのまま通す
-
+  if (req.method !== "GET") return;
   const url = new URL(req.url);
-  if (url.origin !== self.location.origin) {
-    // Googleフォント等クロスオリジンのリソースはSWで肩代わりしない
-    // (ブラウザの標準HTTPキャッシュに任せる)
+  if (url.origin !== self.location.origin) return;
+  const scope = new URL(self.registration.scope);
+  // 重み: 名前が中身の sha なので、キャッシュにあればそれを返す（取り直さない）
+  if (url.pathname.startsWith(scope.pathname + "assets/")) {
+    event.respondWith(caches.open(ASSET_CACHE).then((ac) => ac.match(url.href).then((hit) => hit || fetch(req).then((res) => {
+      if (res && res.ok) ac.put(url.href, res.clone());
+      return res;
+    }))));
     return;
   }
-
-  // ページ本体(HTML)はネットワーク優先: 更新があれば即座に拾い、
-  // オフライン時のみキャッシュへフォールバックする。
+  // 本体（HTML）はネットワーク優先（単一 HTML 版と同じ）
   if (req.mode === "navigate" || req.destination === "document") {
-    // v220.8 F8-14: 成功した応答（ok）だけを保存する。本体（スコープの直下・index.html・クエリ付き）は 1 つのキー（"./"）にそろえる
-    const scope = new URL(self.registration.scope);
     const isShell = url.pathname === scope.pathname || url.pathname === scope.pathname + "index.html";
     const key = isShell ? scope.href : (url.origin + url.pathname);
     event.respondWith(
-      fetch(req)
-        .then((res) => {
-          if (res && res.ok) {
-            const copy = res.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(key, copy));
-          }
-          return res;
-        })
-        .catch(() =>
-          caches.match(key, {ignoreSearch: true}).then((cached) => cached || caches.match(scope.href))
-        )
+      fetch(req).then((res) => {
+        if (res && res.ok) { const copy = res.clone(); caches.open(CACHE_NAME).then((c) => c.put(key, copy)); }
+        return res;
+      }).catch(() => caches.match(key, {ignoreSearch: true}).then((hit) => hit || caches.match(scope.href)))
     );
     return;
   }
-
-  // それ以外の同一オリジン資産(manifest.json・アイコン等)はキャッシュ優先で
-  // 即座に返しつつ、裏側でネットワーク取得してキャッシュを更新する
-  // (stale-while-revalidate)。
+  // そのほか（manifest・アイコン）はキャッシュを先に返し、裏で取り直す（単一 HTML 版と同じ）
   event.respondWith(
     caches.match(req).then((cached) => {
-      const network = fetch(req)
-        .then((res) => {
-          if (res && res.ok) {
-            const copy = res.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(req, copy));
-          }
-          return res;
-        })
-        .catch(() => cached);
+      const network = fetch(req).then((res) => {
+        if (res && res.ok) { const copy = res.clone(); caches.open(CACHE_NAME).then((c) => c.put(req, copy)); }
+        return res;
+      }).catch(() => cached);
       return cached || network;
     })
   );
