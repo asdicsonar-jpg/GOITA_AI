@@ -5,6 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>ごいた — 能登の伝承遊戯</title>
   <!-- build: v220.6 に短い入門コース（3 場面・5 着手）と助言つきの 1 局練習を当てた（配信候補 v220.7 の元）。計画: docs/PLAN_短い入門コース_rev4_Opus5.5.md（§14 の裁定）・docs/PLAN_v220.7_入門コース配信_rev2_Opus5.5.md。適用: harness/apply_quickstart_v2.py。エンジン区画（G・G_B・T1）は不変。 -->
+  <!-- build: v220.55「最強AIのデータが読めないときに知らせる（T1R）・v220.53 の更新内容の文（C18T）」base=v220.54。
+       計画: docs/PLAN_Web版の直し_W1b_とv220.55_rev1_Opus5.5.md（Web 版の直しの提案 P4・7.4）。報告: docs/IMPLEMENTATION_REPORT_v220.55_rev1_Opus5.5.md。
+       変更: harness/spec/v220_55_apply.py（lib/apply_core.py・T1 の繋ぎのブロック 5 と UI のブロック 6・エンジンは変えない）→ lib/release.py（版数・CHANGELOG・バッジ・sw.js）。
+       CACHE_NAME: goita-v220.54 → goita-v220.55. -->
+  <!-- build: v220.54「最後の香・最後のし・相方の攻めの受け方を直す（KYO・SGL・PRB）」base=v220.53。
+       試作: docs/v220_54/。報告: docs/IMPLEMENTATION_REPORT_v220.54_rev1_Opus5.5.md。
+       変更: harness/spec/v220_54_apply.py（lib/apply_core.py・エンジン A の 6 行。行の数は変えない）→ lib/release.py（版数・CHANGELOG・バッジ・sw.js）。G_B は G から組み立てる。
+       CACHE_NAME: goita-v220.53 → goita-v220.54. -->
   <!-- build: v220.53「相方リーチのしは、敵が受ける見込みが低いときだけ通す（C-18 v1.5・K-26）」base=v220.52。
        規範: docs/PROTOCOL_し攻め_v1.5.md。材料: docs/MSR_v220.53_規範に触れる4件_2026-11-06.md。報告: docs/IMPLEMENTATION_REPORT_v220.53_rev1_Opus5.5.md。
        変更: harness/spec/v220_53_apply.py（lib/apply_core.py・エンジン A の 3 行。行の数は変えない）→ lib/release.py（版数・CHANGELOG・バッジ・sw.js）。G_B は G から組み立てる。
@@ -2097,7 +2105,7 @@ body.noto #wincut.show .wc-label{animation:wcFude .62s cubic-bezier(.2,.9,.3,1.2
 <div id="setup-screen">
   <!-- build v208: 版数表示は APP_CHANGELOG[0] から起動時に上書きされる(JS が動かない場合の保険としてここにも同じ版数を書いておく)。 -->
   <button type="button" class="setup-version" id="btn-version"
-          aria-label="バージョン v220.53 — 更新内容を見る" title="更新内容を見る"><span id="btn-version-num">v220.53</span><span class="sv-i" aria-hidden="true">ⓘ</span></button>
+          aria-label="バージョン v220.55 — 更新内容を見る" title="更新内容を見る"><span id="btn-version-num">v220.55</span><span class="sv-i" aria-hidden="true">ⓘ</span></button>
   <div class="title-block">
     <h1 class="serif">ごいた</h1>
     <div class="title-sub">能登・宇出津に伝わる竹駒の伝承遊戯</div>
@@ -3332,7 +3340,7 @@ const G = (() => {
       if (rest.length) cfb = rest;         // 相方の合図→温存 / 王なし→偽信号の回避
     }
     // 最後の香ガード
-    if ((c["香"] || 0) === 1 && cfb.includes("香") && hand.length > 2 && dangerousLastKyou(view)) {
+    if ((c["香"] || 0) === 1 && cfb.includes("香") && hand.length > 2 && dangerousLastKyou(view, o)) {
       const others = cfb.filter(k => k !== "香");
       if (others.length) cfb = others;
     }
@@ -5665,7 +5673,7 @@ const G = (() => {
       if (h.koma === "香" && (h.act === "attack" || h.act === "receive" || h.act === "bury")) seen++;
     const unseen = 4 - (c["香"] || 0) - seen;
     if (unseen <= 0) return 0;
-    const partnerKyou = inferPartnerHoldings(view.hist, partnerOf(view.seat))["香"] || 0;
+    const partnerKyou = partnerRemainingEstimate(view.hist, partnerOf(view.seat), inferPartnerHoldings(view.hist, partnerOf(view.seat)))["香"] || 0;   /* v220.54 KYO: 相方がもう出した香は引かない(BUG-10) */
     return Math.max(0, unseen - partnerKyou);
   }
   // 香連続攻め: 3枚以上は無条件 / 2枚は案D安全判定+2巡目以降or王所持
@@ -5689,14 +5697,14 @@ const G = (() => {
     return true;
   }   let BRB_BIG = 1; let BRY_KYO = 1; function baraBigPick(view, c, hand) {   /* v220.46 BRB(§1 v1.4・Sonar 11-04): 金銀馬香のペアなし・飛角は合わせて 1 枚・王は可 = バラバラ。1 巡目の初めの攻めはその大駒 */ if (!isFirstAttackForMe(view.hist, view.seat) || !isFirstRound(view.hist)) return null; if (["金", "銀", "馬", "香"].some(k => (c[k] || 0) >= 2) || (c["飛"] || 0) + (c["角"] || 0) !== 1 || (c["し"] || 0) > 2) return null;   /* し 3 枚は C-01 どおり し の先導も許し、手の比べに任せる(Sonar 11-04) */ const k = (c["飛"] || 0) ? "飛" : "角"; return legalAttacks(hand, view.hist, view.seat).includes(k) ? k : null; }
   // 最後の香ガード: 単騎香攻めが敵に「受け不能の香」を渡す危険か
-  function dangerousLastKyou(view) {
+  function dangerousLastKyou(view, o) {
     let seen = 0;
     for (const h of view.hist)
       if (h.koma === "香" && (h.act === "attack" || h.act === "receive" || h.act === "bury")) seen++;
     const unseenAfter = 4 - 0 - (seen + 1);
     if (unseenAfter <= 0) return false;
     const partner = partnerOf(view.seat);
-    let partnerKyou = inferPartnerHoldings(view.hist, partner)["香"] || 0;
+    const _inf = inferPartnerHoldings(view.hist, partner); let partnerKyou = ((o && o.noMC) ? _inf : partnerRemainingEstimate(view.hist, partner, _inf))["香"] || 0;   /* v220.54 KYO: 本番の決定だけ、相方がもう出した香を引いた残りで数える(BUG-10) */
     if (partnerPassedOnKyou(view.hist, partner)) partnerKyou = 0;
     return unseenAfter - partnerKyou >= 1;
   }
@@ -5706,7 +5714,7 @@ const G = (() => {
     if (!nonOu.length) return ["王"];
     let cands = [...new Set(view.hand)];
     if ((c["王"] || 0) === 2 && isFirstRound(view.hist)) cands = cands.filter(k => k !== "王");
-    if ((c["し"] || 0) === 1) cands = cands.filter(k => k !== "し");
+    if ((c["し"] || 0) === 1 && !enemyShiExhausted(view.hist, view.seat, c)) cands = cands.filter(k => k !== "し");   /* v220.54 SGL: 敵の し が尽きたら、最後の し 1 枚も MC で比べる */
     if (!cands.length) cands = [...new Set(nonOu)];
     return cands.filter(k => view.hand.includes(k));
   }
@@ -8347,7 +8355,7 @@ const G = (() => {
       // ここで先にMCを走らせて生pickをそのまま採用すると二重評価かつmargin基準を迂回してしまう。
       // 味方の非し攻めはこのゲートを素通りしreceiveChoice内のouTakeTurnPickが処理する。
       const mcGateOn = !o.noMC && (o.mc || RULE_LEVEL === 0) &&
-          (RULE_LEVEL === 0 || ((!isPartnerAtk || attack === "し") && view.hand.length <= 6));
+          (RULE_LEVEL === 0 || ((!isPartnerAtk || attack === "し" || (!isFirstRound(view.hist) && view.sizes[nextSeat(seat)] <= 2)) && view.hand.length <= 6));   /* v220.54 PRB: 相方の攻めでも、後ろの敵がリーチなら受けの MC で比べる */
       // 【相方上がり通し・上位化】(build v188) REVIEW_REPORT_相方上がり通し_し受け誤り_
       // build_v187_Opus5.md §4-2。「相方(攻め手)が残2枚なら、この攻めが流れた時点で
       // advance()がphase="bury"へ遷移し伏せ1+攻め1=確定上がり」はエンジン実装から演繹
@@ -11907,6 +11915,7 @@ if (typeof module !== 'undefined' && module.exports) {
       try {
         console.warn('[T1] fallback', reason, err && (err.stack || err.message || err));
       } catch (e) { /* console unavailable */ }
+      if (reason === 'exception' && typeof this.onFallback === 'function') { try { this.onFallback(reason, err); } catch (e) { /* 知らせに失敗しても手は返す */ } }   /* v220.55 T1R */
       return G.policyAction(st, seat, { mc: false, solver: true });
     },
 
@@ -12102,7 +12111,7 @@ if (typeof module !== 'undefined' && module.exports) {
   return T1AD;
 });
 
-T1AD.init(T1W);
+try { if (typeof T1W === 'undefined') throw new Error('T1W が読めない'); if (!T1W || !T1W.model || !T1W.model.weights || !Object.keys(T1W.model.weights).length) throw new Error('T1W の形が違う'); T1AD.init(T1W); T1AD.ready = true; T1AD.initError = ''; } catch (e) { T1AD.ready = false; T1AD.initError = String((e && e.message) || e); try { console.warn('[T1] init failed', e); } catch (_) {} }   /* v220.55 T1R: 読めないときも止めずに状態を置く */
 </script>
 
 <script>
@@ -17101,6 +17110,18 @@ if (typeof document !== "undefined") (() => {
     ms = Math.max(level === "snap" ? 80 : 150, Math.min(2800, ms));
     return {ms: Math.round(ms), level, score: d};
   }
+  function t1Unavailable() {   /* v220.55 T1R: 最強AIのデータが無いとき、黙って別の AI にしない */
+    if ($("ov-modal").classList.contains("show") && $("t1u-reload")) return;
+    const m = modal(`<h2 class="serif">最強AIを使えません</h2>` +
+      `<p class="mg-p">最強AI（NN＠oui2039）のデータを読み込めませんでした（${escapeHtml(T1AD.initError || "不明")}）。通信を確かめて読み込み直すか、最強の席を「AI・強い」に替えて続けてください。</p>` +
+      `<div class="mg-btns"><button class="btn primary" id="t1u-reload">読み込み直す</button>` +
+      `<button class="btn" id="t1u-strong">強いAIに替えて続ける</button>` +
+      `<button class="btn" id="t1u-cancel">やめる</button></div>`);
+    m.querySelector("#t1u-reload").onclick = () => { location.reload(); };
+    m.querySelector("#t1u-strong").onclick = () => { for (const s of G.SEATS) if (app.tiers[s] === "t1") app.tiers[s] = "strong"; closeModal(); step(); };
+    m.querySelector("#t1u-cancel").onclick = () => { closeModal(); stopToSetup(); };
+  }
+  T1AD.onFallback = () => { const k = String(app.matchId) + "|" + String(app.matchNo); if (app._t1FallbackToast === k) return; app._t1FallbackToast = k; toast("この手は最強AIの中で問題が起きたため、予備のAIが選びました。"); };   /* v220.55 T1R: 対局に 1 回 */
   function step() {
     if (app.tutorial && app.tutorial.blockStep) return;   
     if (!app.st || app.stopped || app.matchOver || app.review) return;
@@ -17109,6 +17130,7 @@ if (typeof document !== "undefined") (() => {
     renderAll();
     if (app.st.phase === "over") return;
     const actor = app.st.actor;
+    if (!T1AD.ready && G.SEATS.some(s => app.tiers[s] === "t1")) { t1Unavailable(); return; }   /* v220.55 T1R */
     if (isHuman(actor)) { humanTurn(); return; }
     setMyTurn(false);
     renderHandTray(null);   
@@ -23889,8 +23911,12 @@ if (typeof document !== "undefined") (() => {
 
 
   const APP_CHANGELOG = [
+    {v: "v220.55", d: "2026-11-07", tag: "fix", tagJa: "直した", t: "最強AIのデータが読めないときに知らせるようにしました", p: [
+      "最強AI（NN＠oui2039）のデータを読み込めなかったとき、これまでは「最強」と表示したまま、読みの浅い別のAIが黙って打っていました。対局や観戦を始める前に知らせ、読み込み直すか、強いAIに替えて続けるかを選べるようにしました。最強AIの中で問題が起きて予備のAIが打ったときも、対局に1回だけ知らせます。v220.53の更新内容の説明も、実際の動きに合わせて直しました。"]},
+    {v: "v220.54", d: "2026-11-07", tag: "fix", tagJa: "直した", t: "最後の香・最後のし・相方の攻めの受け方を直しました", p: [
+      "最後の香を守るとき、相方がもう出した香を数えに入れていた誤りを直しました。敵のしが出尽くした後は、最後の1枚のしでも攻める手を比べます。相方の攻めの後ろの敵がリーチのときは、通すか自分で受けるかを読みで比べます。"]},
     {v: "v220.53", d: "2026-11-06", tag: "fix", tagJa: "直した", t: "相方がリーチでしを攻めたときの受け方を変えました", p: [
-      "相方が残り2枚でしを攻めたとき、強いAIはこれまで、自分に確実な上がりが無ければいつも通していました。敵に受けられそうなときは、自分がしで受けて流れを守るようにしました。"]},
+      "相方が残り2枚でしを攻めたとき、強いAIはこれまで、自分に確実な上がりが無ければいつも通していました。敵に受けられそうなときは、無条件には通さず、受けるかどうかをその後の判断で決めるようにしました。"]},
     {v: "v220.52", d: "2026-11-05", tag: "fix", tagJa: "直した", t: "強いAIが、手駒5枚の攻めでも先を読むようにしました", p: [
       "終盤で手駒が5枚のとき、強いAIはこれまで駒の数の割合で攻め駒を選んでいました。残りの駒が少ない場面では、手駒4枚以下と同じように最後まで読んで選びます。"]},
     {v: "v220.51", d: "2026-11-05", tag: "fix", tagJa: "直した", t: "強いAIの攻めと伏せの選び方を直しました", p: [

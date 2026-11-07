@@ -1,5 +1,5 @@
 // ごいた — Service Worker
-// 対象: index.html (build v220.53, SHA-256 a1d6401deac57990cd7cc0bd217e999a08deca8cfa178373a4e9e1e05d6bdd37)
+// 対象: index.html (build v220.55, SHA-256 97ad0465bc5c0b1095ee0d07ed814ba17ff035b12f0e508cddb9d5f133e4964e)
 //
 // v205: A-1「ddSolve の Packed 化(PACKED_SOLVE、既定0=legacy)」。出荷既定では1行も
 // 実行されない基盤整備であり、着手列SHA-256 は v204 と完全一致することを機械確認済み。
@@ -87,6 +87,8 @@
 // v220.51: 強いAIの悪手を減らす 第1便（spec v220_51_apply.py）。エンジン A の 8 行を変えた。
 // v220.52: 手駒 5 枚の攻めも全読みの MC（spec v220_52_apply.py）。エンジン A の 2 行を変えた。
 // v220.53: 相方リーチの し は敵が受ける見込みが低いときだけ通す（spec v220_53_apply.py・C-18 v1.5）。エンジン A の 3 行を変えた。
+// v220.54: 最後の香・最後の し・相方の攻めの受け方（spec v220_54_apply.py・KYO・SGL・PRB）。エンジン A の 6 行を変えた。
+// v220.55: 最強AIのデータが読めないときに知らせる（spec v220_55_apply.py・T1R・C18T）。エンジンは変えない。
 //
 // このファイルは index.html と同じディレクトリに配置すること。index.html 側は
 // すでに以下の登録コードを持っている(http(s)配信時のみ有効。file://や未配置時は
@@ -99,52 +101,88 @@
 // アプリを開いたことがある端末には古いキャッシュが残り続け、新しい index.html が
 // 配信されない(PWAの典型的な事故)。
 
-// Web 公開版: 重みは assets/t1w.8094b077f6ec.js（sha256 8094b077f6ec5b7983d2ff45ff7a2613aed1267b714749727414cf0de6f2dec6）。
+// Web 公開版（mkweb.py）: 上の注釈の sha は単一 HTML 版の物。この SW が配る Web 版の index.html は sha256 a0fcb5d09680d93b4ddae9abc51d7d101a287b07285c71dda936acb7b7f3e41e、重みは assets/t1w.8094b077f6ec.js（sha256 8094b077f6ec5b7983d2ff45ff7a2613aed1267b714749727414cf0de6f2dec6）。
 
-// ===== Web 公開版（harness/kit/mkweb.py が作る・軽量化 W1）=====
-// 単一 HTML 版との違い: T1 の重みの script を内容の sha で名づけた別ファイル（ASSETS）にし、版をまたいで
-// 1 つのキャッシュ（ASSET_CACHE）に持つ。T1 が変わらない更新では、重み（約 4.5 MB）を取り直さない。
-//   - 必須（SHELL_REQUIRED・ASSETS）が 1 つでも取れなければ、install を失敗させる（不完全な版を有効にしない）。
-//   - 消すキャッシュは、このアプリの物（名前が "goita-" で始まる）だけ。同じオリジンのほかのアプリの物は消さない。
-//   - 重みのキャッシュからは、今の版の ASSETS に無い物だけを消す（activate の時）。
-const CACHE_NAME = "goita-v220.53";
-const ASSET_CACHE = "goita-assets";
-const SHELL_REQUIRED = ["./"];
-const ASSETS = ["assets/t1w.8094b077f6ec.js"];
+// ===== Web 公開版（harness/kit/mkweb.py が作る・軽量化 W1b）=====
+// W1 との違い（Web 版の直しの提案 2026-11-07 の P1〜P3・7.1〜7.3）:
+//   - キャッシュの名前に配信の場所（スコープのパス）を入れる。同じオリジンのほかの場所の物は消さない。
+//   - 本体のキャッシュの名前を、版と Web 版の index の sha で一意にする。最後に「できた」の印（MARK）を書き、印のある物だけを使う。
+//   - install で、HTML と重みの中身を sha256 で照らす。合わなければ install を失敗させる（前の版の SW とキャッシュはそのまま）。
+//     失敗のときに消すのは、この回に作りかけた本体のキャッシュだけ（名前が一意なので、前の版の物ではない）。
+//   - HTML をネットワークから取ったとき、この版の sha と同じときだけ保存する（別の版の HTML で正常なオフライン用を上書きしない）。
+//   - キャッシュへの書き込みは event.waitUntil で待つ。
+const SCOPE = new URL(self.registration.scope);
+const PFX = "goita|" + SCOPE.pathname + "|";
+const BUILD = "v220.55+a0fcb5d09680";
+const CACHE_NAME = PFX + "shell|" + BUILD;
+const ASSET_CACHE = PFX + "assets";
+const INDEX_SHA = "a0fcb5d09680d93b4ddae9abc51d7d101a287b07285c71dda936acb7b7f3e41e";
+const ASSETS = [{"u": "assets/t1w.8094b077f6ec.js", "sha256": "8094b077f6ec5b7983d2ff45ff7a2613aed1267b714749727414cf0de6f2dec6", "bytes": 5913695}];
+const MARK = new URL("__goita_complete__", SCOPE).href;
 const PRECACHE_OPTIONAL = [
   "manifest.json",
   "icons/apple-touch-icon.png",
   "icons/icon-192.png"
 ];
 
+async function sha256(buf) {
+  const d = await crypto.subtle.digest("SHA-256", buf);
+  return Array.from(new Uint8Array(d), (b) => b.toString(16).padStart(2, "0")).join("");
+}
+async function okBody(res, want) {   // 応答が 200 で、中身の sha256（と長さ）が want と同じか。res そのものは読まない
+  if (!res || !res.ok) return false;
+  const b = await res.clone().arrayBuffer();
+  if (want.bytes != null && b.byteLength !== want.bytes) return false;
+  return (await sha256(b)) === want.sha256;
+}
+async function shellReady() {        // この版の本体のキャッシュが「できた」か
+  if (!(await caches.has(CACHE_NAME))) return null;
+  const c = await caches.open(CACHE_NAME);
+  return (await c.match(MARK)) ? c : null;
+}
+
 self.addEventListener("install", (event) => {
   self.skipWaiting();
   event.waitUntil((async () => {
+    if (await shellReady()) return;                             // 同じ版がもうできている
     try {
       const ac = await caches.open(ASSET_CACHE);
-      for (const u of ASSETS) {
-        const abs = new URL(u, self.registration.scope).href;
-        if (await ac.match(abs)) continue;                       // 同じ名前（同じ中身）がもうあれば取り直さない
-        const res = await fetch(abs, {cache: "force-cache"});    // ページがいま読んだ物（ブラウザのキャッシュ）を先に使う
-        if (!res || !res.ok) throw new Error("重みを取れない: " + u);
+      for (const a of ASSETS) {
+        const abs = new URL(a.u, SCOPE).href;
+        if (await okBody(await ac.match(abs), a)) continue;      // 同じ中身がもうある
+        let res = await caches.match(abs);                       // 前の名前のキャッシュにある物も使う（取り直さない）
+        if (!(await okBody(res, a))) res = await fetch(abs, {cache: "force-cache"}).catch(() => null);
+        if (!(await okBody(res, a))) res = await fetch(abs, {cache: "reload"}).catch(() => null);
+        if (!(await okBody(res, a))) throw new Error("重みが取れない・中身が違う: " + a.u);
         await ac.put(abs, res);
       }
+      await caches.delete(CACHE_NAME);                           // 印の無い作りかけを捨てる（この版の物だけ）
       const shell = await caches.open(CACHE_NAME);
-      await shell.addAll(SHELL_REQUIRED);                        // 失敗すれば install も失敗する
+      const html = await fetch(SCOPE.href, {cache: "no-cache"});
+      if (!(await okBody(html, {sha256: INDEX_SHA}))) throw new Error("HTML がこの版の物でない");
+      await shell.put(SCOPE.href, html);
       await Promise.all(PRECACHE_OPTIONAL.map((u) => shell.add(u).catch(() => {})));   // 無くてもよい物
+      await shell.put(MARK, new Response(BUILD));                // 最後に「できた」の印
     } catch (e) {
-      await caches.delete(CACHE_NAME);                           // 半端な版のキャッシュを残さない（重みのキャッシュは前の版の物なので残す）
-      throw e;                                                   // install を失敗させる（前の版の SW のまま）
+      await caches.delete(CACHE_NAME);                           // この回に作りかけた物だけを消す
+      throw e;                                                   // install を失敗させる（前の版の SW とキャッシュのまま）
     }
   })());
 });
 
 self.addEventListener("activate", (event) => {
   event.waitUntil((async () => {
-    const keys = await caches.keys();
-    await Promise.all(keys.filter((k) => k.startsWith("goita-") && k !== CACHE_NAME && k !== ASSET_CACHE).map((k) => caches.delete(k)));
+    for (const k of await caches.keys()) {
+      if (k === CACHE_NAME || k === ASSET_CACHE) continue;
+      if (k.startsWith(PFX + "shell|")) { await caches.delete(k); continue; }   // この場所の前の版
+      if (k.startsWith("goita|")) continue;                                      // ほかの場所の物は消さない
+      if (k.startsWith("goita-")) {                                              // 場所の入っていない前の名前: 中身が全部この場所の物なら消す
+        const rs = await (await caches.open(k)).keys();
+        if (rs.every((r) => r.url.startsWith(SCOPE.href))) await caches.delete(k);
+      }
+    }
     const ac = await caches.open(ASSET_CACHE);
-    const keep = new Set(ASSETS.map((u) => new URL(u, self.registration.scope).href));
+    const keep = new Set(ASSETS.map((a) => new URL(a.u, SCOPE).href));
     for (const r of await ac.keys()) if (!keep.has(r.url)) await ac.delete(r);
     await self.clients.claim();
   })());
@@ -155,35 +193,40 @@ self.addEventListener("fetch", (event) => {
   if (req.method !== "GET") return;
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
-  const scope = new URL(self.registration.scope);
-  // 重み: 名前が中身の sha なので、キャッシュにあればそれを返す（取り直さない）
-  if (url.pathname.startsWith(scope.pathname + "assets/")) {
-    event.respondWith(caches.open(ASSET_CACHE).then((ac) => ac.match(url.href).then((hit) => hit || fetch(req).then((res) => {
-      if (res && res.ok) ac.put(url.href, res.clone());
-      return res;
-    }))));
+  // 重み: キャッシュにあればそれを返す。無ければ取って、この版の重みで中身が合うときだけ保存する
+  if (url.pathname.startsWith(SCOPE.pathname + "assets/")) {
+    const want = ASSETS.find((a) => new URL(a.u, SCOPE).href === url.href);
+    const p = (async () => {
+      const hit = await (await caches.open(ASSET_CACHE)).match(url.href);
+      if (hit) return {res: hit, copy: null};
+      const res = await fetch(req);
+      return {res, copy: (want && res && res.ok) ? res.clone() : null};
+    })();
+    event.waitUntil(p.then(async (x) => { if (x.copy && await okBody(x.copy, want)) await (await caches.open(ASSET_CACHE)).put(url.href, x.copy); }).catch(() => {}));
+    event.respondWith(p.then((x) => x.res));
     return;
   }
-  // 本体（HTML）はネットワーク優先（単一 HTML 版と同じ）
+  // 本体（HTML）はネットワーク優先。この版の HTML（sha が同じ）のときだけ保存する
   if (req.mode === "navigate" || req.destination === "document") {
-    const isShell = url.pathname === scope.pathname || url.pathname === scope.pathname + "index.html";
-    const key = isShell ? scope.href : (url.origin + url.pathname);
-    event.respondWith(
-      fetch(req).then((res) => {
-        if (res && res.ok) { const copy = res.clone(); caches.open(CACHE_NAME).then((c) => c.put(key, copy)); }
-        return res;
-      }).catch(() => caches.match(key, {ignoreSearch: true}).then((hit) => hit || caches.match(scope.href)))
-    );
+    const isShell = url.pathname === SCOPE.pathname || url.pathname === SCOPE.pathname + "index.html";
+    const p = fetch(req).then((res) => ({res, copy: (isShell && res && res.ok) ? res.clone() : null}));
+    event.waitUntil(p.then(async (x) => {
+      if (!x.copy) return;
+      if (await okBody(x.copy, {sha256: INDEX_SHA})) { const c = await shellReady(); if (c) await c.put(SCOPE.href, x.copy); }
+      else await self.registration.update();                    // 別の版の HTML: 保存しない・新しい SW を探す
+    }).catch(() => {}));
+    event.respondWith(p.then((x) => x.res).catch(async () => {
+      const c = await shellReady();
+      const hit = c && await c.match(SCOPE.href);
+      return hit || Response.error();
+    }));
     return;
   }
-  // そのほか（manifest・アイコン）はキャッシュを先に返し、裏で取り直す（単一 HTML 版と同じ）
-  event.respondWith(
-    caches.match(req).then((cached) => {
-      const network = fetch(req).then((res) => {
-        if (res && res.ok) { const copy = res.clone(); caches.open(CACHE_NAME).then((c) => c.put(req, copy)); }
-        return res;
-      }).catch(() => cached);
-      return cached || network;
-    })
-  );
+  // そのほか（manifest・アイコン）はキャッシュを先に返し、裏で取り直す
+  const net = fetch(req).then(async (res) => {
+    if (res && res.ok) { const c = await shellReady(); if (c) await c.put(req, res.clone()); }
+    return res;
+  });
+  event.waitUntil(net.catch(() => {}));
+  event.respondWith(shellReady().then((c) => c && c.match(req)).then((cached) => cached || net).catch(() => Response.error()));   // caches.open は使わない（消した後に空の物を作り直さない）
 });
