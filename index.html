@@ -5,6 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>ごいた — 能登の伝承遊戯</title>
   <!-- build: v220.6 に短い入門コース（3 場面・5 着手）と助言つきの 1 局練習を当てた（配信候補 v220.7 の元）。計画: docs/PLAN_短い入門コース_rev4_Opus5.5.md（§14 の裁定）・docs/PLAN_v220.7_入門コース配信_rev2_Opus5.5.md。適用: harness/apply_quickstart_v2.py。エンジン区画（G・G_B・T1）は不変。 -->
+  <!-- build: v220.57「AIの中の説明書きを直しました（OTC）」base=v220.56。
+       指示: Sonar 2026-11-08「残っている課題を解決せよ」。食い違いの直し docs/MEMO_食い違いの検証と直し_2026-11-07.md の 18。報告: docs/IMPLEMENTATION_REPORT_v220.57_rev1_Opus5.5.md。
+       変更: harness/spec/v220_57_apply.py（受けの MC の門の上の注釈 1 行・行の数は同じ）→ lib/release.py（版数・CHANGELOG・バッジ・sw.js）。AI の判断は v220.56 と同じ。
+       CACHE_NAME: goita-v220.56 → goita-v220.57. -->
   <!-- build: v220.56「最強AIの重みを丸めて、アプリのファイルを小さくしました（Q）」base=v220.55。
        測り: docs/MEMO_T1の重みの量子化_2026-11-08.md・docs/T1Q/PREREG_T1Q_bf16_r2.md。報告: docs/IMPLEMENTATION_REPORT_v220.56_rev1_Opus5.5.md。
        変更: harness/lib/t1quant.py（ブロック 3 の P の行と注釈の 1 行目だけ・丸め方は表 harness/spec/v220_56_apply.py の MODE）→ lib/release.py（版数・CHANGELOG・バッジ・sw.js）。G・G_B と T1 のエンジン（ブロック 4・5）は v220.55 と byte 一致。
@@ -2109,7 +2113,7 @@ body.noto #wincut.show .wc-label{animation:wcFude .62s cubic-bezier(.2,.9,.3,1.2
 <div id="setup-screen">
   <!-- build v208: 版数表示は APP_CHANGELOG[0] から起動時に上書きされる(JS が動かない場合の保険としてここにも同じ版数を書いておく)。 -->
   <button type="button" class="setup-version" id="btn-version"
-          aria-label="バージョン v220.56 — 更新内容を見る" title="更新内容を見る"><span id="btn-version-num">v220.56</span><span class="sv-i" aria-hidden="true">ⓘ</span></button>
+          aria-label="バージョン v220.57 — 更新内容を見る" title="更新内容を見る"><span id="btn-version-num">v220.57</span><span class="sv-i" aria-hidden="true">ⓘ</span></button>
   <div class="title-block">
     <h1 class="serif">ごいた</h1>
     <div class="title-sub">能登・宇出津に伝わる竹駒の伝承遊戯</div>
@@ -8357,7 +8361,7 @@ const G = (() => {
       // build v113: OU_TAKE_TURN用の_ouTT OR条件は撤去(v111時点の条件に復帰)。
       // 新ouTakeTurnPick自身がmcDecideReceiveを固定optsで直接呼びmargin基準で判断するため、
       // ここで先にMCを走らせて生pickをそのまま採用すると二重評価かつmargin基準を迂回してしまう。
-      // 味方の非し攻めはこのゲートを素通りしreceiveChoice内のouTakeTurnPickが処理する。
+      // 味方の非し攻めは、1巡目でなく後ろの敵が残り2枚以下(手駒6枚以下)のときこのゲートで受けMCに掛け(v220.54 PRB)、ほかは素通りしreceiveChoice内のouTakeTurnPickが処理する。
       const mcGateOn = !o.noMC && (o.mc || RULE_LEVEL === 0) &&
           (RULE_LEVEL === 0 || ((!isPartnerAtk || attack === "し" || (!isFirstRound(view.hist) && view.sizes[nextSeat(seat)] <= 2)) && view.hand.length <= 6));   /* v220.54 PRB: 相方の攻めでも、後ろの敵がリーチなら受けの MC で比べる */
       // 【相方上がり通し・上位化】(build v188) REVIEW_REPORT_相方上がり通し_し受け誤り_
@@ -23915,6 +23919,8 @@ if (typeof document !== "undefined") (() => {
 
 
   const APP_CHANGELOG = [
+    {v: "v220.57", d: "2026-11-08", tag: "fix", tagJa: "直した", t: "AIのプログラムの中の説明書きを直しました", p: [
+      "AIのプログラムの中にある説明書き（注釈）の1行が、v220.54で変えた受け方と合っていなかったので直しました。AIの指し手は変わりません。"]},
     {v: "v220.56", d: "2026-11-08", tag: "ui", tagJa: "使いやすくなった", t: "アプリのファイルを約3.5MB小さくしました", p: [
       "最強AIの重みの数を短い形に丸めて、アプリのファイルを約3.5MB、ダウンロードする量を約2.7MB小さくしました。最強AIどうしの打ち比べで、強さが落ちていないことを確かめました。指し手はまれに前と変わります。"]},
     {v: "v220.55", d: "2026-11-07", tag: "fix", tagJa: "直した", t: "最強AIのデータが読めないときに知らせるようにしました", p: [
