@@ -5,6 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>ごいた — 能登の伝承遊戯</title>
   <!-- build: v220.6 に短い入門コース（3 場面・5 着手）と助言つきの 1 局練習を当てた（配信候補 v220.7 の元）。計画: docs/PLAN_短い入門コース_rev4_Opus5.5.md（§14 の裁定）・docs/PLAN_v220.7_入門コース配信_rev2_Opus5.5.md。適用: harness/apply_quickstart_v2.py。エンジン区画（G・G_B・T1）は不変。 -->
+  <!-- build: v220.58「最強AIが読めないときは配る前に知らせる（T1G）」base=v220.57。
+       指示: Sonar 2026-11-08 仕様書 REM-04 →「REM-04 だけ作る」。照らし合わせ: docs/REVIEW_残存改善の仕様書_REM-01〜07_2026-11-08.md。報告: docs/IMPLEMENTATION_REPORT_v220.58_rev1_Opus5.5.md。
+       変更: harness/spec/v220_58_apply.py（newMatch・startGame の頭で最強AIが読めるかを見る・窓から続きをやり直す）→ lib/release.py（版数・CHANGELOG・バッジ・sw.js）。AI の判断は v220.57 と同じ。
+       CACHE_NAME: goita-v220.57 → goita-v220.58. -->
   <!-- build: v220.57「AIの中の説明書きを直しました（OTC）」base=v220.56。
        指示: Sonar 2026-11-08「残っている課題を解決せよ」。食い違いの直し docs/MEMO_食い違いの検証と直し_2026-11-07.md の 18。報告: docs/IMPLEMENTATION_REPORT_v220.57_rev1_Opus5.5.md。
        変更: harness/spec/v220_57_apply.py（受けの MC の門の上の注釈 1 行・行の数は同じ）→ lib/release.py（版数・CHANGELOG・バッジ・sw.js）。AI の判断は v220.56 と同じ。
@@ -2113,7 +2117,7 @@ body.noto #wincut.show .wc-label{animation:wcFude .62s cubic-bezier(.2,.9,.3,1.2
 <div id="setup-screen">
   <!-- build v208: 版数表示は APP_CHANGELOG[0] から起動時に上書きされる(JS が動かない場合の保険としてここにも同じ版数を書いておく)。 -->
   <button type="button" class="setup-version" id="btn-version"
-          aria-label="バージョン v220.57 — 更新内容を見る" title="更新内容を見る"><span id="btn-version-num">v220.57</span><span class="sv-i" aria-hidden="true">ⓘ</span></button>
+          aria-label="バージョン v220.58 — 更新内容を見る" title="更新内容を見る"><span id="btn-version-num">v220.58</span><span class="sv-i" aria-hidden="true">ⓘ</span></button>
   <div class="title-block">
     <h1 class="serif">ごいた</h1>
     <div class="title-sub">能登・宇出津に伝わる竹駒の伝承遊戯</div>
@@ -17118,7 +17122,7 @@ if (typeof document !== "undefined") (() => {
     ms = Math.max(level === "snap" ? 80 : 150, Math.min(2800, ms));
     return {ms: Math.round(ms), level, score: d};
   }
-  function t1Unavailable() {   /* v220.55 T1R: 最強AIのデータが無いとき、黙って別の AI にしない */
+  function t1Unavailable(cont) {   /* v220.55 T1R: 最強AIのデータが無いとき、黙って別の AI にしない */
     if ($("ov-modal").classList.contains("show") && $("t1u-reload")) return;
     const m = modal(`<h2 class="serif">最強AIを使えません</h2>` +
       `<p class="mg-p">最強AI（NN＠oui2039）のデータを読み込めませんでした（${escapeHtml(T1AD.initError || "不明")}）。通信を確かめて読み込み直すか、最強の席を「AI・強い」に替えて続けてください。</p>` +
@@ -17126,7 +17130,7 @@ if (typeof document !== "undefined") (() => {
       `<button class="btn" id="t1u-strong">強いAIに替えて続ける</button>` +
       `<button class="btn" id="t1u-cancel">やめる</button></div>`);
     m.querySelector("#t1u-reload").onclick = () => { location.reload(); };
-    m.querySelector("#t1u-strong").onclick = () => { for (const s of G.SEATS) if (app.tiers[s] === "t1") app.tiers[s] = "strong"; closeModal(); step(); };
+    m.querySelector("#t1u-strong").onclick = () => { for (const s of G.SEATS) if (app.tiers[s] === "t1") app.tiers[s] = "strong"; closeModal(); (typeof cont === "function" ? cont : step)(); };
     m.querySelector("#t1u-cancel").onclick = () => { closeModal(); stopToSetup(); };
   }
   T1AD.onFallback = () => { const k = String(app.matchId) + "|" + String(app.matchNo); if (app._t1FallbackToast === k) return; app._t1FallbackToast = k; toast("この手は最強AIの中で問題が起きたため、予備のAIが選びました。"); };   /* v220.55 T1R: 対局に 1 回 */
@@ -17484,6 +17488,7 @@ if (typeof document !== "undefined") (() => {
     step();
   }
   function startGame() {
+    if (!T1AD.ready && G.SEATS.some(s => app.tiers[s] === "t1")) { t1Unavailable(() => startGame()); return; }   /* v220.58 T1G: 配りと 五し の判断の前に知らせる */
     if (app.daily && app.daily.dealt) { try { toast("今日の一局は1局だけです"); } catch (e) {} stopToSetup(); return; }   
     if (app.tutorial && qsIsKey(app.tutorial.key)) return;   
     restoreSeatSwap();   
@@ -20765,6 +20770,7 @@ if (typeof document !== "undefined") (() => {
     return top + 1;
   }
   function newMatch(opts) {
+    if (!T1AD.ready && G.SEATS.some(s => app.tiers[s] === "t1")) { t1Unavailable(() => newMatch(opts)); return; }   /* v220.58 T1G: 保存の消し・今日の一局の印・配りの前に知らせる */
     const dp = (opts && opts.daily) ? dailyPick(today()) : null;   
     if (opts && opts.daily && !dp) { try { toast("今日の一局を用意できませんでした"); } catch (e) {} stopToSetup(); return; }
     cancelAppTimer();
@@ -23919,6 +23925,9 @@ if (typeof document !== "undefined") (() => {
 
 
   const APP_CHANGELOG = [
+    {v: "v220.58", d: "2026-11-08", tag: "fix", tagJa: "直した", t: "最強AIが読めないときは、配る前に知らせるようにしました", p: [
+      "最強AIのデータが読めないとき、これまでは駒を配って五しの判断をし、保存した対局を消し、今日の一局を始めた印を付けてから知らせていました。",
+      "これからは配る前に知らせます。「やめる」を押せば、保存した対局も今日の一局も、そのまま残ります。AIの指し手は変わりません。"]},
     {v: "v220.57", d: "2026-11-08", tag: "fix", tagJa: "直した", t: "AIのプログラムの中の説明書きを直しました", p: [
       "AIのプログラムの中にある説明書き（注釈）の1行が、v220.54で変えた受け方と合っていなかったので直しました。AIの指し手は変わりません。"]},
     {v: "v220.56", d: "2026-11-08", tag: "ui", tagJa: "使いやすくなった", t: "アプリのファイルを約3.5MB小さくしました", p: [
