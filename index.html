@@ -5,6 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>ごいた — 能登の伝承遊戯</title>
   <!-- build: v220.6 に短い入門コース（3 場面・5 着手）と助言つきの 1 局練習を当てた（配信候補 v220.7 の元）。計画: docs/PLAN_短い入門コース_rev4_Opus5.5.md（§14 の裁定）・docs/PLAN_v220.7_入門コース配信_rev2_Opus5.5.md。適用: harness/apply_quickstart_v2.py。エンジン区画（G・G_B・T1）は不変。 -->
+  <!-- build: v220.56「最強AIの重みを丸めて、アプリのファイルを小さくしました（Q）」base=v220.55。
+       測り: docs/MEMO_T1の重みの量子化_2026-11-08.md・docs/T1Q/PREREG_T1Q_bf16_r2.md。報告: docs/IMPLEMENTATION_REPORT_v220.56_rev1_Opus5.5.md。
+       変更: harness/lib/t1quant.py（ブロック 3 の P の行と注釈の 1 行目だけ・丸め方は表 harness/spec/v220_56_apply.py の MODE）→ lib/release.py（版数・CHANGELOG・バッジ・sw.js）。G・G_B と T1 のエンジン（ブロック 4・5）は v220.55 と byte 一致。
+       CACHE_NAME: goita-v220.55 → goita-v220.56. -->
   <!-- build: v220.55「最強AIのデータが読めないときに知らせる（T1R）・v220.53 の更新内容の文（C18T）」base=v220.54。
        計画: docs/PLAN_Web版の直し_W1b_とv220.55_rev1_Opus5.5.md（Web 版の直しの提案 P4・7.4）。報告: docs/IMPLEMENTATION_REPORT_v220.55_rev1_Opus5.5.md。
        変更: harness/spec/v220_55_apply.py（lib/apply_core.py・T1 の繋ぎのブロック 5 と UI のブロック 6・エンジンは変えない）→ lib/release.py（版数・CHANGELOG・バッジ・sw.js）。
@@ -2105,7 +2109,7 @@ body.noto #wincut.show .wc-label{animation:wcFude .62s cubic-bezier(.2,.9,.3,1.2
 <div id="setup-screen">
   <!-- build v208: 版数表示は APP_CHANGELOG[0] から起動時に上書きされる(JS が動かない場合の保険としてここにも同じ版数を書いておく)。 -->
   <button type="button" class="setup-version" id="btn-version"
-          aria-label="バージョン v220.55 — 更新内容を見る" title="更新内容を見る"><span id="btn-version-num">v220.55</span><span class="sv-i" aria-hidden="true">ⓘ</span></button>
+          aria-label="バージョン v220.56 — 更新内容を見る" title="更新内容を見る"><span id="btn-version-num">v220.56</span><span class="sv-i" aria-hidden="true">ⓘ</span></button>
   <div class="title-block">
     <h1 class="serif">ごいた</h1>
     <div class="title-sub">能登・宇出津に伝わる竹駒の伝承遊戯</div>
@@ -9869,7 +9873,7 @@ const G_B = (function () {
 </script>
 
 <!-- ===== GOITA-T1 (transformer) NN engine: 別枠対戦相手ティア t1 — 自己完結3ブロック(重み/エンジン/アダプタ)。既存エンジン・コーチングには非干渉 ===== -->
-<script src="assets/t1w.8094b077f6ec.js"></script>
+<script src="assets/t1w.84589aaf8f4a.js"></script>
 <script>
 /* GOITA-T1 v7s (tier1.zip) 移植 2026-07-25 — encoder_version=v7s(新モデル、旧v7からの世代交代)。
    本セッションではNode単体smoke + Playwright headless自動対局で例外なし・T1ADフォールバック未発火を確認済み
@@ -23911,6 +23915,8 @@ if (typeof document !== "undefined") (() => {
 
 
   const APP_CHANGELOG = [
+    {v: "v220.56", d: "2026-11-08", tag: "ui", tagJa: "使いやすくなった", t: "アプリのファイルを約3.5MB小さくしました", p: [
+      "最強AIの重みの数を短い形に丸めて、アプリのファイルを約3.5MB、ダウンロードする量を約2.7MB小さくしました。最強AIどうしの打ち比べで、強さが落ちていないことを確かめました。指し手はまれに前と変わります。"]},
     {v: "v220.55", d: "2026-11-07", tag: "fix", tagJa: "直した", t: "最強AIのデータが読めないときに知らせるようにしました", p: [
       "最強AI（NN＠oui2039）のデータを読み込めなかったとき、これまでは「最強」と表示したまま、読みの浅い別のAIが黙って打っていました。対局や観戦を始める前に知らせ、読み込み直すか、強いAIに替えて続けるかを選べるようにしました。最強AIの中で問題が起きて予備のAIが打ったときも、対局に1回だけ知らせます。v220.53の更新内容の説明も、実際の動きに合わせて直しました。"]},
     {v: "v220.54", d: "2026-11-07", tag: "fix", tagJa: "直した", t: "最後の香・最後のし・相方の攻めの受け方を直しました", p: [
