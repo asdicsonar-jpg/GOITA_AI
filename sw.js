@@ -102,7 +102,7 @@
 // アプリを開いたことがある端末には古いキャッシュが残り続け、新しい index.html が
 // 配信されない(PWAの典型的な事故)。
 
-// Web 公開版（mkweb.py）: 上の注釈の sha は単一 HTML 版の物。この SW が配る Web 版の index.html は sha256 023ba9db0e6dfac9a3364513e3b2c09fc4f06e648b27c82bbfb6b5a8f9c5b644、重みは assets/t1w.84589aaf8f4a.js（sha256 84589aaf8f4af589b76912cb3eb8e3ff71a21434a9cf65ab025c6afb8d03a5ae）。
+// Web 公開版（mkweb.py）: 上の注釈の sha は単一 HTML 版の物。この SW が配る Web 版の index.html は sha256 cdd63f1abefef53b3ce00e1c1b20a79a8cea23da1cc618251e544d79d5402b9c、重みは t1w.84589aaf8f4a.js（sha256 84589aaf8f4af589b76912cb3eb8e3ff71a21434a9cf65ab025c6afb8d03a5ae）。
 
 // ===== Web 公開版（harness/kit/mkweb.py が作る・軽量化 W1b）=====
 // W1 との違い（Web 版の直しの提案 2026-11-07 の P1〜P3・7.1〜7.3）:
@@ -114,11 +114,11 @@
 //   - キャッシュへの書き込みは event.waitUntil で待つ。
 const SCOPE = new URL(self.registration.scope);
 const PFX = "goita|" + SCOPE.pathname + "|";
-const BUILD = "v220.56+023ba9db0e6d";
+const BUILD = "v220.56+cdd63f1abefe";
 const CACHE_NAME = PFX + "shell|" + BUILD;
 const ASSET_CACHE = PFX + "assets";
-const INDEX_SHA = "023ba9db0e6dfac9a3364513e3b2c09fc4f06e648b27c82bbfb6b5a8f9c5b644";
-const ASSETS = [{"u": "assets/t1w.84589aaf8f4a.js", "sha256": "84589aaf8f4af589b76912cb3eb8e3ff71a21434a9cf65ab025c6afb8d03a5ae", "bytes": 2443143}];
+const INDEX_SHA = "cdd63f1abefef53b3ce00e1c1b20a79a8cea23da1cc618251e544d79d5402b9c";
+const ASSETS = [{"u": "t1w.84589aaf8f4a.js", "sha256": "84589aaf8f4af589b76912cb3eb8e3ff71a21434a9cf65ab025c6afb8d03a5ae", "bytes": 2443143}];
 const MARK = new URL("__goita_complete__", SCOPE).href;
 const PRECACHE_OPTIONAL = [
   "manifest.json",
@@ -195,7 +195,7 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
   // 重み: キャッシュにあればそれを返す。無ければ取って、この版の重みで中身が合うときだけ保存する
-  if (url.pathname.startsWith(SCOPE.pathname + "assets/")) {
+  if (url.pathname.startsWith(SCOPE.pathname) && /^(assets\/)?t1w\.[0-9a-f]{12}\.js$/.test(url.pathname.slice(SCOPE.pathname.length))) {   // W1c: 重みは一番上（前の作りの assets/ の中の物も同じに扱う）
     const want = ASSETS.find((a) => new URL(a.u, SCOPE).href === url.href);
     const p = (async () => {
       const hit = await (await caches.open(ASSET_CACHE)).match(url.href);
