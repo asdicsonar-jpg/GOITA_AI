@@ -5,6 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>ごいた — 能登の伝承遊戯</title>
   <!-- build: v220.6 に短い入門コース（3 場面・5 着手）と助言つきの 1 局練習を当てた（配信候補 v220.7 の元）。計画: docs/PLAN_短い入門コース_rev4_Opus5.5.md（§14 の裁定）・docs/PLAN_v220.7_入門コース配信_rev2_Opus5.5.md。適用: harness/apply_quickstart_v2.py。エンジン区画（G・G_B・T1）は不変。 -->
+  <!-- build: v220.59「最強AIが読めないときの窓を Esc・外のクリックで閉じない（T1L）」base=v220.58。
+       指示: Sonar 2026-11-09 v220.58 レビュー対応の作業指示 §3。報告: docs/IMPLEMENTATION_REPORT_v220.59_rev1_Opus5.5.md。
+       変更: harness/spec/v220_59_apply.py（t1Unavailable の窓に _modalLocked）→ lib/release.py（版数・CHANGELOG・バッジ・sw.js）。AI の判断は v220.58 と同じ。
+       CACHE_NAME: goita-v220.58 → goita-v220.59. -->
   <!-- build: v220.58「最強AIが読めないときは配る前に知らせる（T1G）」base=v220.57。
        指示: Sonar 2026-11-08 仕様書 REM-04 →「REM-04 だけ作る」。照らし合わせ: docs/REVIEW_残存改善の仕様書_REM-01〜07_2026-11-08.md。報告: docs/IMPLEMENTATION_REPORT_v220.58_rev1_Opus5.5.md。
        変更: harness/spec/v220_58_apply.py（newMatch・startGame の頭で最強AIが読めるかを見る・窓から続きをやり直す）→ lib/release.py（版数・CHANGELOG・バッジ・sw.js）。AI の判断は v220.57 と同じ。
@@ -2117,7 +2121,7 @@ body.noto #wincut.show .wc-label{animation:wcFude .62s cubic-bezier(.2,.9,.3,1.2
 <div id="setup-screen">
   <!-- build v208: 版数表示は APP_CHANGELOG[0] から起動時に上書きされる(JS が動かない場合の保険としてここにも同じ版数を書いておく)。 -->
   <button type="button" class="setup-version" id="btn-version"
-          aria-label="バージョン v220.58 — 更新内容を見る" title="更新内容を見る"><span id="btn-version-num">v220.58</span><span class="sv-i" aria-hidden="true">ⓘ</span></button>
+          aria-label="バージョン v220.59 — 更新内容を見る" title="更新内容を見る"><span id="btn-version-num">v220.59</span><span class="sv-i" aria-hidden="true">ⓘ</span></button>
   <div class="title-block">
     <h1 class="serif">ごいた</h1>
     <div class="title-sub">能登・宇出津に伝わる竹駒の伝承遊戯</div>
@@ -17129,6 +17133,7 @@ if (typeof document !== "undefined") (() => {
       `<div class="mg-btns"><button class="btn primary" id="t1u-reload">読み込み直す</button>` +
       `<button class="btn" id="t1u-strong">強いAIに替えて続ける</button>` +
       `<button class="btn" id="t1u-cancel">やめる</button></div>`);
+    _modalLocked = true;   /* v220.59 T1L: Esc・窓の外のクリックで閉じない（modal() が false に戻すので、その後に置く。3 つのボタンの closeModal() で解ける） */
     m.querySelector("#t1u-reload").onclick = () => { location.reload(); };
     m.querySelector("#t1u-strong").onclick = () => { for (const s of G.SEATS) if (app.tiers[s] === "t1") app.tiers[s] = "strong"; closeModal(); (typeof cont === "function" ? cont : step)(); };
     m.querySelector("#t1u-cancel").onclick = () => { closeModal(); stopToSetup(); };
@@ -23925,6 +23930,9 @@ if (typeof document !== "undefined") (() => {
 
 
   const APP_CHANGELOG = [
+    {v: "v220.59", d: "2026-11-09", tag: "fix", tagJa: "直した", t: "最強AIが読めないときの知らせが、Escや外のクリックで消えないようにしました", p: [
+      "最強AIのデータが読めないときの知らせを、Escキーや知らせの外のクリックで閉じると、対局も始まらず、開始の画面にも戻らないままになっていました。",
+      "これからは知らせの3つのボタン（読み込み直す・強いAIに替えて続ける・やめる）のどれかで選びます。AIの指し手は変わりません。"]},
     {v: "v220.58", d: "2026-11-08", tag: "fix", tagJa: "直した", t: "最強AIが読めないときは、配る前に知らせるようにしました", p: [
       "最強AIのデータが読めないとき、これまでは駒を配って五しの判断をし、保存した対局を消し、今日の一局を始めた印を付けてから知らせていました。",
       "これからは配る前に知らせます。「やめる」を押せば、保存した対局も今日の一局も、そのまま残ります。AIの指し手は変わりません。"]},
