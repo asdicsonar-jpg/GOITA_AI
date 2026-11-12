@@ -5,6 +5,18 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>ごいた — 能登の伝承遊戯</title>
   <!-- build: v220.6 に短い入門コース（3 場面・5 着手）と助言つきの 1 局練習を当てた（配信候補 v220.7 の元）。計画: docs/PLAN_短い入門コース_rev4_Opus5.5.md（§14 の裁定）・docs/PLAN_v220.7_入門コース配信_rev2_Opus5.5.md。適用: harness/apply_quickstart_v2.py。エンジン区画（G・G_B・T1）は不変。 -->
+  <!-- build: v221.4「棋譜の番号と始まりの条件を記録し、巻き戻せるのを今の勝負の棋譜だけにする（RID・RWL）」base=v221.3。
+       指示: 棋譜分析の実装指示書 第6版の 4.1・4.2・4.4（Sonar 2026-11-12 4 便の 1 便目）。計画: docs/PLAN_v221.4_記録の土台_rev1_Fable5.2.md。報告: docs/IMPLEMENTATION_REPORT_v221.4_rev1_Fable5.2.md。
+       変更: harness/spec/v221_4_apply.py → lib/release.py（版数・CHANGELOG・バッジ・sw.js）。AI の判断は v221.3 と同じ。
+       CACHE_NAME: goita-v221.3 → goita-v221.4. -->
+  <!-- build: v221.3「詰めごいたの窓の文を、元の局に戻れる動きに合わせる（PZT）」base=v221.2。
+       指示: Sonar 2026-11-12 21:49 Ａ案を採用（v221.2 の報告の 3）。報告: docs/IMPLEMENTATION_REPORT_v221.3_rev1_Fable5.2.md。
+       変更: harness/spec/v221_3_apply.py（窓の注意書きの 1 文）→ lib/release.py（版数・CHANGELOG・バッジ・sw.js）。AI の判断は v221.2 と同じ。
+       CACHE_NAME: goita-v221.2 → goita-v221.3. -->
+  <!-- build: v221.2「練習から今の対局へ戻る・局面の作り直しの検査・巻き戻しの権限（PSR・RBS・RWP）」base=v221.1。
+       指示: Sonar 2026-11-12 統合見直し案 第2版の工程 2（R01・S01・現対局の権限）。計画: docs/PLAN_v221.2_練習と今の対局の切り離し_rev1_Fable5.2.md。報告: docs/IMPLEMENTATION_REPORT_v221.2_rev1_Fable5.2.md。
+       変更: harness/spec/v221_2_apply.py → lib/release.py（版数・CHANGELOG・バッジ・sw.js）。AI の判断は v221.1 と同じ。
+       CACHE_NAME: goita-v221.1 → goita-v221.2. -->
   <!-- build: v221.1「記録の守り（保存・再読み込み・書き出しと読み込みで棋譜と成績を失わない: DPS・DPQ・DPI）」base=v221.0。
        指示: Sonar 2026-11-12 統合見直し案 第2版の工程 1（D01〜D05）。計画: docs/PLAN_v221.1_記録の守り_rev1_Fable5.2.md。報告: docs/IMPLEMENTATION_REPORT_v221.1_rev1_Fable5.2.md。
        変更: harness/spec/v221_1_apply.py（保存の形・容量不足・取り込み）→ lib/release.py（版数・CHANGELOG・バッジ・sw.js）。AI の判断は v221.0 と同じ。
@@ -2129,7 +2141,7 @@ body.noto #wincut.show .wc-label{animation:wcFude .62s cubic-bezier(.2,.9,.3,1.2
 <div id="setup-screen">
   <!-- build v208: 版数表示は APP_CHANGELOG[0] から起動時に上書きされる(JS が動かない場合の保険としてここにも同じ版数を書いておく)。 -->
   <button type="button" class="setup-version" id="btn-version"
-          aria-label="バージョン v221.1 — 更新内容を見る" title="更新内容を見る"><span id="btn-version-num">v221.1</span><span class="sv-i" aria-hidden="true">ⓘ</span></button>
+          aria-label="バージョン v221.4 — 更新内容を見る" title="更新内容を見る"><span id="btn-version-num">v221.4</span><span class="sv-i" aria-hidden="true">ⓘ</span></button>
   <div class="title-block">
     <h1 class="serif">ごいた</h1>
     <div class="title-sub">能登・宇出津に伝わる竹駒の伝承遊戯</div>
@@ -12620,6 +12632,7 @@ if (typeof document !== "undefined") (() => {
     } catch (e) {   }
   }
   function saveCfgToStorage() {
+    try { recCondCheck(); } catch (e) {}
     DATA_STORAGE.setItem(CFG_STORAGE_KEY, JSON.stringify((_tutBackup && _tutBackup.cfg) ? _tutBackup.cfg : app.cfg)); 
   }
    
@@ -12949,7 +12962,7 @@ if (typeof document !== "undefined") (() => {
         const st = rebuildState(rec, rec.moves.length);
         if (!st || st.phase === "over") { fail(); return; }   
         app.st = st;
-        app.rec = rec;   
+        app.rec = rec; recLiveRegister(rec);   
         app._scAtStart = {...app.cfg};   
         wakeLockAcquire();   
         log(`―― 前回のつづき（第${app.gameNo}局・第${rec.moves.length + 1}手目から）――`, true);
@@ -13033,6 +13046,11 @@ if (typeof document !== "undefined") (() => {
       ...(IMPORT_SEATS.has(r.humanSeat) ? {humanSeat: r.humanSeat} : {}),
       ...(Number.isSafeInteger(r.matchSeed) && Number.isSafeInteger(r.dealSeq) ? {matchSeed: r.matchSeed, dealSeq: r.dealSeq} : {}),
       ...(r.origin === "local" ? {origin: "local"} : {}),
+      ...(recIdOk(r.rid) ? {rid: r.rid} : {}),
+      ...(recIdOk(r.srcRid) ? {srcRid: r.srcRid} : {}),
+      ...(recIdOk(r.prid) && Number.isSafeInteger(r.fork) ? {prid: r.prid, fork: r.fork} : {}),
+      ...(r.meta ? {meta: r.meta, condMixed: r.condMixed === true ? true : (r.condMixed === false ? false : null)} : {}),
+      ...(r.meta && r.metaB ? {metaB: r.metaB} : {}),
       ...(r.undone ? {undone: true} : {}),   
       ...(Array.isArray(r.goshiHolders) && r.goshiHolders.length ? {goshiHolders: r.goshiHolders.slice()} : {}),   
       moves: r.moves.map(m => ({seat: m.seat, action: m.action, human: m.human,
@@ -13044,6 +13062,76 @@ if (typeof document !== "undefined") (() => {
     if (o.sc == null) delete o.sc;
     if (o.cfv == null) delete o.cfv;
     return o;
+  }
+  const REC_META_SC = ["ah", "ad", "mg", "ct", "rq", "lb", "tp", "ex", "rd", "ht"];
+  let _ridSeq = 0;
+  function recNewId() {
+    let r = "";
+    try { const a = new Uint32Array(2); crypto.getRandomValues(a); r = a[0].toString(36) + a[1].toString(36); }
+    catch (e) { r = Math.floor(performance.now() * 1000).toString(36); }
+    return "r" + Date.now().toString(36) + "-" + (++_ridSeq).toString(36) + "-" + r;
+  }
+  function recIdOk(v) { return typeof v === "string" && /^[A-Za-z0-9_-]{6,64}$/.test(v); }
+  function recHash(str) {
+    let h1 = 0x811c9dc5, h2 = 0x01000193 ^ str.length;
+    for (let i = 0; i < str.length; i++) { const c = str.charCodeAt(i); h1 = Math.imul(h1 ^ c, 0x01000193); h2 = Math.imul(h2 + c, 0x5bd1e995) ^ (h2 >>> 13); }
+    return (h1 >>> 0).toString(36) + (h2 >>> 0).toString(36);
+  }
+  function recMovesKey(r) { return r.moves.map(m => m.seat + m.action.type.charAt(0) + (m.action.koma || "")).join(""); }
+  function recIdOf(r) {
+    if (!r) return null;
+    if (recIdOk(r.rid)) return r.rid;
+    return "L" + recHash([r.matchNo, r.gameNo, r.parent, JSON.stringify(r.initialHands), recMovesKey(r), JSON.stringify(r.scoresBefore || null)].join("|"));
+  }
+  function recMetaClean(m) {
+    if (!m || typeof m !== "object") return null;
+    const out = {v: 1, hs: IMPORT_SEATS.has(m.hs) ? m.hs : null, target: REC_TARGETS.has(m.target) ? m.target : null,
+      mode: ["match", "daily", "watch"].includes(m.mode) ? m.mode : null, tiers: null, sc: null};
+    if (m.tiers && typeof m.tiers === "object") {
+      out.tiers = {};
+      for (const x of ["N", "W", "S", "E"]) out.tiers[x] = (typeof m.tiers[x] === "string" && /^[a-z0-9]{1,12}$/.test(m.tiers[x])) ? m.tiers[x] : null;
+    }
+    if (m.sc && typeof m.sc === "object") {
+      out.sc = {};
+      for (const k of REC_META_SC) out.sc[k] = typeof m.sc[k] === "boolean" ? m.sc[k] : null;
+    }
+    if (Number.isSafeInteger(m.at) && m.at >= 0 && m.at <= 300) out.at = m.at;
+    return out;
+  }
+  function recMetaNow() {
+    const c = app.cfg, t = app.tiers || {};
+    const hs = app._humanSeatBeforeReview !== undefined ? app._humanSeatBeforeReview : app.humanSeat;
+    return Object.freeze({v: 1, hs: hs || null, target: REC_TARGETS.has(c.target) ? c.target : null,
+      mode: app.daily ? "daily" : (hs ? "match" : "watch"),
+      tiers: Object.freeze({N: t.N || null, W: t.W || null, S: t.S || null, E: t.E || null}),
+      sc: Object.freeze({ah: !!c.assistHi, ad: !!c.advice, mg: !!c.missGuard, ct: !!(c.counts || c.countsHold), rq: !!c.riverseq,
+        lb: !!c.livebar, tp: !!c.tempo, ex: !!c.explain, rd: !!c.reading, ht: !!c.hints})});
+  }
+  function recMetaSame(a, b) {
+    const k = m => JSON.stringify([m.hs, m.target, m.tiers && ["N", "W", "S", "E"].map(x => m.tiers[x]), m.sc && REC_META_SC.map(x => m.sc[x])]);
+    return !!a && !!b && k(a) === k(b);
+  }
+  function recCondCheck() {
+    const r = app.rec;
+    if (!r || !r.meta || r.practice || r.condMixed !== false || app.tutorial) return;
+    if (!recMetaSame(r.metaB || r.meta, recMetaNow())) r.condMixed = true;
+  }
+  function recBranchFields(src, i) {
+    const now = recMetaNow();
+    const mixed = src.condMixed === true ? true : ((!src.meta || src.condMixed !== false) ? null : (recMetaSame(src.meta, now) ? false : true));
+    return {rid: recNewId(), prid: recIdOf(src), fork: i, ...(src.meta ? {meta: src.meta, metaB: Object.freeze({...now, at: i}), condMixed: mixed} : {}),
+      hinted: true, undone: true};
+  }
+  const _liveReg = new WeakMap();
+  function recLiveRegister(rec) {
+    if (rec && !rec.practice && !rec.imported && !app.tutorial && !(app.research && app.research.active)) _liveReg.set(rec, midCur());
+  }
+  function canRewindLiveMatch(rec, i) {
+    if (!rec || rec.imported || rec.practice || rec.daily) return false;
+    if (app.daily || app.tutorial || (app.research && app.research.active)) return false;
+    if (app.matchOver || app.scores.NS >= app.cfg.target || app.scores.EW >= app.cfg.target) return false;
+    if (!app.matchId || _liveReg.get(rec) !== app.matchId) return false;
+    return Number.isSafeInteger(i) && i >= 0 && i <= rec.moves.length;
   }
   function slimRecLight(g) {
     const miss = new Set(Array.isArray(g.misses) ? g.misses : []);
@@ -14094,6 +14182,18 @@ if (typeof document !== "undefined") (() => {
     if (REC_TARGETS.has(rec.target)) out.target = rec.target;
     if (IMPORT_SEATS.has(rec.humanSeat)) out.humanSeat = rec.humanSeat;
     if ((opt.preserveLive || opt.trustOrigin) && rec.origin === "local") out.origin = "local";
+    if (recIdOk(rec.rid)) out.rid = rec.rid;
+    if (recIdOk(rec.srcRid)) out.srcRid = rec.srcRid;
+    if (recIdOk(rec.prid) && Number.isSafeInteger(rec.fork) && rec.fork >= 0 && rec.fork <= 300) { out.prid = rec.prid; out.fork = rec.fork; }
+    {
+      const m = recMetaClean(rec.meta);
+      if (m) {
+        out.meta = Object.freeze(m);
+        out.condMixed = rec.condMixed === true ? true : (rec.condMixed === false ? false : null);
+        const mb = recMetaClean(rec.metaB);
+        if (mb) out.metaB = Object.freeze(mb);
+      }
+    }
     if (opt.keepMeta) {
       if (Number.isSafeInteger(rec.cfv) && rec.cfv >= 0 && rec.cfv <= 100) out.cfv = rec.cfv;
       if (rec.sc && typeof rec.sc === "object") {
@@ -14166,18 +14266,23 @@ if (typeof document !== "undefined") (() => {
   
   
   const _rebuildWarned = new Set();
+  let _rebuildLast = null;
   function rebuildState(rec, upto) {
     const sb = rec.scoresBefore || {NS: 0, EW: 0};
     const st = G.newGameState(rec.initialHands, rec.parent);
     if (Array.isArray(rec.goshiHolders) && rec.goshiHolders.length) st.goshiHolders = rec.goshiHolders.filter(s => G.SEATS.includes(s));   
     st.matchScores = {NS: sb.NS, EW: sb.EW};
     st.matchTarget = REC_TARGETS.has(rec.target) ? rec.target : app.cfg.target;
+    let _applied = 0;
     for (let i = 0; i < upto && i < rec.moves.length; i++) {
       if (st.phase === "over") break;
       const mv = rec.moves[i], act = mv && mv.action;
       if (!act) break;
       let bad = null;
-      if (mv.seat && mv.seat !== st.actor) bad = `手番不一致(記録=${mv.seat}/再現=${st.actor})`;
+      if ((st.phase === "bury" && act.type !== "bury") || (st.phase === "attack" && act.type !== "attack") ||
+          (st.phase === "respond" && act.type !== "receive" && act.type !== "pass"))
+        bad = `局面の段（${st.phase}）と着手の種類（${act.type}）が合いません`;
+      else if (mv.seat && mv.seat !== st.actor) bad = `手番不一致(記録=${mv.seat}/再現=${st.actor})`;
       else if (act.koma && (act.type === "bury" || act.type === "attack" || act.type === "receive") &&
                !(st.hands[st.actor] || []).includes(act.koma)) bad = `手駒に無い${act.type}「${act.koma}」`;
       else if (act.type === "receive" &&
@@ -14192,9 +14297,16 @@ if (typeof document !== "undefined") (() => {
         break;
       }
       G.advance(st, act);
+      _applied = i + 1;
     }
+    _rebuildLast = {rec, upto, applied: _applied, ok: _applied >= Math.min(upto, rec.moves.length)};
     return st;
   }
+  function rebuildOk(rec, upto) {
+    const st = rebuildState(rec, upto);
+    return (_rebuildLast && _rebuildLast.rec === rec && _rebuildLast.upto === upto && _rebuildLast.ok) ? st : null;
+  }
+  const REBUILD_NG_MSG = "この棋譜は途中で記録が合わなくなるため、この局面からは始められません";
   function displayState() {
     if (app.review && app.reviewRec) return rebuildState(app.reviewRec, app.review.idx + 1);
     return app.st;
@@ -17151,6 +17263,7 @@ if (typeof document !== "undefined") (() => {
     if (isHuman(seat) && a.type === "pass") haptic("pass");
     if (a.type === "pass") floatSeatLabel(seat, "なし", "nashi");   
     if (app.cfg.explain && !isHuman(seat) && a.why) log(`　└ ${a.why}`, false, "ai-note");
+    recCondCheck();
     app.rec.moves.push({seat, action: (a.intent && a.intent.rejectShi === true) ? {type: a.type, koma: a.koma || null, intent: {rejectShi: true}} : {type: a.type, koma: a.koma || null},   
                         src: a.src || null, why: a.why || null,
                         thinkMs: thinkMs != null ? thinkMs : null,
@@ -17653,7 +17766,7 @@ if (typeof document !== "undefined") (() => {
       app.rec = {gameNo: app.gameNo, parent: app.parent,
                  initialHands: {N: hands.N.slice(), W: hands.W.slice(), S: hands.S.slice(), E: hands.E.slice()},
                  scoresBefore: {NS: app.scores.NS, EW: app.scores.EW}, moves: [],
-                 matchSeed: app.matchSeed, dealSeq: app.dealSeq, target: app.cfg.target, origin: "local", ...(app.humanSeat ? {humanSeat: app.humanSeat} : {})};   
+                 matchSeed: app.matchSeed, dealSeq: app.dealSeq, target: app.cfg.target, origin: "local", ...(app.humanSeat ? {humanSeat: app.humanSeat} : {}), rid: recNewId(), meta: recMetaNow(), condMixed: false}; recLiveRegister(app.rec);   
       if (app.daily) { app.daily.dealt = true; app.rec.daily = app.daily.date; if (app.daily.replay) app.rec.dailyReplay = true; }   
       log(`―― 第${app.gameNo}局（親: ${seatDisp(app.parent)}）――`, true);
       kifu(`―― 第${app.gameNo}局 親:${seatDisp(app.parent)} ――`);   
@@ -17700,7 +17813,7 @@ if (typeof document !== "undefined") (() => {
         app.rec = {gameNo: app.gameNo, parent: app.parent,
                    initialHands: {N: hands.N.slice(), W: hands.W.slice(), S: hands.S.slice(), E: hands.E.slice()},
                    scoresBefore: {NS: app.scores.NS, EW: app.scores.EW}, moves: [],
-                   matchSeed: app.matchSeed, dealSeq: app.dealSeq, target: app.cfg.target, origin: "local", ...(app.humanSeat ? {humanSeat: app.humanSeat} : {})};   
+                   matchSeed: app.matchSeed, dealSeq: app.dealSeq, target: app.cfg.target, origin: "local", ...(app.humanSeat ? {humanSeat: app.humanSeat} : {}), rid: recNewId(), meta: recMetaNow(), condMixed: false}; recLiveRegister(app.rec);   
         log(`―― 第${app.gameNo}局（親: ${seatDisp(app.parent)}）――`, true);
         kifu(`―― 第${app.gameNo}局 親:${seatDisp(app.parent)} ――`);   
         for (const s of G.SEATS) kifu(`配牌 ${seatDisp(s)}: ${hands[s].join("")}`);
@@ -18822,14 +18935,17 @@ if (typeof document !== "undefined") (() => {
     }
   }
   function startPractice(rec, idx, drillMeta, label) {
-    settleDealing("rollback");   
+    if (!rebuildOk(rec, idx)) { try { toast(REBUILD_NG_MSG); } catch (e) {} return; }
+    const _wasDealing = settleDealing("rollback");
+    const _liveSnap = app.preDrill ? null : practiceLiveSnap(_wasDealing);   
     cancelAppTimer();
     closeModal();
     closeReview();
     app.matchOver = false;
     app.stopped = false;
+    const _seatTemp = !app.humanSeat;
     if (!app.humanSeat) { app.humanSeat = "S"; $("handarea").classList.add("show"); }
-    if (!app.preDrill) app.preDrill = {parent: app.parent, gameNo: app.gameNo};
+    if (!app.preDrill) app.preDrill = {parent: app.parent, gameNo: app.gameNo, live: _liveSnap, seatTemp: _seatTemp};
     app.st = rebuildState(rec, idx);
     app.rec = {gameNo: rec.gameNo, parent: rec.parent, scoresBefore: rec.scoresBefore,
                ...branchRecBase(rec, idx), practice: true};
@@ -18850,13 +18966,42 @@ if (typeof document !== "undefined") (() => {
     renderAll();
     step();
   }
+  function practiceLiveSnap(wasDealing) {
+    const hs = app._humanSeatBeforeReview !== undefined ? app._humanSeatBeforeReview : app.humanSeat;
+    const pz = app._pzWasLive === true; app._pzWasLive = false;
+    const st = app.st, rec = app.rec;
+    if (wasDealing || !hs || !st || !rec || rec.practice || st.phase === "over" || app.matchOver || app._fromSetup ||
+        (app.stopped && !pz) || app.tutorial || (app.research && app.research.active)) return null;
+    return {st, rec, lastRec: app.lastRec, lastWin: app.lastWin, scAtStart: app._scAtStart,
+      kifu: app.kifuLines, kifuLen: app.kifuLines.length, matchId: app.matchId, scores: JSON.stringify(app.scores)};
+  }
+  function practiceLiveRestore(s) {
+    if (!s || !s.st || !s.rec || s.st.phase === "over" || s.matchId !== app.matchId || app.tutorial ||
+        s.scores !== JSON.stringify(app.scores) || !app.humanSeat) return false;
+    cancelAppTimer();
+    app.st = s.st; app.rec = s.rec; app.lastRec = s.lastRec; app.lastWin = s.lastWin; app._scAtStart = s.scAtStart;
+    app.matchOver = false; app.stopped = false;
+    if (app.kifuLines === s.kifu && app.kifuLines.length > s.kifuLen) { app.kifuLines.length = s.kifuLen; syncKifuBtn(); }
+    $("stamp").classList.remove("show");
+    $("wincut").classList.remove("show", "out");
+    log(`―― 対局に戻りました（第${app.gameNo}局・第${app.rec.moves.length + 1}手目から）――`, true);
+    actionbar("");
+    undoReset(); undoPush();
+    renderAll();
+    step();
+    return true;
+  }
   function endPractice() {
     const _swapped = restoreSeatSwap();
+    const _live = app.preDrill ? app.preDrill.live : null;
+    const _seatBack = !!(app.preDrill && app.preDrill.seatTemp);
     undoReset();   
     app.drill = null;
     app.bannerBase = null;
     modeBanner(null);
     if (app.preDrill) { app.parent = app.preDrill.parent; app.gameNo = app.preDrill.gameNo; app.preDrill = null; }
+    if (_seatBack) { app.humanSeat = null; $("handarea").classList.remove("show"); }
+    if (practiceLiveRestore(_live)) return;
     const over = app.scores.NS >= app.cfg.target || app.scores.EW >= app.cfg.target;
     actionbar("", (app._fromSetup || app.daily) ? [{label: "設定へ戻る", primary: true, fn: stopToSetup}]   
       : over
@@ -19076,8 +19221,8 @@ if (typeof document !== "undefined") (() => {
     rec.moves.forEach((mv, i) => {
       if (!mv.human || mv.sig !== undefined) return;   
       if (mv.action.type !== "attack") return;          
-      const st = rebuildState(rec, i);
-      if (st.phase === "over" || st.actor !== mv.seat) return;
+      const st = rebuildOk(rec, i);
+      if (!st || st.phase === "over" || st.actor !== mv.seat) return;
       
       
       
@@ -19115,8 +19260,8 @@ if (typeof document !== "undefined") (() => {
     let computedFresh = false;
     rec.moves.forEach((mv, i) => {
       if (!mv.human || mv.cf) return;
-      const st = rebuildState(rec, i);
-      if (st.phase === "over" || st.actor !== mv.seat) return;
+      const st = rebuildOk(rec, i);
+      if (!st || st.phase === "over" || st.actor !== mv.seat) return;
       if (st.phase === "respond" && mv.action.type === "pass" &&
           !G.legalReceives(st.hands[mv.seat], st.pendingAttack).length) {
         mv.forced = true;   
@@ -20300,7 +20445,7 @@ if (typeof document !== "undefined") (() => {
           ? `<button class="rv-resume" data-line="${i}">手順</button>` : "") +
           (!mv.parNote ? `<button class="rv-resume" data-par="${i}" title="全手駒を公開した事後の答え合わせ。悪手判定には使いません">全公開</button>` : "") +
         (app.reviewRec.initialHands && seatSwapTarget(mv) ? `<button class="rv-resume" data-swap="${i}">${seatSwapLabel(mv.seat)}</button>` : "") +
-        `<button class="rv-resume" data-i="${i}">▶ ここから再プレイ</button></span></span>`;
+        `<button class="rv-resume" data-i="${i}">${canRewindLiveMatch(app.reviewRec, i) ? "▶ ここから再プレイ（対局を巻き戻す）" : "▶ ここから練習"}</button></span></span>`;
       item.addEventListener("click", ev => {
         if (ev.target.dataset.mc !== undefined) {
           mcReevaluate(+ev.target.dataset.mc);
@@ -20525,9 +20670,10 @@ if (typeof document !== "undefined") (() => {
   }
   
   function resumeFromMove(i) {
+    if (!rebuildOk(app.reviewRec, i)) { try { toast(REBUILD_NG_MSG); } catch (e) {} return; }
     restoreSeatSwap();
     const rec = app.reviewRec;
-    if (rec.imported || rec.practice || rec.daily) {   
+    if (!canRewindLiveMatch(rec, i)) {   
       
       startPractice(rec, i, null, rec.daily ? `今日の一局の再プレイ: #${i + 1}` : `${rec.origin === "local" ? "過去の対局" : "読込局面"}の再プレイ: 第${rec.matchNo}勝負・第${rec.gameNo}局 #${i + 1}`);
       return;
@@ -20548,6 +20694,7 @@ if (typeof document !== "undefined") (() => {
     if (_mid) {
       if (Number.isSafeInteger(rec.matchNo)) app.matchNo = rec.matchNo;   
       const _n0 = app.matchRecs.length + app.career.length;
+      for (const r of [...app.matchRecs, app.rec, app.lastRec]) if (r && _liveReg.get(r) === _mid && r.gameNo >= rec.gameNo) _liveReg.delete(r);
       app.matchRecs = app.matchRecs.filter(r => _midOf.get(r) !== _mid || r.gameNo < rec.gameNo);
       app.career = app.career.filter(c => c.imported || _midOf.get(c) !== _mid || c.g < rec.gameNo);
       _del = _n0 - app.matchRecs.length - app.career.length;
@@ -20563,7 +20710,7 @@ if (typeof document !== "undefined") (() => {
     app.rec = {gameNo: rec.gameNo, parent: rec.parent,
                scoresBefore: rec.scoresBefore,
                ...branchRecBase(rec, i),
-               ...(Number.isSafeInteger(rec.matchSeed) && Number.isSafeInteger(rec.dealSeq) ? {matchSeed: rec.matchSeed, dealSeq: rec.dealSeq} : {}), target: app.cfg.target, origin: "local", ...(app.humanSeat ? {humanSeat: app.humanSeat} : {})};   
+               ...(Number.isSafeInteger(rec.matchSeed) && Number.isSafeInteger(rec.dealSeq) ? {matchSeed: rec.matchSeed, dealSeq: rec.dealSeq} : {}), target: app.cfg.target, origin: "local", ...(app.humanSeat ? {humanSeat: app.humanSeat} : {}), ...recBranchFields(rec, i)}; recLiveRegister(app.rec); app._matchUndone = true;   
     app.lastRec = null;
     app._scAtStart = {...app.cfg};   
     closeReview();
@@ -22803,6 +22950,7 @@ if (typeof document !== "undefined") (() => {
           try { r = sanitizeImportedRec(rawRec, {keepMeta: true}); }
           catch (e) { throw new Error(`棋譜の ${idx + 1} 件目が不正です（${e.message}）。何も取り込んでいません`); }
           if (haveR.has(rk(r))) return;
+          if (recIdOk(r.rid) && [...app.matchRecs, ...app.importedRecs, ...newRecs].some(x => x.rid === r.rid)) { r.srcRid = r.rid; r.rid = recNewId(); }
           haveR.add(rk(r));
           newRecs.push(r);
         });
@@ -23978,6 +24126,7 @@ if (typeof document !== "undefined") (() => {
     closeModal();
     enterFromSetupScreen();   
     cancelAppTimer();
+    app._pzWasLive = !app.stopped && !app._fromSetup;
     app.stopped = true;
     
     
@@ -24005,7 +24154,7 @@ if (typeof document !== "undefined") (() => {
     const m = modal(`
       <h2 class="serif">詰めごいた</h2>
       <p>Solverが「確実な上がり」を証明する局面を自動生成して出題します。あなたの手番から、読み切って上がってください。</p>
-      <p class="note">正解判定はSolverの読み筋との一致。別の手を選んだ場合は結末（あなたが上がれたか）で判定します。練習扱いで、成績の一致率・逃しには影響しません。対局の途中で始めるとその局は破棄されます（得点は保たれます）。</p>
+      <p class="note">正解判定はSolverの読み筋との一致。別の手を選んだ場合は結末（あなたが上がれたか）で判定します。練習扱いで、成績の一致率・逃しには影響しません。対局の途中で始めても、終わって「対局へ戻る」を押すと元の局のつづきに戻れます（得点もそのままです）。</p>
       <button class="btn pz" data-band="basic"><span><b>入門</b>　残り3〜4枚</span><span class="pzd">仕上げの短い読み — 詰めの感覚づくりに</span></button>
       <button class="btn pz" data-band="mid"><span><b>中級</b>　残り5枚</span><span class="pzd">攻め番からの読み切り — 取り尽くしの計算</span></button>
       <button class="btn pz" data-band="adv"><span><b>有段</b>　残り6枚</span><span class="pzd">受け・伏せ込みの長い読み — かかり・場から敵の手を推測する実戦終盤の型</span></button>
@@ -24024,6 +24173,15 @@ if (typeof document !== "undefined") (() => {
 
 
   const APP_CHANGELOG = [
+    {v: "v221.4", d: "2026-11-12", tag: "ui", tagJa: "変わった", t: "振り返りの「再プレイ」を、今の勝負の巻き戻しと練習に分けました", p: [
+      "振り返りのボタンが2つの文に分かれます。今の勝負の局は「ここから再プレイ（対局を巻き戻す）」で、押すとその場面まで今の対局を巻き戻します。終わった勝負・前の勝負・読み込んだ棋譜は「ここから練習」で、今の対局の点や成績を変えずに練習できます。",
+      "巻き戻して打ち直した局は、1手戻した局と同じく、成績と卒業の試しの集計から外します。",
+      "棋譜に、局を始めたときの条件（席ごとのAI・助言の設定・先取点）を記録するようにしました。これからの振り返りの改善に使います。AIの指し手は変わりません。"]},
+    {v: "v221.3", d: "2026-11-12", tag: "fix", tagJa: "直した", t: "詰めごいたの案内の文を、元の局に戻れる動きに合わせました", p: [
+      "詰めごいたの窓に、対局の途中で始めるとその局は破棄されます、と出ていましたが、v221.2 から、終わって「対局へ戻る」を押すと元の局のつづきに戻れます。案内の文をその動きに合わせました。AIの指し手は変わりません。"]},
+    {v: "v221.2", d: "2026-11-12", tag: "fix", tagJa: "直した", t: "対局の途中で練習をしても、元の局のつづきに戻れるようにしました", p: [
+      "対局の途中で、逃し復習・詰めごいた・読み込んだ棋譜の再プレイなどの練習をして「対局へ戻る」を押すと、途中だった局が消えて次の局から始まっていました。これからは、途中だった局の同じ場面に戻ります。",
+      "記録が途中で合わなくなる棋譜は、そこから先の場面を正しい場面として扱わず、練習や再プレイを始めないようにしました。AIの指し手は変わりません。"]},
     {v: "v221.1", d: "2026-11-12", tag: "fix", tagJa: "直した", t: "棋譜と成績の記録を、保存・再読み込み・ファイルの読み書きで失わないようにしました", p: [
       "端末の保存がいっぱいのとき、古い棋譜を黙って消していました。これからは棋譜を消さず、AIの説明文を省いて保存し、それでも入らなければ前の保存を残して画面でお知らせします。",
       "成績の「保存」で書き出したファイルを読み込むと、逃しの無い局の棋譜が入りませんでした。これからは全部の局が入ります。途中に読めない棋譜があるファイルは、一部だけ入れずに丸ごと断ります。",
