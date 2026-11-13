@@ -5,6 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>ごいた — 能登の伝承遊戯</title>
   <!-- build: v220.6 に短い入門コース（3 場面・5 着手）と助言つきの 1 局練習を当てた（配信候補 v220.7 の元）。計画: docs/PLAN_短い入門コース_rev4_Opus5.5.md（§14 の裁定）・docs/PLAN_v220.7_入門コース配信_rev2_Opus5.5.md。適用: harness/apply_quickstart_v2.py。エンジン区画（G・G_B・T1）は不変。 -->
+  <!-- build: v222.0「強い AI の勝負の評価に先取点を渡す（MEQ）」base=v221.7。エンジンの便。
+       指示: 統合見直し案 第2版 5.1（A01・Sonar 2026-11-13 直す）。計画: docs/PLAN_v222.0_勝負の評価の先取点_rev1_Fable5.2.md。報告: docs/IMPLEMENTATION_REPORT_v222.0_rev1_Fable5.2.md。
+       変更: harness/spec/v222_0_apply.py → lib/release.py（版数・CHANGELOG・バッジ・sw.js）。先取点 150 の手は v221.7 と同じ。先取点 100・300 の「強い」「協力」の手と助言が変わる。
+       CACHE_NAME: goita-v221.7 → goita-v222.0. -->
   <!-- build: v221.7「今回の 1 問（元の対局に触れない一手クイズ: KFQ）」base=v221.6。
        指示: 棋譜分析の実装指示書 第6版の 2・2.1・1.5（Sonar 2026-11-13 次の工程に進め・範囲を広げて作る）。計画: docs/PLAN_v221.7_今回の1問_rev1_Fable5.2.md。報告: docs/IMPLEMENTATION_REPORT_v221.7_rev1_Fable5.2.md。
        変更: harness/spec/v221_7_apply.py → lib/release.py（版数・CHANGELOG・バッジ・sw.js）。元の対局・保存・局の終わりの今の解析はそのまま。AI の判断は v221.6 と同じ。
@@ -2153,7 +2157,7 @@ body.noto #wincut.show .wc-label{animation:wcFude .62s cubic-bezier(.2,.9,.3,1.2
 <div id="setup-screen">
   <!-- build v208: 版数表示は APP_CHANGELOG[0] から起動時に上書きされる(JS が動かない場合の保険としてここにも同じ版数を書いておく)。 -->
   <button type="button" class="setup-version" id="btn-version"
-          aria-label="バージョン v221.7 — 更新内容を見る" title="更新内容を見る"><span id="btn-version-num">v221.7</span><span class="sv-i" aria-hidden="true">ⓘ</span></button>
+          aria-label="バージョン v222.0 — 更新内容を見る" title="更新内容を見る"><span id="btn-version-num">v222.0</span><span class="sv-i" aria-hidden="true">ⓘ</span></button>
   <div class="title-block">
     <h1 class="serif">ごいた</h1>
     <div class="title-sub">能登・宇出津に伝わる竹駒の伝承遊戯</div>
@@ -5780,7 +5784,7 @@ const G = (() => {
             pendingAttack: st.pendingAttack, attacker: st.attacker,
             hands, board, history: st.history.slice(),
             respQueue: st.respQueue.slice(), respIdx: st.respIdx,
-            matchScores: st.matchScores, solverCache: {},
+            matchScores: st.matchScores, matchTarget: st.matchTarget, solverCache: {},
             goshiHolders: st.goshiHolders || [],   // build v172: SHI_TEAM検証で欠落発覚・追加
             rejShi: Object.assign({}, st.rejShi)};   // build v174: レビューN-5対応・estimatePartnerShiの拒否キャップ入力に直結するため追加
   }
@@ -7282,18 +7286,18 @@ const G = (() => {
     return raw.map(([v, p]) => [v, p / s]);   // 正規化 (丸めの質量漏れ解消)
   })();
   const meqMemo = new Map();
-  function matchEquity(a, b, pm) {
+  function matchEquity(a, b, pm, tgt) { const T = (tgt === 100 || tgt === 300) ? tgt : MEQ_TARGET;   /* v222.0 MEQ: 先取点（100・300）を受け取る。ほかの値・省略は今までどおり 150 */
     if (!Number.isFinite(a) || !Number.isFinite(b)) return 0.5;   // 異常入力ガード（NaN点等での無限再帰を防止）
-    if (a >= MEQ_TARGET) return 1;
-    if (b >= MEQ_TARGET) return 0;
-    const key = a * 1024 + b * 4 + (pm ? 1 : 0);
+    if (a >= T) return 1;
+    if (b >= T) return 0;
+    const key = ((T * 1024 + a) * 1024 + b) * 2 + (pm ? 1 : 0);   /* 先取点を鍵に入れる（先取点の違う値を取り違えない） */
     let v = meqMemo.get(key);
     if (v !== undefined) return v;
     const pw = pm ? MEQ_PWIN : 1 - MEQ_PWIN;
     let winSide = 0, loseSide = 0;
     for (const [pts, p] of MEQ_PTS) {
-      winSide += p * matchEquity(a + pts, b, true);
-      loseSide += p * matchEquity(a, b + pts, false);
+      winSide += p * matchEquity(a + pts, b, true, T);
+      loseSide += p * matchEquity(a, b + pts, false, T);
     }
     v = pw * winSide + (1 - pw) * loseSide;
     meqMemo.set(key, v);
@@ -7308,7 +7312,7 @@ const G = (() => {
           const ms = st.matchScores || {NS: 0, EW: 0};
           const myT = team(seat), opT = myT === "NS" ? "EW" : "NS";
           const pm = res.nextParent ? team(res.nextParent) === myT : true;
-          return (matchEquity(ms[myT] || 0, ms[opT] || 0, pm) - 0.5) * 2;
+          return (matchEquity(ms[myT] || 0, ms[opT] || 0, pm, st.matchTarget) - 0.5) * 2;
         }
         return meqEval(st, seat, res);
       };
@@ -7323,8 +7327,8 @@ const G = (() => {
     const a = ms[myT] || 0, b = ms[opT] || 0;
     const pts = Number.isFinite(res.pts) ? res.pts : 0;          // 終局点の非有限ガード
     const myWin = team(res.winner) === myT;
-    const W = myWin ? matchEquity(a + pts, b, true)
-                    : matchEquity(a, b + pts, false);
+    const W = myWin ? matchEquity(a + pts, b, true, st.matchTarget)
+                    : matchEquity(a, b + pts, false, st.matchTarget);
     return (W - 0.5) * 2;          // [-1, 1] に整形 (UCBのスケール整合)
   }
   // 伏せMC: 各伏せ候補をDD厳密解/ロールアウト(CRN対評価)で比較。L0/L1の伏せ定石代替。
@@ -7419,7 +7423,7 @@ const G = (() => {
     }
     for (const x of SEATS) { if (hands[x].length !== 8) { ATK_CONS_DIAG.shape++; return 1; } hands[x].sort(); }
     const r = newGameState(hands, st.parent);
-    r.matchScores = st.matchScores;
+    r.matchScores = st.matchScores; r.matchTarget = st.matchTarget;
     r.goshiHolders = SEATS.filter(x => hands[x].filter(kk => kk === "し").length === 5);   // 候補世界の初期手から再導出(計器と同一)
     if (r.goshiHolders.join() !== (st.goshiHolders || []).join()) ATK_CONS_DIAG.goshiDiff++;
     const oR = Object.assign({}, o, {noMC: true});
@@ -8523,7 +8527,7 @@ const G = (() => {
         parent: st.parent, actor: st.actor, phase: st.phase,
         attacker: st.attacker, pendingAttack: st.pendingAttack,
         respQueue: st.respQueue.slice(), respIdx: st.respIdx,
-        matchScores: st.matchScores, solverCache: {},
+        matchScores: st.matchScores, matchTarget: st.matchTarget, solverCache: {},
         rejShi: Object.assign({}, st.rejShi),
         goshiHolders: st.goshiHolders || [],
       };
@@ -8539,7 +8543,7 @@ const G = (() => {
       parent: st.parent, actor: st.actor, phase: st.phase,
       attacker: st.attacker, pendingAttack: st.pendingAttack,
       respQueue: st.respQueue.slice(), respIdx: st.respIdx,
-      matchScores: st.matchScores,
+      matchScores: st.matchScores, matchTarget: st.matchTarget,
       solverCache: {},
       rejShi: Object.assign({}, st.rejShi),
       goshiHolders: st.goshiHolders || [],   // build v172: SHI_TEAM検証で欠落発覚・追加
@@ -24811,6 +24815,10 @@ if (typeof document !== "undefined") (() => {
 
 
   const APP_CHANGELOG = [
+    {v: "v222.0", d: "2026-11-13", tag: "read", tagJa: "読みが良くなった", t: "先取点300点・100点の勝負で、強いAIが点の状況を正しく読むようになりました", p: [
+      "強いAI（と協力のAI・助言）は、勝負に勝つ見込みを数えるときに、先取点をいつも150点として数えていました。先取点300点の勝負では、どちらかが150点を越えると、どの手も同じ値に見えてしまい、打ち方が弱くなっていました。",
+      "先取点（100点・150点・300点）をそのまま使って数えるように直しました。先取点150点の勝負では、AIの指し手は前と変わりません。",
+      "最強のAI（T1）は前から先取点に対応しているので変わりません。"]},
     {v: "v221.7", d: "2026-11-13", tag: "ui", tagJa: "変わった", t: "「今回の1問」を足しました（打った局の1つの場面を、答えを見ずに選び直す）", p: [
       "局が終わったあとの画面と振り返りに「今回の1問」が出ることがあります。押すと、その局の1つの場面で、当時あなたに見えていた物（手駒・場に出た駒・点）だけを見て、どの手にするかを選び直せます。",
       "出るのは、確実に上がれる手順が確認できた場面がある局だけです（6局から10局に1局ほど）。答えたあとに、選んだ手と比べる手・狙いと成り立つわけ・実際に起きたことを順に出します。確かめられない答えを誤りとは言いません。",
