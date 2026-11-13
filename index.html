@@ -5,6 +5,18 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>ごいた — 能登の伝承遊戯</title>
   <!-- build: v220.6 に短い入門コース（3 場面・5 着手）と助言つきの 1 局練習を当てた（配信候補 v220.7 の元）。計画: docs/PLAN_短い入門コース_rev4_Opus5.5.md（§14 の裁定）・docs/PLAN_v220.7_入門コース配信_rev2_Opus5.5.md。適用: harness/apply_quickstart_v2.py。エンジン区画（G・G_B・T1）は不変。 -->
+  <!-- build: v221.7「今回の 1 問（元の対局に触れない一手クイズ: KFQ）」base=v221.6。
+       指示: 棋譜分析の実装指示書 第6版の 2・2.1・1.5（Sonar 2026-11-13 次の工程に進め・範囲を広げて作る）。計画: docs/PLAN_v221.7_今回の1問_rev1_Fable5.2.md。報告: docs/IMPLEMENTATION_REPORT_v221.7_rev1_Fable5.2.md。
+       変更: harness/spec/v221_7_apply.py → lib/release.py（版数・CHANGELOG・バッジ・sw.js）。元の対局・保存・局の終わりの今の解析はそのまま。AI の判断は v221.6 と同じ。
+       CACHE_NAME: goita-v221.6 → goita-v221.7. -->
+  <!-- build: v221.6「途中の手の上がり筋の確認（初手を固定した単独で確実な手順・検証器・分割実行: KFC）」base=v221.5。
+       指示: 棋譜分析の実装指示書 第6版の 1.2・1.3・1.3.1・6.1（Sonar 2026-11-13 次の工程に進め・結果を画面に出す・結果は保存しない）。計画: docs/PLAN_v221.6_確認手順_rev1_Fable5.2.md。報告: docs/IMPLEMENTATION_REPORT_v221.6_rev1_Fable5.2.md。
+       変更: harness/spec/v221_6_apply.py → lib/release.py（版数・CHANGELOG・バッジ・sw.js）。局の終わりの今の解析・番付・卒業の試しはそのまま。AI の判断は v221.5 と同じ。
+       CACHE_NAME: goita-v221.5 → goita-v221.6. -->
+  <!-- build: v221.5「足す物を先に: 最後の 2 枚の伏せの確かめ・応答の数え直し・点の文の言い直し（PFA・LSD・RSP・CRA・DLR）」base=v221.4。
+       指示: 棋譜分析の実装指示書 第6版の 1.1・1.2・1.2.1・1.3・1.4・1.6（Sonar 2026-11-13 足す物を先に）。計画: docs/PLAN_v221.5_足す物を先に_rev1_Fable5.2.md。報告: docs/IMPLEMENTATION_REPORT_v221.5_rev1_Fable5.2.md。
+       変更: harness/spec/v221_5_apply.py → lib/release.py（版数・CHANGELOG・バッジ・sw.js）。局の終わりの今の解析・番付・卒業の試しはそのまま。AI の判断は v221.4 と同じ。
+       CACHE_NAME: goita-v221.4 → goita-v221.5. -->
   <!-- build: v221.4「棋譜の番号と始まりの条件を記録し、巻き戻せるのを今の勝負の棋譜だけにする（RID・RWL）」base=v221.3。
        指示: 棋譜分析の実装指示書 第6版の 4.1・4.2・4.4（Sonar 2026-11-12 4 便の 1 便目）。計画: docs/PLAN_v221.4_記録の土台_rev1_Fable5.2.md。報告: docs/IMPLEMENTATION_REPORT_v221.4_rev1_Fable5.2.md。
        変更: harness/spec/v221_4_apply.py → lib/release.py（版数・CHANGELOG・バッジ・sw.js）。AI の判断は v221.3 と同じ。
@@ -2141,7 +2153,7 @@ body.noto #wincut.show .wc-label{animation:wcFude .62s cubic-bezier(.2,.9,.3,1.2
 <div id="setup-screen">
   <!-- build v208: 版数表示は APP_CHANGELOG[0] から起動時に上書きされる(JS が動かない場合の保険としてここにも同じ版数を書いておく)。 -->
   <button type="button" class="setup-version" id="btn-version"
-          aria-label="バージョン v221.4 — 更新内容を見る" title="更新内容を見る"><span id="btn-version-num">v221.4</span><span class="sv-i" aria-hidden="true">ⓘ</span></button>
+          aria-label="バージョン v221.7 — 更新内容を見る" title="更新内容を見る"><span id="btn-version-num">v221.7</span><span class="sv-i" aria-hidden="true">ⓘ</span></button>
   <div class="title-block">
     <h1 class="serif">ごいた</h1>
     <div class="title-sub">能登・宇出津に伝わる竹駒の伝承遊戯</div>
@@ -18824,6 +18836,10 @@ if (typeof document !== "undefined") (() => {
       if (!_rep) pastMaybeAdd(app.rec);   
       if (!_rep) app.matchRecs.push(app.rec);   
       if (!_rep) _midOf.set(app.rec, midCur());   
+      if (!cs.h && !_rep) {
+        app.career.push({matchNo: app.matchNo, g: app.gameNo, hinted: !!app.rec.hinted, sc: app.rec.sc, cfv: app.rec.cfv, ...cs, ...(app.rec.undone ? {undone: true} : {})});
+        _midOf.set(app.career[app.career.length - 1], midCur());
+      }
       if (cs.h) {
         
         
@@ -18838,6 +18854,7 @@ if (typeof document !== "undefined") (() => {
         log(line, false, "ai-note");
         kifu(line);
       }
+      kfLogAtEnd(app.rec);
       if (!_rep) saveCareerToStorage();   
     }
     if (_dl && !_dl.replay) {   
@@ -19063,7 +19080,7 @@ if (typeof document !== "undefined") (() => {
     } else if (d) {
       btns.push({label: "逃し復習へ", fn: () => { openMissDrill(); }});
     }
-    btns.push((app._fromSetup || app.daily) ? {label: "設定へ戻る", fn: stopToSetup} : {label: "対局へ戻る", fn: endPractice});   
+    btns.push((app._fromSetup || (app.daily && !(app.preDrill && app.preDrill.live))) ? {label: "設定へ戻る", fn: stopToSetup} : {label: "対局へ戻る", fn: endPractice});   
     actionbar(verdict, btns);
     status("練習終了" + (verdict ? `: ${verdict}` : ""));
   }
@@ -19347,6 +19364,622 @@ if (typeof document !== "undefined") (() => {
     return {h, agree, miss, hasty, byType, avgT: tN ? tSum / tN / 1000 : null};
   }
   
+  const KF_VER = 3, KF_RULES = "kf6-initial-2";
+  const _kfMemo = new WeakMap();
+  function kfFacts(rec) {
+    const m = (rec && rec.meta && !(rec.imported && rec.origin !== "local")) ? rec.meta : null;
+    const t = (m && REC_TARGETS.has(m.target)) ? m.target : null;
+    const sb = rec ? rec.scoresBefore : null;
+    const okS = !!m && !!sb && Number.isSafeInteger(sb.NS) && Number.isSafeInteger(sb.EW) && sb.NS >= 0 && sb.EW >= 0;
+    return {target: {value: t, source: t == null ? "unknown" : "recorded"},
+      scores: {value: okS ? {NS: sb.NS, EW: sb.EW} : null, source: okS ? "recorded" : "unknown"},
+      mode: m ? m.mode : null};
+  }
+  function kfSeatOf(rec) {
+    if (rec.meta && IMPORT_SEATS.has(rec.meta.hs)) return rec.meta.hs;
+    if (IMPORT_SEATS.has(rec.humanSeat)) return rec.humanSeat;
+    const seats = new Set(rec.moves.filter(m => m && m.human).map(m => m.seat));
+    return seats.size === 1 ? [...seats][0] : null;
+  }
+  function kfTerminalScore(rec, i, bury, atk) {
+    const st = rebuildOk(rec, i);
+    if (!st || st.phase !== "bury") return null;
+    G.advance(st, {type: "bury", koma: bury});
+    if (st.phase !== "attack" || !G.legalAttacks(st.hands[st.actor], st.history, st.actor).includes(atk)) return null;
+    const ev = G.advance(st, {type: "attack", koma: atk});
+    return (ev && ev.gameOver && !ev.gameOver.draw && st.phase === "over") ? ev.gameOver.pts : null;
+  }
+  function kfAnalyzeRaw(rec) {
+    const me = kfSeatOf(rec), facts = kfFacts(rec);
+    const out = {v: KF_VER, rules: KF_RULES, state: "complete", me, facts, sum: null, items: [], lineTodo: []};
+    if (!me) { out.state = "failed"; out.reason = "seatUnknown"; return out; }
+    const sum = {decisionCount: 0, forcedCount: 0, cmpEvaluated: 0, review: 0, un: {outOfScope: 0, condUnknown: 0, failed: 0}};
+    for (let i = 0; i < rec.moves.length; i++) {
+      const mv = rec.moves[i];
+      if (!mv || mv.seat !== me || !mv.action) continue;
+      const st = rebuildOk(rec, i);
+      if (!st || st.actor !== me || st.phase === "over") { out.state = "failed"; out.reason = "invalidRecord"; return out; }
+      const hand = st.hands[me].slice();
+      let opts;
+      if (st.phase === "bury") opts = new Set(hand).size;
+      else if (st.phase === "attack") opts = new Set(G.legalAttacks(hand, st.history, me)).size;
+      else opts = G.legalReceives(hand, st.pendingAttack).length + 1;
+      if (opts < 2) { sum.forcedCount++; continue; }
+      sum.decisionCount++;
+      if (!(st.phase === "bury" && hand.length === 2 && hand[0] !== hand[1])) { sum.un.outOfScope++; out.lineTodo.push(i); continue; }
+      const [a, b] = hand;
+      const sa = kfTerminalScore(rec, i, a, b), sb = kfTerminalScore(rec, i, b, a);
+      const it = {i, played: mv.action.koma, cand: [{bury: a, atk: b, score: sa}, {bury: b, atk: a, score: sb}], status: "failed", review: false, bothWin: false};
+      out.items.push(it);
+      if (sa == null || sb == null || (mv.action.koma !== a && mv.action.koma !== b)) { sum.un.failed++; continue; }
+      const known = facts.mode === "match" && facts.target.source === "recorded" && facts.scores.source === "recorded";
+      if (!known) { it.status = "unverified"; sum.un.condUnknown++; continue; }
+      it.status = "evaluated"; sum.cmpEvaluated++;
+      const mine = facts.scores.value[G.team(me)];
+      it.bothWin = mine + Math.min(sa, sb) >= facts.target.value;
+      const got = mv.action.koma === a ? sa : sb, other = mv.action.koma === a ? sb : sa;
+      if (!it.bothWin && got < other) { it.review = true; it.reason = "terminalBuryLowerScore"; sum.review++; }
+    }
+    out.sum = sum;
+    return out;
+  }
+  /* v221.6 KFC: 初手を固定した「単独で確実な上がり筋」の確認（棋譜分析の実装指示書 第6版 §1.2・§1.3・§1.3.1・§6.1）。
+     分析専用。入力は着手の直前の観測（自分の手駒・見えている履歴など）の値だけで、実際の配り・その後の手・結果は使わない。
+     対戦側の探索・キャッシュ・乱数・学習値には触れない（エンジンからは定数 SEATS・KOMA_COUNT・POINTS・UNCUTTABLE だけを読む）。 */
+  const KF_BUDGET = Object.freeze({sliceMs: 8, nodes: 10000, candMs: 50, moveMs: 40, gameMs: 200, retryMs: 500});
+  const kfNow = () => (typeof performance !== "undefined" && performance.now) ? performance.now() : Date.now();
+  function kfFreeze(o) {
+    if (o && typeof o === "object" && !Object.isFrozen(o)) { Object.freeze(o); for (const k of Object.keys(o)) kfFreeze(o[k]); }
+    return o;
+  }
+  // 棋譜の中身と分析の条件から作る鍵（中身が変われば鍵が変わる。覚えた結果と、後から届く結果の照らしに使う。保存はしない）
+  function kfRevKey(rec) {
+    let h = 2166136261 >>> 0;
+    const add = s => { for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; } };
+    add(KF_VER + "|" + KF_RULES + "|" + (rec.parent || "") + "|");
+    for (const s of G.SEATS) add(((rec.initialHands && rec.initialHands[s]) || []).join("") + "/");
+    for (const m of rec.moves) add(m && m.action ? m.seat + String(m.action.type).charAt(0) + (m.action.koma || "-") : "?");
+    const f = kfFacts(rec);
+    add("|" + JSON.stringify([f.target, f.scores, f.mode, kfSeatOf(rec), rec.goshiHolders || null]));
+    return rec.moves.length + ":" + h.toString(36);
+  }
+  // 境の外: 棋譜から i 手目の直前の局面を作り、本人から見える物だけを値にして渡す（他の席の手駒・他の席の伏せの中身は入らない）
+  function kfObserve(rec, i, me, facts) {
+    const st = rebuildOk(rec, i);
+    if (!st || st.actor !== me || st.phase === "over") return null;
+    const v = G.makeView(st, me);
+    const cp = o => (o && o.source === "recorded") ? {value: (o.value && typeof o.value === "object") ? {...o.value} : o.value, source: "recorded"} : {value: null, source: "unknown"};
+    return kfFreeze({seat: me, phase: st.phase, hand: v.hand.slice(), hist: v.hist.map(h => ({seat: h.seat, koma: h.koma, act: h.act})),
+      sizes: {...v.sizes}, parent: v.parent, pending: st.phase === "respond" ? v.pending : null, attacker: st.phase === "respond" ? v.attacker : null,
+      goshi: (v.goshiHolders || []).slice(), scores: cp(facts && facts.scores), target: cp(facts && facts.target)});
+  }
+  // 見えていない駒の数（全 32 − 自分の手駒 − 見えている攻め・受け − 自分の伏せ）。見えていない駒は、どの席にあってもよいとして扱う
+  function kfUnseenOf(obs) {
+    const u = {...G.KOMA_COUNT};
+    for (const k of obs.hand) u[k]--;
+    for (const h of obs.hist) if (h.koma != null && (h.act === "attack" || h.act === "receive" || h.act === "bury")) u[h.koma]--;
+    return u;
+  }
+  const kfUnblockable = (k, u) => k === "王" ? (u["王"] || 0) === 0 : ((u[k] || 0) === 0 && (G.UNCUTTABLE.has(k) || (u["王"] || 0) === 0));
+  const kfKingSeen = obs => obs.hist.some(h => h.koma === "王" && (h.act === "attack" || h.act === "receive" || (h.act === "bury" && h.seat === obs.seat)));
+  function kfAtkLegal(hand, kingSeen) {
+    const ks = [...new Set(hand)], ok = kingSeen || hand.filter(k => k === "王").length === 2;
+    const out = ks.filter(k => k !== "王" || ok);
+    return out.length ? out : ks;
+  }
+  function kfRecvLegal(hand, atk) {
+    const out = [];
+    if (hand.length < 2 || atk == null) return out;
+    if (hand.includes(atk)) out.push(atk);
+    if (atk !== "王" && !G.UNCUTTABLE.has(atk) && hand.includes("王")) out.push("王");
+    return out;
+  }
+  function kfLegalFirst(obs) {
+    if (obs.phase === "bury") return [...new Set(obs.hand)].map(k => ({type: "bury", koma: k}));
+    if (obs.phase === "attack") return kfAtkLegal(obs.hand, kfKingSeen(obs)).map(k => ({type: "attack", koma: k}));
+    if (obs.phase === "respond") return [...kfRecvLegal(obs.hand, obs.pending).map(k => ({type: "receive", koma: k})), {type: "pass", koma: null}];
+    return [];
+  }
+  // 検証器: 手順の列を、観測の写しの上で 1 手ずつ確かめ直す（探索とは別に書いてある）。
+  //   初手・手番の移り・手駒の消費・王の攻めの合法性・途中の攻めが受けられないこと・終わりと点。実際の配りは使わない。
+  function kfVerifyLine(obs, action, line, score) {
+    const bad = why => ({ok: false, why});
+    if (!obs || !action || !Array.isArray(line) || !line.length) return bad("empty");
+    const me = obs.seat, S = G.SEATS, hand = obs.hand.slice(), f = line[0];
+    if (!f || !f.action || f.seat !== me || f.phase !== obs.phase || f.action.type !== action.type || (f.action.koma || null) !== (action.koma || null)) return bad("firstMove");
+    const cnt = {...G.KOMA_COUNT};
+    for (const k of hand) { if (!(k in cnt)) return bad("koma"); cnt[k]--; }
+    let king = false, lastOwn = null;
+    for (const h of obs.hist) {
+      if (h.koma != null) { if (!(h.koma in cnt)) return bad("koma"); cnt[h.koma]--; }
+      if (h.koma === "王" && (h.act !== "bury" || h.seat === me)) king = true;
+    }
+    for (const k in cnt) if (cnt[k] < 0) return bad("counts");
+    { const l = obs.hist[obs.hist.length - 1]; if (l && l.seat === me && l.act === "bury") lastOwn = {type: "bury", koma: l.koma}; }
+    const take = k => { const j = hand.indexOf(k); if (j < 0) return false; hand.splice(j, 1); return true; };
+    let phase = obs.phase, i = 0, got = null;
+    while (i < line.length) {
+      const s = line[i];
+      if (got != null) return bad("afterEnd");
+      if (!s || !s.action || s.seat !== me || s.phase !== phase) return bad("turn@" + i);
+      const k = s.action.koma;
+      if (phase === "bury") {
+        if (s.action.type !== "bury" || hand.length < 2 || !take(k)) return bad("bury@" + i);
+        if (k === "王") king = true;
+        lastOwn = {type: "bury", koma: k}; phase = "attack"; i++;
+      } else if (phase === "respond") {
+        if (i !== 0 || s.action.type !== "receive" || hand.length < 2) return bad("respond@" + i);
+        if (!(k === obs.pending || (k === "王" && obs.pending !== "王" && !G.UNCUTTABLE.has(obs.pending)))) return bad("receive@" + i);
+        if (!take(k)) return bad("receiveHand@" + i);
+        if (k === "王") king = true;
+        lastOwn = {type: "receive", koma: k}; phase = "attack"; i++;
+      } else if (phase === "attack") {
+        if (s.action.type !== "attack" || !hand.includes(k)) return bad("attack@" + i);
+        if (k === "王" && !(king || hand.filter(x => x === "王").length === 2 || hand.every(x => x === "王"))) return bad("kingIllegal@" + i);
+        take(k);
+        if (hand.length === 0) { got = G.POINTS[k] * ((lastOwn && lastOwn.type === "bury" && lastOwn.koma === k) ? 2 : 1); i++; continue; }
+        if (k === "王" ? cnt["王"] > 0 : (cnt[k] > 0 || (!G.UNCUTTABLE.has(k) && cnt["王"] > 0))) return bad("blockable@" + i);
+        if (k === "王") king = true;
+        for (let d = 1; d <= 3; d++) {
+          const p = line[i + d];
+          if (!p || !p.action || p.seat !== S[(S.indexOf(me) + d) % 4] || p.phase !== "respond" || p.action.type !== "pass") return bad("passes@" + (i + d));
+        }
+        if (hand.length < 2) return bad("flow@" + i);
+        lastOwn = null; phase = "bury"; i += 4;
+      } else return bad("phase");
+    }
+    if (got == null) return bad("noEnd");
+    if (got !== score) return bad("score");
+    return {ok: true, why: null};
+  }
+  // analyzeCandidate(観測, 初手, 予算): その初手から始まる「単独で確実な上がり筋」を探す。
+  //   confirmed（検証器を通った手順と点・その手順の点で、最善の値ではない）／notFoundInScope（範囲を調べ切って無い）／
+  //   unverified（outOfScope・passContinuationUnsupported・budgetExceeded）／failed（badInput・illegalAction・invalidProof・exception）
+  function kfAnalyzeCandidate(obs, action, budget) {
+    const B = {nodes: (budget && budget.nodes > 0) ? budget.nodes : KF_BUDGET.nodes, ms: (budget && budget.ms >= 0) ? budget.ms : KF_BUDGET.candMs};
+    const t0 = kfNow();
+    let nodes = 0;
+    const R = (status, reason, x) => ({status, reason: reason || null, score: null, line: null, proofKind: null, searchComplete: !(status === "unverified" && reason === "budgetExceeded"), nodes, ms: kfNow() - t0, ...(x || {})});
+    try {
+      if (!obs || !action || !Array.isArray(obs.hand) || !Array.isArray(obs.hist) || !G.SEATS.includes(obs.seat)) return R("failed", "badInput");
+      const me = obs.seat, n = obs.hand.length;
+      if (!kfLegalFirst(obs).some(a => a.type === action.type && (a.koma || null) === (action.koma || null))) return R("failed", "illegalAction");
+      if (action.type === "pass") return R("unverified", "passContinuationUnsupported");
+      if (!(obs.phase === "attack" ? (n === 1 || n === 3 || n === 5) : (n === 2 || n === 4 || n === 6))) return R("unverified", "outOfScope");
+      const unseen = kfUnseenOf(obs);
+      const order = [1, 2, 3].map(d => G.SEATS[(G.SEATS.indexOf(me) + d) % 4]);
+      const path = [];
+      let best = null, cut = false;
+      const tick = () => { nodes++; if (nodes > B.nodes || ((nodes & 15) === 0 && kfNow() - t0 > B.ms)) cut = true; return !cut; };
+      const term = (atk, dbl) => {
+        const sc = G.POINTS[atk] * (dbl ? 2 : 1);
+        if (!best || sc > best.score) best = {score: sc, line: path.map(s => ({seat: s.seat, phase: s.phase, action: {type: s.action.type, koma: s.action.koma}}))};
+      };
+      let buryTurn;
+      const atkTurn = (hand, lastBury, kingSeen, fixed) => {
+        for (const a of (fixed ? [fixed] : kfAtkLegal(hand, kingSeen))) {
+          if (cut || !tick()) return;
+          const rest = hand.slice(); rest.splice(rest.indexOf(a), 1);
+          path.push({seat: me, phase: "attack", action: {type: "attack", koma: a}});
+          if (rest.length === 0) term(a, lastBury === a);
+          else if (rest.length >= 2 && kfUnblockable(a, unseen)) {
+            for (const s of order) path.push({seat: s, phase: "respond", action: {type: "pass", koma: null}});
+            buryTurn(rest, kingSeen || a === "王", null);
+            path.length -= 3;
+          }
+          path.pop();
+        }
+      };
+      buryTurn = (hand, kingSeen, fixed) => {
+        for (const b of (fixed ? [fixed] : [...new Set(hand)])) {
+          if (cut || !tick()) return;
+          const rest = hand.slice(); rest.splice(rest.indexOf(b), 1);
+          path.push({seat: me, phase: "bury", action: {type: "bury", koma: b}});
+          atkTurn(rest, b, kingSeen || b === "王", null);
+          path.pop();
+        }
+      };
+      const king0 = kfKingSeen(obs);
+      if (obs.phase === "bury") buryTurn(obs.hand.slice(), king0, action.koma);
+      else if (obs.phase === "attack") {
+        const l = obs.hist[obs.hist.length - 1];
+        atkTurn(obs.hand.slice(), (l && l.seat === me && l.act === "bury") ? l.koma : null, king0, action.koma);
+      } else {
+        const rest = obs.hand.slice(); rest.splice(rest.indexOf(action.koma), 1);
+        nodes++;
+        path.push({seat: me, phase: "respond", action: {type: "receive", koma: action.koma}});
+        atkTurn(rest, null, king0 || action.koma === "王", null);
+        path.pop();
+      }
+      if (!best) return cut ? R("unverified", "budgetExceeded") : R("notFoundInScope", null);
+      const v = kfVerifyLine(obs, action, best.line, best.score);
+      if (!v.ok) return R("failed", "invalidProof", {detail: v.why});
+      return R("confirmed", null, {score: best.score, line: best.line, proofKind: (obs.phase === "bury" && n === 2) ? "terminalBuryExact" : "unblockableSoloLine", searchComplete: !cut});
+    } catch (e) { return R("failed", "exception"); }
+  }
+  // 1 手ぶん: 合法な初手を全部確かめ、実戦の手とほかの手の確認の様子をまとめる（見直しの件数には入れない）
+  function kfMoveLines(obs, played, budgetMs) {
+    const t0 = kfNow(), lim = Math.min(KF_BUDGET.moveMs, budgetMs == null ? KF_BUDGET.moveMs : Math.max(0, budgetMs));
+    const cands = kfLegalFirst(obs).map(a => ({action: a, res: kfAnalyzeCandidate(obs, a, {nodes: KF_BUDGET.nodes, ms: Math.max(0, Math.min(KF_BUDGET.candMs, lim - (kfNow() - t0)))})}));
+    const same = a => a.type === played.type && (a.koma || null) === (played.koma || null);
+    const P = cands.find(c => same(c.action)) || null;
+    let A = null;
+    for (const c of cands) if (!same(c.action) && c.res.status === "confirmed" && (!A || c.res.score > A.res.score)) A = c;
+    const pOk = !!P && P.res.status === "confirmed";
+    const partial = cands.some(c => !c.res.searchComplete);
+    let kind;
+    if (!P) kind = "failed";
+    else if (pOk || A) kind = "confirmed";
+    else if (cands.some(c => c.res.status === "failed")) kind = "failed";
+    else if (partial) kind = "budget";
+    else if (cands.every(c => c.res.status === "notFoundInScope")) kind = "notFound";
+    else kind = "outOfScope";
+    return {kind, sub: kind !== "confirmed" ? null : (pOk && A ? (P.res.score >= A.res.score ? "sameOrBetter" : "bothDiffer") : (pOk ? "playedOnly" : "altOnly")),
+      played: P ? {action: P.action, status: P.res.status, reason: P.res.reason, score: P.res.score, line: P.res.line} : null,
+      alt: A ? {action: A.action, score: A.res.score, line: A.res.line} : null, partial, n: cands.length, nodes: cands.reduce((x, c) => x + c.res.nodes, 0), ms: kfNow() - t0};
+  }
+  const KF_ACT_JA = {bury: "伏せ", attack: "攻め", receive: "受け", pass: "なし"};
+  const kfActText = a => a.type === "pass" ? "「なし」" : `${KF_ACT_JA[a.type] || ""}「${a.koma}」`;
+  function kfLineText(r) {
+    if (!r || r.kind !== "confirmed") return "";
+    const tail = r.partial ? "（時間の上限で途中まで。最高の点とは限りません）" : "";
+    if (r.sub === "playedOnly") return `この手からの上がり筋を確認 — ${r.played.score}点${tail}`;
+    if (r.sub === "sameOrBetter") return `同等以上の上がり筋を確認 — この手から${r.played.score}点、別の手（${kfActText(r.alt.action)}）からは${r.alt.score}点${tail}`;
+    if (r.sub === "bothDiffer") return `上がり筋を確認 — この手から${r.played.score}点、別の手（${kfActText(r.alt.action)}）から${r.alt.score}点。確認できた手順の点で、最善の値ではありません${tail}`;
+    const why = r.played && r.played.status === "notFoundInScope" ? "単独で確実な上がり筋は未発見" : "上がり筋は未評価";
+    return `別の上がり筋を確認 — ${kfActText(r.alt.action)}から${r.alt.score}点。実戦の手からは、${why}（相方に任せる筋などは調べていません）${tail}`;
+  }
+  // 分割実行: 振り返りを開いた後、1 回 8ms を目安に区切って進める。別の棋譜を開く・閉じる・中身が変わると、その仕事は捨てる
+  const _kfLineMemo = new WeakMap();
+  let _kfJobSeq = 0;
+  function kfLinesGet(rec) {
+    const m = rec ? _kfLineMemo.get(rec) : null;
+    return (m && m.key === kfRevKey(rec)) ? m : null;
+  }
+  function kfLinesStart(rec) {
+    const k = kfAnalyze(rec);
+    if (!k || !k.sum) return null;
+    let m = kfLinesGet(rec);
+    if (m) return m;
+    const todo = (k.lineTodo || []).slice();
+    m = {key: kfRevKey(rec), job: ++_kfJobSeq, state: "pending", total: todo.length, moves: new Map(),
+         sum: {confirmed: 0, notFound: 0, outOfScope: 0, budget: 0, failed: 0}, usedMs: 0, slices: 0, maxSliceMs: 0, nodes: 0};
+    _kfLineMemo.set(rec, m);
+    const run = () => {
+      if (!((app.review && app.reviewRec === rec) || (!app.review && app.rec === rec && app.lastRec === rec && !!app.st && app.st.phase === "over")) || kfRevKey(rec) !== m.key || _kfLineMemo.get(rec) !== m) { if (_kfLineMemo.get(rec) === m) _kfLineMemo.delete(rec); return; }
+      const t0 = kfNow();
+      while (todo.length && kfNow() - t0 < KF_BUDGET.sliceMs) {
+        const i = todo.shift();
+        let r;
+        if (m.usedMs >= KF_BUDGET.gameMs) r = {kind: "budget"};
+        else {
+          const c0 = kfNow();
+          try { const obs = kfObserve(rec, i, k.me, k.facts); r = obs ? kfMoveLines(obs, rec.moves[i].action, KF_BUDGET.gameMs - m.usedMs) : {kind: "failed"}; }
+          catch (e) { r = {kind: "failed"}; }
+          m.usedMs += kfNow() - c0;
+        }
+        m.moves.set(i, r); m.sum[r.kind]++; m.nodes += r.nodes || 0;
+      }
+      const dt = kfNow() - t0;
+      m.slices++; if (dt > m.maxSliceMs) m.maxSliceMs = dt;
+      if (todo.length) setTimeout(run, 0);
+      else { m.state = "done"; try { kfLinesPaint(rec); } catch (e) {} try { kfQuizOffer(rec); } catch (e) {} }
+    };
+    setTimeout(run, 0);
+    return m;
+  }
+  function kfLineSummaryText(rec) {
+    const k = kfAnalyze(rec);
+    if (!k || !k.sum || !(k.lineTodo || []).length) return "";
+    const m = kfLinesGet(rec);
+    if (!m || m.state !== "done") return "途中の手の上がり筋: 確認中…";
+    const s = m.sum;
+    return `途中の手の上がり筋（単独で確実な手順だけを確かめます。件数には入れません）: 対象 ${m.total} 手のうち、確認 ${s.confirmed}・未発見 ${s.notFound}・対象外 ${s.outOfScope}・予算切れ ${s.budget}・失敗 ${s.failed}。`;
+  }
+  function kfLineRowHtml(rec, i) {
+    const m = kfLinesGet(rec);
+    const t = (m && m.state === "done") ? kfLineText(m.moves.get(i)) : "";
+    return `<span class="kf-slot" data-kfi="${i}">${t ? `<span class="coach mc kf-line">${escapeHtml(t)}</span>` : ""}</span>`;
+  }
+  function kfLinesPaint(rec) {
+    if (!app.review || app.reviewRec !== rec) return;
+    const e = $("rv-kfl"), list = $("rv-list"), m = kfLinesGet(rec);
+    if (e) { const t = kfLineSummaryText(rec); e.textContent = t; e.style.display = t ? "" : "none"; }
+    if (list) { try { kfQuizReviewEntry(rec, list); } catch (err) {} }
+    if (!list || !m || m.state !== "done") return;
+    for (const slot of list.querySelectorAll(".kf-slot")) {
+      const t = kfLineText(m.moves.get(+slot.getAttribute("data-kfi")));
+      if (!t || slot.firstChild) continue;
+      const sp = document.createElement("span");
+      sp.className = "coach mc kf-line"; sp.textContent = t;
+      slot.appendChild(sp);
+    }
+  }
+  app._kf = Object.freeze({BUDGET: KF_BUDGET, observe: kfObserve, legalFirst: kfLegalFirst, analyzeCandidate: kfAnalyzeCandidate, verify: kfVerifyLine,
+    moveLines: kfMoveLines, lineText: kfLineText, revKey: kfRevKey, linesGet: kfLinesGet, facts: kfFacts, seatOf: kfSeatOf, analyze: rec => kfAnalyze(rec)});
+  /* v221.7 KFQ: 今回の 1 問（棋譜分析の実装指示書 第6版 §2・§2.1。出題の範囲は Sonar 2026-11-13「広げて作る」: 見直し → 別の上がり筋 → 実戦の手が確認済みの局面）。
+     専用の画面を JS で作って重ねる。出す物は着手の直前の観測と合法な選択肢だけ。元の対局（app.st・棋譜・点・乱数・設定・保存）には触れない。
+     通常の着手の処理・G.advance（元の対局に対して）・AI の手の予約・1 手戻しの履歴の更新・保存をしない。答えの履歴は画面の中だけ。 */
+  function kfQuizPick(rec) {
+    const k = kfAnalyze(rec), m = kfLinesGet(rec);
+    if (!k || !k.sum || !m || m.state !== "done") return null;
+    const c = [];
+    for (const it of k.items) {
+      const a = it.cand[0], b = it.cand[1];
+      if (a.score == null || b.score == null) continue;
+      const hi = Math.max(a.score, b.score), ps = (a.bury === it.played ? a : b).score;
+      c.push({i: it.i, cls: it.review ? 0 : ((ps < hi && it.status === "unverified") ? 1 : 2), score: hi, kind: "terminal"});
+    }
+    for (const [i, r] of m.moves) {
+      if (!r || r.kind !== "confirmed") continue;
+      const alt = r.sub === "altOnly" || r.sub === "bothDiffer";
+      c.push({i, cls: alt ? 1 : 2, score: alt ? r.alt.score : r.played.score, kind: "line"});
+    }
+    c.sort((x, y) => x.cls - y.cls || y.score - x.score || x.i - y.i);
+    return c[0] || null;
+  }
+  const KFQ_CLS_JA = ["見直しの1問", "別の上がり筋の1問", "確認の1問"];
+  const kfqSame = (a, b) => !!a && !!b && a.type === b.type && (a.koma || null) === (b.koma || null);
+  const kfqTerminal = obs => obs.phase === "bury" && obs.hand.length === 2 && obs.hand[0] !== obs.hand[1];
+  function kfqAsk(obs) {
+    if (kfqTerminal(obs)) return "最後の2枚、どちらを伏せますか";
+    if (obs.phase === "bury") return "どの駒を伏せますか";
+    if (obs.phase === "attack") return "どの駒で攻めますか";
+    return `${seatDisp(obs.attacker)}の攻め「${obs.pending}」— 受けますか、通しますか`;
+  }
+  // 当時分かっていたこと（観測の値だけから作る）
+  function kfqKnownHtml(obs) {
+    const me = obs.seat, rows = [];
+    const chip = k => `<span style="display:inline-block;min-width:1.9em;text-align:center;border:1px solid var(--hair2);border-radius:6px;padding:1px 5px;margin:0 3px 3px 0;font-family:var(--serif);font-weight:700">${escapeHtml(k)}</span>`;
+    rows.push(`<div><b>あなたの手駒（${obs.hand.length}枚）</b>: ${obs.hand.map(chip).join("")}</div>`);
+    const mine = obs.hist.filter(h => h.seat === me && h.act === "bury" && h.koma != null).map(h => h.koma);
+    rows.push(`<div>あなたが伏せた駒: ${mine.length ? mine.map(chip).join("") : "なし"}</div>`);
+    for (const s of G.SEATS) {
+      const hs = obs.hist.filter(h => h.seat === s);
+      const seen = hs.filter(h => h.koma != null && (h.act === "attack" || h.act === "receive")).map(h => `${h.act === "attack" ? "攻め" : "受け"}「${h.koma}」`);
+      const hid = hs.filter(h => h.act === "bury" && (s !== me)).length;
+      rows.push(`<div>${escapeHtml(seatDisp(s))}${s === me ? "（あなた）" : ""}: 残り${obs.sizes[s]}枚。場に出した駒 — ${seen.length ? escapeHtml(seen.join("・")) : "なし"}${s !== me && hid ? `。伏せ${hid}枚（中身は見えません）` : ""}</div>`);
+    }
+    if (obs.scores.source === "recorded" && obs.target.source === "recorded") {
+      const t = G.team(me), o = t === "NS" ? "EW" : "NS";
+      rows.push(`<div>この局の始まりの点: 自分の組 ${obs.scores.value[t]}点・相手の組 ${obs.scores.value[o]}点（先取点 ${obs.target.value}点）</div>`);
+    } else rows.push(`<div>この局の始まりの点・先取点: 記録がありません</div>`);
+    return rows.join("");
+  }
+  // 手順の列を文にする（途中の攻めが受けられない理由は、観測の「見えていない駒」から）
+  function kfqStory(obs, line, score) {
+    const u = kfUnseenOf(obs), parts = [], cond = [];
+    let last = null, lastBury = null;
+    for (let i = 0; i < line.length; i++) {
+      const s = line[i];
+      if (s.action.type === "pass") continue;
+      parts.push(kfActText(s.action));
+      if (s.action.type === "bury") lastBury = s.action.koma;
+      if (s.action.type === "attack") {
+        const mid = i < line.length - 1, k = s.action.koma;
+        if (mid) {
+          cond.push(k === "王" ? "「王」は、もう1枚の王が見えているので誰も受けられません" :
+            `「${k}」は、残りの「${k}」が全部見えていて${G.UNCUTTABLE.has(k) ? "、王でも切れない駒なので" : "、王も2枚とも見えているので"}誰も受けられません`);
+          lastBury = null;
+        } else last = k;
+      }
+    }
+    const dbl = last != null && lastBury === last;
+    return `${parts.join(" → ")} で上がり ${score}点${dbl ? "（伏せた駒と同じ駒で上がるので2倍）" : ""}。` +
+      (cond.length ? `途中の攻め: ${[...new Set(cond)].join("。")}。` : "") + "最後の1枚の攻めは、受けられても上がりです。";
+  }
+  let _kfq = null;
+  function kfQuizClose() {
+    const q = _kfq;
+    if (!q) return;
+    _kfq = null;
+    try { window.removeEventListener("keydown", q.onKey, true); window.removeEventListener("keyup", q.onKey, true); window.removeEventListener("keypress", q.onKey, true); } catch (e) {}
+    for (const x of q.inerted) { try { x.el.inert = false; if (x.ah == null) x.el.removeAttribute("aria-hidden"); else x.el.setAttribute("aria-hidden", x.ah); } catch (e) {} }
+    if (q.el && q.el.parentNode) q.el.parentNode.removeChild(q.el);
+    try { const o = (q.opener && document.contains(q.opener)) ? q.opener : (document.querySelector(".kfq-open") || null); if (o && o.focus) o.focus(); } catch (e) {}
+  }
+  function kfQuizOpen(rec, opener) {
+    if (_kfq) return false;
+    const cand = kfQuizPick(rec), k = kfAnalyze(rec);
+    if (!cand || !k || !k.me) return false;
+    const obs = kfObserve(rec, cand.i, k.me, k.facts);
+    if (!obs) return false;
+    const el = document.createElement("div");
+    el.id = "kfq";
+    el.setAttribute("role", "dialog"); el.setAttribute("aria-modal", "true"); el.setAttribute("aria-labelledby", "kfq-h");
+    el.style.cssText = "position:fixed;inset:0;z-index:5000;background:var(--ink0);color:var(--kinari);overflow:auto;font-family:var(--sans);line-height:1.75;font-size:.92rem;" +
+      "padding:max(14px,env(safe-area-inset-top)) 14px calc(20px + env(safe-area-inset-bottom))";
+    const inerted = [];
+    for (const c of Array.from(document.body.children)) {
+      if (c.inert) continue;
+      inerted.push({el: c, ah: c.getAttribute("aria-hidden")});
+      c.inert = true; c.setAttribute("aria-hidden", "true");
+    }
+    document.body.appendChild(el);
+    const onKey = e => { e.stopPropagation(); if (e.type === "keydown" && e.key === "Escape") { e.preventDefault(); kfQuizClose(); } };
+    window.addEventListener("keydown", onKey, true); window.addEventListener("keyup", onKey, true); window.addEventListener("keypress", onKey, true);
+    const act = rec.moves[cand.i].action;
+    _kfq = {el, rec, cand, obs, opener: opener || null, inerted, onKey, key: kfRevKey(rec), choices: kfLegalFirst(obs), res: new Map(), tries: [],
+            played: {type: act.type, koma: act.koma || null}, result: rec.result ? {...rec.result} : null};
+    kfQuizRender("ask", null);
+    return true;
+  }
+  function kfqRes(a) {
+    const q = _kfq, key = a.type + (a.koma || "");
+    if (!q.res.has(key)) q.res.set(key, kfAnalyzeCandidate(q.obs, a, {nodes: KF_BUDGET.nodes, ms: KF_BUDGET.candMs}));
+    return q.res.get(key);
+  }
+  function kfqTeach() {
+    const q = _kfq;
+    let best = null;
+    for (const a of q.choices) { const r = kfqRes(a); if (r.status === "confirmed" && (!best || r.score > best.res.score)) best = {action: a, res: r}; }
+    return best;
+  }
+  const KFQ_WHY = {notFoundInScope: "単独で確実な上がり筋は未発見。相方に任せる筋などは調べていません", passContinuationUnsupported: "「なし」の先は調べていません",
+                   outOfScope: "調べる範囲の外です", budgetExceeded: "時間の上限で調べ切れませんでした"};
+  function kfqCompareText(ans) {
+    const q = _kfq, obs = q.obs, T = kfqTeach();
+    if (kfqTerminal(obs)) {
+      const other = q.choices.find(a => !kfqSame(a, ans)), rm = kfqRes(ans), ro = other ? kfqRes(other) : null;
+      if (rm.status !== "confirmed" || !ro || ro.status !== "confirmed") return "この回答の良し悪しは未確認です（確かめに失敗しました）。";
+      let t = `この伏せで${rm.score}点。別の伏せなら${ro.score}点。`;
+      if (obs.scores.source === "recorded" && obs.target.source === "recorded") {
+        const s = obs.scores.value[G.team(obs.seat)], a = s + rm.score >= obs.target.value, b = s + ro.score >= obs.target.value;
+        t += (a && b) ? "どちらでも先取点に届き、勝負に勝てる点です。" : a ? "この伏せなら先取点に届きます（別の伏せでは届きません）。" : b ? "別の伏せなら先取点に届きます（この伏せでは届きません）。" : "どちらでも、この局だけでは先取点に届きません。";
+      }
+      return t;
+    }
+    const r = kfqRes(ans);
+    if (!T) return "この回答の良し悪しは未確認です。";
+    if (r.status === "confirmed" && r.score >= T.res.score) return `この手でも確認打点（${T.res.score}点）を達成できます。いちばん良い手とは限りません。`;
+    if (r.status === "confirmed") return `この手では${r.score}点の筋を確認。教材では${T.res.score}点の筋（${kfActText(T.action)}）を確認。確認できた手順の点の差で、この手が悪いという証明ではありません。`;
+    const why = r.status === "failed" ? "確かめに失敗しました" : (KFQ_WHY[r.status === "notFoundInScope" ? "notFoundInScope" : r.reason] || "未確認");
+    return `この回答の良し悪しは未確認です（${why}）。教材の手（${kfActText(T.action)}）からは${T.res.score}点の筋を確認しています。`;
+  }
+  function kfQuizRender(mode, ans) {
+    const q = _kfq;
+    if (!q) return;
+    const obs = q.obs, el = q.el, T = mode === "ask" ? null : kfqTeach();
+    const sec = (h, body) => `<section style="margin:14px 0 0"><h3 style="font-size:.95rem;margin:0 0 4px;color:var(--kin)">${h}</h3><div>${body}</div></section>`;
+    const btnStyle = "margin:0 8px 8px 0;padding:10px 16px;font-size:.92rem";
+    const closeBtn = primary => `<button type="button" class="btn${primary ? " primary" : ""}" id="kfq-close" style="${btnStyle}">閉じる</button>`;
+    const verdict = (inner, live) => `<div id="kfq-verdict"${live ? ' role="status"' : ""}>${inner}</div>`;
+    let h = `<div style="max-width:560px;margin:0 auto">` +
+      `<h2 id="kfq-h" tabindex="-1" style="font-family:var(--serif);font-size:1.15rem;margin:0 0 2px">今回の1問　${escapeHtml(kfqAsk(obs))}</h2>` +
+      `<p class="note" style="margin:0 0 8px">${KFQ_CLS_JA[q.cand.cls]}・第${q.rec.gameNo || "?"}局 #${q.cand.i + 1} の直前の局面。答えても、元の対局・成績・保存は変わりません。</p>`;
+    h += sec("当時分かっていたこと", kfqKnownHtml(obs));
+    if (mode === "ask") {
+      h += `<section style="margin:16px 0 0"><h3 style="font-size:.95rem;margin:0 0 6px;color:var(--kin)">あなたならどうしますか</h3><div id="kfq-choices">` +
+        q.choices.map((a, j) => `<button type="button" class="btn" data-kfq-choice="${j}" style="${btnStyle}">${escapeHtml(kfActText(a))}</button>`).join("") + `</div></section>` +
+        `<div style="margin:18px 0 0"><button type="button" class="btn" id="kfq-why" style="${btnStyle}">理由を見る</button>${closeBtn(false)}</div>`;
+    } else {
+      let cmp;
+      if (mode === "answer") cmp = `<div>あなたの答え: <b>${escapeHtml(kfActText(ans))}</b></div>` + verdict(escapeHtml(kfqCompareText(ans)), true);
+      else if (kfqTerminal(obs)) cmp = verdict(q.choices.map(a => { const r = kfqRes(a); return `${escapeHtml(kfActText(a))}なら${r.status === "confirmed" ? r.score + "点" : "未確認"}`; }).join("、") + "。", false);
+      else cmp = verdict(T ? `教材の手: ${escapeHtml(kfActText(T.action))} から ${T.res.score}点の筋を確認しています。` : "確認できた手順がありません。", false);
+      h += sec("選んだ手と比べる手", cmp);
+      h += sec("狙いと成立条件", T ? `<div id="kfq-story">${escapeHtml(kfqStory(obs, T.res.line, T.res.score))}</div><div class="note">これは確認できた手順の1つで、いちばん良い手とは限りません。</div>` : "確認できた手順がありません。");
+      const rs = q.result;
+      h += sec("実際に起きたこと", `<div id="kfq-actual">実戦では ${escapeHtml(kfActText(q.played))}。` +
+        (rs ? (rs.draw ? "この局は流局でした。" : (rs.winner ? `この局は ${G.team(rs.winner) === G.team(obs.seat) ? "自分の組" : "相手の組"} が ${rs.pts}点で上がりました。` : "")) : "") + `</div>`);
+      h += `<div style="margin:18px 0 0"><button type="button" class="btn" id="kfq-retry" style="${btnStyle}">別の手で試す</button>${closeBtn(true)}</div>`;
+    }
+    h += `</div>`;
+    el.innerHTML = h;
+    el.scrollTop = 0;
+    el.querySelectorAll("[data-kfq-choice]").forEach(b => b.addEventListener("click", () => {
+      const a = q.choices[+b.getAttribute("data-kfq-choice")];
+      if (!a || _kfq !== q) return;
+      q.tries.push({type: a.type, koma: a.koma || null});
+      kfQuizRender("answer", a);
+    }));
+    const on = (id, fn) => { const x = el.querySelector("#" + id); if (x) x.addEventListener("click", fn); };
+    on("kfq-why", () => { if (_kfq === q) kfQuizRender("why", null); });
+    on("kfq-retry", () => { if (_kfq === q) kfQuizRender("ask", null); });
+    on("kfq-close", () => kfQuizClose());
+    const hd = el.querySelector("#kfq-h");
+    if (hd) { try { hd.focus(); } catch (e) {} }
+  }
+  // 入口: 局の終わり（下の帯の説明の所に小さなボタン）と、振り返り（2 行目の下）
+  function kfqOpenBtn(rec) {
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "kfq-open"; b.textContent = "今回の1問";
+    b.style.cssText = "font:inherit;font-size:.85rem;color:inherit;background:none;border:1px solid var(--hair2);border-radius:8px;padding:6px 12px;margin:0 6px;cursor:pointer";
+    b.addEventListener("click", () => kfQuizOpen(rec, b));
+    return b;
+  }
+  function kfQuizOffer(rec) {
+    try {
+      if (app.review || app.rec !== rec || app.lastRec !== rec || !app.st || app.st.phase !== "over" || rec.practice) return;
+      const bar = $("actionbar");
+      if (!bar || bar.querySelector(".kfq-open") || !kfQuizPick(rec)) return;
+      const sp = document.createElement("i");   // span にしない・先頭に置かない（下の帯の説明の span を読む所と重ならないように）
+      sp.className = "kfq-offer"; sp.style.fontStyle = "normal";
+      sp.appendChild(kfqOpenBtn(rec));
+      bar.appendChild(sp);
+    } catch (e) {}
+  }
+  function kfQuizReviewEntry(rec, list) {
+    let e = $("rv-kfq");
+    if (!e) { e = document.createElement("p"); e.id = "rv-kfq"; e.className = "note"; list.parentNode.insertBefore(e, list); }
+    const k = kfAnalyze(rec), m = kfLinesGet(rec);
+    e.textContent = "";
+    if (!k || !k.sum) { e.style.display = "none"; return; }
+    e.style.display = "";
+    if (!m || m.state !== "done") { e.textContent = "今回の1問: 準備中…"; return; }
+    if (!kfQuizPick(rec)) { e.textContent = "今回の1問: 今回は出題対象なし"; return; }
+    e.appendChild(kfqOpenBtn(rec));
+    e.appendChild(document.createTextNode("（この局の1つの局面を、答えを見ずに選び直します）"));
+  }
+  app._kfq = Object.freeze({pick: kfQuizPick, open: kfQuizOpen, close: kfQuizClose, state: () => _kfq ? {i: _kfq.cand.i, cls: _kfq.cand.cls, tries: _kfq.tries.slice()} : null});
+  function kfAnalyze(rec) {
+    if (!rec || !Array.isArray(rec.moves) || !rec.initialHands) return null;
+    const key = kfRevKey(rec);
+    const hit = _kfMemo.get(rec);
+    if (hit && hit.key === key) return hit.val;
+    let val;
+    try { val = kfAnalyzeRaw(rec); }
+    catch (e) { val = {v: KF_VER, rules: KF_RULES, state: "failed", reason: "exception", me: null, facts: null, sum: null, items: []}; }
+    _kfMemo.set(rec, {key, val});
+    return val;
+  }
+  function kfItemText(it) {
+    const c = it.cand, p = c[0].bury === it.played ? c[0] : c[1], o = c[0].bury === it.played ? c[1] : c[0];
+    if (p.score == null || o.score == null) return "最後の2枚の伏せ: 打点を確かめられませんでした（未評価）";
+    const base = `最後の2枚の伏せ — 「${p.bury}」を伏せて「${p.atk}」で上がると${p.score}点、「${o.bury}」を伏せて「${o.atk}」で上がると${o.score}点`;
+    if (it.status === "unverified") return base + "。この局の当時の点か先取点の記録が無い（または通常の勝負でない）ため、打点の事実だけを示します（未評価）";
+    if (it.bothWin) return base + "。どちらでも勝負に勝てる点でした";
+    if (it.review) return base + "。より高い点で上がれました（見直し）";
+    return base + (p.score === o.score ? "。同じ点です" : "。高い方を選んでいます");
+  }
+  function kfRowHtml(rec, i) {
+    const k = kfAnalyze(rec);
+    if (!k || !k.items.length) return "";
+    const it = k.items.find(x => x.i === i);
+    return it ? `<span class="coach ${it.review ? "miss" : "mc"} kf-row">${escapeHtml(kfItemText(it))}</span>` : "";
+  }
+  function kfRowsHtml(rec, i) {
+    let a = "", b = "";
+    try { a = kfRowHtml(rec, i); } catch (e) { a = ""; }
+    try { b = kfLineRowHtml(rec, i); } catch (e) { b = ""; }
+    return a + b;
+  }
+  function kfSummaryText(rec) {
+    const k = kfAnalyze(rec);
+    if (!k || !k.me) return "";
+    if (!k.sum) return "確かめた見直し: 未計測（この棋譜は途中で記録が合わなくなるため、件数を数えられません）";
+    const s = k.sum, un = s.un.outOfScope + s.un.condUnknown + s.un.failed;
+    const scope = `評価の範囲は「最後の2枚の伏せ」だけ。あなたが選べた手 ${s.decisionCount} 手のうち、比較完了 ${s.cmpEvaluated}・未評価 ${un}（対象外 ${s.un.outOfScope}・条件不明 ${s.un.condUnknown}・失敗 ${s.un.failed}）`;
+    if (s.review > 0) return `確かめた見直し ${s.review} 件。${scope}。`;
+    if (s.cmpEvaluated === 0) return `確かめた見直し: 比較対象なし。${scope}。相方との連携や途中の攻め選択の優劣は未評価です。`;
+    return `今回の対象範囲では、確定した見直しはありません。相方との連携や途中の攻め選択の優劣は未評価です。${scope}。`;
+  }
+  function kfSummaryRender(rec, list) {
+    let e = $("rv-kf");
+    if (!e) { e = document.createElement("p"); e.id = "rv-kf"; e.className = "note"; list.parentNode.insertBefore(e, list); }
+    let t = "";
+    try { t = kfSummaryText(rec); } catch (err) { t = ""; }
+    e.textContent = t;
+    e.style.display = t ? "" : "none";
+    let e2 = $("rv-kfl");
+    if (!e2) { e2 = document.createElement("p"); e2.id = "rv-kfl"; e2.className = "note"; list.parentNode.insertBefore(e2, list); }
+    let t2 = "";
+    try { kfLinesStart(rec); t2 = kfLineSummaryText(rec); } catch (err) { t2 = ""; }
+    e2.textContent = t2;
+    e2.style.display = t2 ? "" : "none";
+    try { kfQuizReviewEntry(rec, list); } catch (err) {}
+  }
+  function kfLogAtEnd(rec) {
+    try { kfLinesStart(rec); } catch (e) {}
+    try {
+      const k = kfAnalyze(rec);
+      if (!k || !k.sum) return;
+      for (const it of k.items) if (it.review) log(`見直し #${it.i + 1}: ${kfItemText(it)}`, false, "ai-note");
+    } catch (e) {}
+  }
+  function kfLossText(g, act) {
+    return `確認した上がり筋 ${g}点・実際の局の結果 ${act >= 0 ? "自分の組" : "相手の組"} ${Math.abs(act)}点`;
+  }
   function lossOf(rec, mv) {
     if (!rec.result || rec.result.winner == null || !mv.cf || !mv.cf.why) return null;
     const m = mv.cf.why.match(/(\d+)点/);
@@ -19368,7 +20001,7 @@ if (typeof document !== "undefined") (() => {
       else if (mv.clarity && mv.clarity.cls === "明確" && mv.clarity.dev) kind = "study";  
       if (!kind) return;
       const loss = (kind === "miss") ? lossOf(rec, mv) : null;
-      byIdx.set(i, {i, kind, loss: loss ? loss.loss : null, deq: deqOf(i)});               
+      byIdx.set(i, {i, kind, loss: loss ? loss.loss : null, lg: loss ? loss.guaranteed : null, la: loss ? loss.actual : null, deq: deqOf(i)});               
     });
     return [...byIdx.values()];
   }
@@ -19424,7 +20057,7 @@ if (typeof document !== "undefined") (() => {
           `<circle cx="${px.toFixed(1)}" cy="7" r="${r.toFixed(1)}" fill="${col}"/>` +
           `<text x="${px.toFixed(1)}" y="9.4" text-anchor="middle" font-size="8" font-weight="700" fill="#1b140f">${glyph}</text>` +
           `<title>第${pin.i + 1}手 ${isMiss ? "読み切り逃し" : "学習対象（明確局面での逸脱）"}` +
-          `${pin.loss ? `（逸失≈${pin.loss}点）` : ""}${drop > 0 ? ` 勝率−${drop}%` : ""}${isWorst ? " ／この局の最大悪手" : ""} — タップで解き直し</title>` +
+          `${pin.loss ? `（${kfLossText(pin.lg, pin.la)}）` : ""}${drop > 0 ? ` 勝率−${drop}%` : ""}${isWorst ? " ／この局の最大悪手" : ""} — タップで解き直し</title>` +
           `</g>`;
       }
       const cx = X(ci);
@@ -20401,6 +21034,7 @@ if (typeof document !== "undefined") (() => {
       } }
     const humanOnly = $("rv-human").checked;
     list.innerHTML = "";
+    kfSummaryRender(app.reviewRec, list);
     if ($("rv-partner") && $("rv-partner").checked) computePartnerView(app.reviewRec);
     app.reviewRec.moves.forEach((mv, i) => {
       if (humanOnly && !mv.human) return;
@@ -20423,14 +21057,14 @@ if (typeof document !== "undefined") (() => {
           why = `<span class="coach ${miss ? "miss" : ""}">${miss ? "⚠ 読み切りの逃し — " : ""}AIなら ${escapeHtml(ACT_JA[mv.cf.type] || "")}${mv.cf.koma ? "「" + escapeHtml(mv.cf.koma) + "」" : ""}` +
                 (mv.cf.why ? `（${linkifyJoseki(mv.cf.why)}）` : "") +
                 (hasty ? " ⚡早打ち" : "") +
-                (loss ? ` ／逸失≈${loss.loss}点` : "") + `</span>`;
+                (loss ? ` ／${kfLossText(loss.guaranteed, loss.actual)}` : "") + `</span>`;
         }
       }
       item.innerHTML =
         `<span class="no">${i + 1}</span>` +
         `<span class="mv"><span class="${G.team(mv.seat) === "NS" ? "ns" : ""}">${escapeHtml(seatDisp(mv.seat))}</span> ` +
         `${escapeHtml(ACT_JA[mv.action.type] || "")}${mv.action.koma ? "「" + escapeHtml(mv.action.koma) + "」" : ""}</span>` +
-        `<span class="why">${why}${sigHtml(mv)}` +
+        `<span class="why">${why}${sigHtml(mv)}${mv.human ? kfRowsHtml(app.reviewRec, i) : ""}` +
         (($("rv-partner") && $("rv-partner").checked && mv.pvNote) ? `<span class="coach pv">👥 ${escapeHtml(mv.pvNote)}</span>` : "") +
         (mv.clarity && !mv.clarity.na
           ? `<span class="coach ${mv.clarity.cls === "明確" && mv.clarity.dev ? "study" : "mc"}">［${escapeHtml(mv.clarity.cls)} ±${escapeHtml(mv.clarity.margin)}${mv.clarity.cls === "明確" && mv.clarity.dev ? " ☆学習対象" : ""}］</span>` : "") +
@@ -20877,7 +21511,7 @@ if (typeof document !== "undefined") (() => {
     const rec = t.rec, pin = t.list[t.k], mv = rec.moves[pin.i];
     const isMiss = pin.kind === "miss";
     const typeTxt = isMiss ? "⚠読み切り逃し" : "☆学習対象（明確局面での逸脱）";
-    const lossTxt = pin.loss != null ? `逸失≈${pin.loss}点` : "";
+    const lossTxt = pin.loss != null ? kfLossText(pin.lg, pin.la) : "";
     const dropTxt = (pin.deq != null && pin.deq > 0) ? `勝率−${Math.round(pin.deq * 100)}%` : "";
     const metrics = [lossTxt, dropTxt].filter(Boolean).join(" ・ ");
     const line = (mv.cf && mv.cf.why) ? mv.cf.why
@@ -20904,7 +21538,7 @@ if (typeof document !== "undefined") (() => {
     host.innerHTML = `<div class="rw-head">悪手ランキング（${list.length}件・悪手度の高い順。タップでその手へ）</div>` +
       list.map((p, idx) => {
         const isMiss = p.kind === "miss";
-        const lossTxt = p.loss != null ? `逸失≈${p.loss}点` : "";
+        const lossTxt = p.loss != null ? kfLossText(p.lg, p.la) : "";
         const dropTxt = (p.deq != null && p.deq > 0) ? `勝率−${Math.round(p.deq * 100)}%` : "";
         const metrics = [lossTxt, dropTxt].filter(Boolean).join(" ・ ") || "―";
         const cur = (app.tour && app.tour.list && app.tour.list[app.tour.k] && app.tour.list[app.tour.k].i === p.i) ? " cur" : "";
@@ -23200,7 +23834,7 @@ if (typeof document !== "undefined") (() => {
     if (n > 0 && s.sigFalse > 0)
       return "偽信号 " + s.sigFalse + "/" + n + (s.sigWasted ? "（うち" + s.sigWasted + "回は相方の温存・連携を実際に空振りに）" : "") + "。裏付けのない合図が相方を惑わせます。";
     if (s.miss > 0)
-      return "読み切りの逃し " + s.miss + "/" + s.seen + (s.lossSum ? "（逸失計≈" + s.lossSum + "点）" : "") + "。確定手順を見送っています。";
+      return "読み切りの逃し " + s.miss + "/" + s.seen + "。確定手順を見送っています。";
     if (m != null && m >= 0.85) return "安定しています。";
     return "AI最善との一致 " + Math.round(s.ok / s.seen * 100) + "%。";
   }
@@ -23759,15 +24393,15 @@ if (typeof document !== "undefined") (() => {
   }
   function playStyleStats(recs) {
     recs = recs || playStyleRecs();
-    const S = {games: 0, broken: 0, atkMe: 0, atkP: 0, rcvMe: 0, rcvP: 0, bothResp: 0, bothPass: 0, ouOpp: 0, ouKeep: 0, winMe: 0, winP: 0, rideOpp: 0, ridePass: 0, think: []};
+    const S = {games: 0, broken: 0, atkMe: 0, atkP: 0, rcvMe: 0, rcvP: 0, bothResp: 0, bothPass: 0, ouOpp: 0, ouKeep: 0, winMe: 0, winP: 0, rideOpp: 0, ridePass: 0, rcOpp: 0, rcPass: 0, rcRecv: 0, rcNone: 0, think: []};
     for (const rec of recs) {
       const hm = rec.moves.find(m => m && m.human); if (!hm) continue;
-      const me = hm.seat, P = G.partnerOf(me), myTeam = G.team(me);
+      const me = (rec.meta && IMPORT_SEATS.has(rec.meta.hs)) ? rec.meta.hs : (IMPORT_SEATS.has(rec.humanSeat) ? rec.humanSeat : hm.seat), P = G.partnerOf(me), myTeam = G.team(me);
       const ih = rec.initialHands && rec.initialHands[me];
       if (!ih || ih.length !== 8) { S.broken++; continue; }
       const hand = ih.slice();
       let ok = true, chain = null;
-      const T = {atkMe: 0, atkP: 0, rcvMe: 0, rcvP: 0, bothResp: 0, bothPass: 0, ouOpp: 0, ouKeep: 0, rideOpp: 0, ridePass: 0, think: []};
+      const T = {atkMe: 0, atkP: 0, rcvMe: 0, rcvP: 0, bothResp: 0, bothPass: 0, ouOpp: 0, ouKeep: 0, rideOpp: 0, ridePass: 0, rcOpp: 0, rcPass: 0, rcRecv: 0, rcNone: 0, think: []};
       const closeChain = () => { if (chain && G.team(chain.seat) !== myTeam && chain.resp[me] && chain.resp[P]) { T.bothResp++; if (chain.resp[me] === "pass" && chain.resp[P] === "pass") T.bothPass++; } };
       for (const mv of rec.moves) {
         if (!mv || !mv.action) { ok = false; break; }
@@ -23776,7 +24410,11 @@ if (typeof document !== "undefined") (() => {
         else if (a.type === "receive" || a.type === "pass") {
           if (chain) chain.resp[s] = a.type;
           if (s === me && chain) {
-            if (chain.seat === P) { T.rideOpp++; if (a.type === "pass") T.ridePass++; }
+            if (chain.seat === P) {
+              T.rideOpp++; if (a.type === "pass") T.ridePass++;
+              if (G.legalReceives(hand, chain.koma).length) { T.rcOpp++; if (a.type === "pass") T.rcPass++; else T.rcRecv++; }
+              else T.rcNone++;
+            }
             if (G.team(chain.seat) !== myTeam && hand.includes("王") && chain.koma !== "王" && !G.UNCUTTABLE.has(chain.koma) && !hand.includes(chain.koma)) { T.ouOpp++; if (a.type === "pass") T.ouKeep++; }
           }
           if (a.type === "receive") { if (s === me) T.rcvMe++; else if (s === P) T.rcvP++; }
@@ -23827,7 +24465,7 @@ if (typeof document !== "undefined") (() => {
     const bars = ax.map(a => `<div class="tbar"><span class="tl">${a.k}</span><span class="tt"><span class="tf" style="width:${a.v == null ? 0 : a.v}%"></span></span><span class="tn">${a.v == null ? "—" : a.v + "%"} <span class="dim">(${a.n})</span></span></div>`).join("");
     return `<div class="pstyle"><div class="note">プレイスタイル — 相方との分担と傾向（人間が打った ${s.games} 局${ex}）</div>` +
       `<div class="ps-body">${radarSvg(ax)}<div class="ps-bars">${bars}` +
-      `<p class="note">思考時間の中央値 ${think == null ? "—" : (think / 1000).toFixed(1) + " 秒"}・相方の攻めに乗った率 ${ride == null ? "—" : ride + "%"}（${s.ridePass}/${s.rideOpp}）。攻め・受け・上がりは「あなた÷ペア」、協調は敵の攻めに二人とも応答した回数のうち二人とも「なし」だった割合、王温存は王でしか切れない敵の攻めを通した割合。</p></div></div></div>`;
+      `<p class="note">思考時間の中央値 ${think == null ? "—" : (think / 1000).toFixed(1) + " 秒"}。相方の攻めへの応答 — 受けを選べた${s.rcOpp}回｜通した${s.rcPass}回、受けた${s.rcRecv}回（通した割合 ${s.rcOpp ? Math.round(s.rcPass / s.rcOpp * 100) + "%" : "―"}）。受け不可は別に${s.rcNone}回。攻め・受け・上がりは「あなた÷ペア」、協調は敵の攻めに二人とも応答した回数のうち二人とも「なし」だった割合、王温存は王でしか切れない敵の攻めを通した割合。</p></div></div></div>`;
   }
   function openCareer() {
     const cs = app.career;
@@ -23950,7 +24588,7 @@ if (typeof document !== "undefined") (() => {
           ${e.rec.imported && e.rec.origin !== "local" ? `<span class="badge">読込</span>` : ""}</div>
         <div class="mline">あなた: <b>${escapeHtml(ACT_JA[mv.action.type] || "")}${mv.action.koma ? "「" + escapeHtml(mv.action.koma) + "」" : ""}</b></div>
         <div class="mline shu">AIなら: <b>${escapeHtml(ACT_JA[mv.cf.type] || "")}${mv.cf.koma ? "「" + escapeHtml(mv.cf.koma) + "」" : ""}</b> — ${linkifyJoseki(mv.cf.why || "")}</div>
-        ${loss ? `<div class="mline kin">保証${loss.guaranteed}点 → 実際${loss.actual >= 0 ? "+" : ""}${loss.actual}点（逸失≈${loss.loss}点）</div>` : ""}
+        ${loss ? `<div class="mline kin">${kfLossText(loss.guaranteed, loss.actual)}</div>` : ""}
         <div class="row" style="justify-content:flex-start;margin-top:7px">
           <button class="rv-resume" data-show="${k}">局面を再現</button>
           <button class="rv-resume" data-solve="${k}">▶ 解き直し</button>
@@ -24173,6 +24811,19 @@ if (typeof document !== "undefined") (() => {
 
 
   const APP_CHANGELOG = [
+    {v: "v221.7", d: "2026-11-13", tag: "ui", tagJa: "変わった", t: "「今回の1問」を足しました（打った局の1つの場面を、答えを見ずに選び直す）", p: [
+      "局が終わったあとの画面と振り返りに「今回の1問」が出ることがあります。押すと、その局の1つの場面で、当時あなたに見えていた物（手駒・場に出た駒・点）だけを見て、どの手にするかを選び直せます。",
+      "出るのは、確実に上がれる手順が確認できた場面がある局だけです（6局から10局に1局ほど）。答えたあとに、選んだ手と比べる手・狙いと成り立つわけ・実際に起きたことを順に出します。確かめられない答えを誤りとは言いません。",
+      "答えても、元の対局・点・成績・保存は変わりません。閉じると元の画面に戻ります。AIの指し手は変わりません。"]},
+    {v: "v221.6", d: "2026-11-13", tag: "ui", tagJa: "変わった", t: "振り返りで、途中の手にも「確実に上がれる手順」の確認が出ます", p: [
+      "振り返りの各手に、その手から「相手が誰も受けられない攻めを続けて、ひとりで確実に上がれる手順」が確認できたときだけ、その点を出します。別の手から確認できたときは「別の上がり筋を確認」と出します。",
+      "これは確認できた手順の点で、いちばん良い手の値ではありません。相方に任せる筋や、受けられるかもしれない攻めの良し悪しは調べていません。見直しの件数に入るのは、今までどおり最後の2枚の伏せだけです。",
+      "確認は振り返りを開いたあとに少しずつ進めるので、局の終わりや次の局へ進む操作は待たせません。結果は保存しません。AIの指し手は変わりません。"]},
+    {v: "v221.5", d: "2026-11-13", tag: "ui", tagJa: "変わった", t: "振り返りに「確かめた見直し」を足し、点の言い方と応答の数え方を直しました", p: [
+      "振り返りの上に「確かめた見直し」の行が出ます。今は、最後に残った2枚のどちらを伏せて上がるか、だけを確かめます。低い点の方で上がったときに「より高い点で上がれました」と出ます。どちらでも勝負に勝てたときや、当時の点・先取点の記録が無い棋譜では、見直しにしません。相方との連携や途中の攻めの良し悪しは、まだ評価していません。",
+      "成績の窓のプレイスタイルで、相方の攻めに対する応答を「受けを選べた回」と「受けられなかった回」に分けて数えるようにしました。受けられなくて通した回が「乗った率」に混ざっていました。",
+      "「逃した点」の言い方をやめ、「確認した上がり筋の点」と「実際の局の結果」を並べて出すようにしました。実際の結果は相手の手にも左右されるので、差をそのまま損とは言えないためです。",
+      "あなたが選べる手が1つも無かった局も、成績の局数に入るようにしました。今日の一局の途中で練習をしたあとは「対局へ戻る」で途中の局に戻れます。AIの指し手は変わりません。"]},
     {v: "v221.4", d: "2026-11-12", tag: "ui", tagJa: "変わった", t: "振り返りの「再プレイ」を、今の勝負の巻き戻しと練習に分けました", p: [
       "振り返りのボタンが2つの文に分かれます。今の勝負の局は「ここから再プレイ（対局を巻き戻す）」で、押すとその場面まで今の対局を巻き戻します。終わった勝負・前の勝負・読み込んだ棋譜は「ここから練習」で、今の対局の点や成績を変えずに練習できます。",
       "巻き戻して打ち直した局は、1手戻した局と同じく、成績と卒業の試しの集計から外します。",
