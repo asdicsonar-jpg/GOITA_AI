@@ -5,6 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>ごいた — 能登の伝承遊戯</title>
   <!-- build: v220.6 に短い入門コース（3 場面・5 着手）と助言つきの 1 局練習を当てた（配信候補 v220.7 の元）。計画: docs/PLAN_短い入門コース_rev4_Opus5.5.md（§14 の裁定）・docs/PLAN_v220.7_入門コース配信_rev2_Opus5.5.md。適用: harness/apply_quickstart_v2.py。エンジン区画（G・G_B・T1）は不変。 -->
+  <!-- build: v223.5「相手・相方の AI の段を保存する（STS）」base=v223.4。UI の便。
+       指示: Sonar 2026-11-15（段を保存する）。報告: docs/IMPLEMENTATION_REPORT_v223.5_rev1_Fable5.2.md。
+       変更: harness/spec/v223_5_apply.py → lib/release.py（版数・CHANGELOG・バッジ・sw.js）。設定の保存に鍵 2 つ（tierN・tierEW）が増える。エンジン・対局と記録の保存の形は v223.4 と同じ。
+       CACHE_NAME: goita-v223.4 → goita-v223.5. -->
   <!-- build: v223.4「プリセットの選択の印を、今の設定と合っている時だけ付ける（一致判定: LMJ）」base=v223.3。UI の便。
        指示: 初期画面の改善提案 改訂第5版 2-1（Sonar 2026-11-14: 明示する全項目・語は出さない・今の設定から付け直す）。報告: docs/IMPLEMENTATION_REPORT_v223.4_rev1_Fable5.2.md。
        変更: harness/spec/v223_4_apply.py → lib/release.py（版数・CHANGELOG・バッジ・sw.js）。エンジン・保存の形・画面の並びは v223.3 と同じ。
@@ -2177,7 +2181,7 @@ body.noto #wincut.show .wc-label{animation:wcFude .62s cubic-bezier(.2,.9,.3,1.2
 <div id="setup-screen">
   <!-- build v208: 版数表示は APP_CHANGELOG[0] から起動時に上書きされる(JS が動かない場合の保険としてここにも同じ版数を書いておく)。 -->
   <button type="button" class="setup-version" id="btn-version"
-          aria-label="バージョン v223.4 — 更新内容を見る" title="更新内容を見る"><span id="btn-version-num">v223.4</span><span class="sv-i" aria-hidden="true">ⓘ</span></button>
+          aria-label="バージョン v223.5 — 更新内容を見る" title="更新内容を見る"><span id="btn-version-num">v223.5</span><span class="sv-i" aria-hidden="true">ⓘ</span></button>
   <div class="title-block">
     <h1 class="serif">ごいた</h1>
     <div class="title-sub">能登・宇出津に伝わる竹駒の伝承遊戯</div>
@@ -12407,7 +12411,7 @@ if (typeof document !== "undefined") (() => {
   const byPts = (a, b) => G.POINTS[b] - G.POINTS[a];
 
   const app = {
-    cfg: {target: 150, speed: 850, mc: true, solver: true, explain: true, hints: true, counts: false, belief: "off", ouSignal: true, reading: true, advice: false, sighonest: false, pvPreview: false, undo: false, cand: false, coach: "std", tempo: true, livebar: false, riverseq: false, passHist: false, watchReveal: false, countsHold: false, opMode: "tap", sound: false, haptics: true, cud: false, nashiSide: "right", autoPass: false, theme: "yoai", assistHi: false, missGuard: false, notoAccent: true, srVerbosity: "normal", autoWorstTour: false, wakeLock: true, fxLen: "full", sigEcho: false, readHint: false},
+    cfg: {target: 150, speed: 850, mc: true, solver: true, explain: true, hints: true, counts: false, belief: "off", ouSignal: true, reading: true, advice: false, sighonest: false, pvPreview: false, undo: false, cand: false, coach: "std", tempo: true, livebar: false, riverseq: false, passHist: false, watchReveal: false, countsHold: false, opMode: "tap", sound: false, haptics: true, cud: false, nashiSide: "right", autoPass: false, theme: "yoai", assistHi: false, missGuard: false, notoAccent: true, srVerbosity: "normal", autoWorstTour: false, wakeLock: true, fxLen: "full", sigEcho: false, readHint: false, tierN: "strong", tierEW: "strong"},   /* v223.5 STS: 相方・相手の段（フォームの値）を保存する */
     tiers: {N: "strong", W: "strong", S: "human", E: "strong"},
     humanSeat: "S",
     scores: {NS: 0, EW: 0}, parent: null, st: null, rng: null,
@@ -21850,6 +21854,7 @@ if (typeof document !== "undefined") (() => {
     app.cfg.watchReveal = $("cfg-watchReveal") ? $("cfg-watchReveal").checked : app.cfg.watchReveal;
     app.cfg.countsHold = $("cfg-countsHold") ? $("cfg-countsHold").checked : app.cfg.countsHold;
     const sSel = $("cfg-S").value;
+    app.cfg.tierN = $("cfg-N").value; app.cfg.tierEW = $("cfg-EW").value;   /* v223.5 STS */
     app.tiers = {
       S: sSel === "human" ? (watch ? "strong" : "human") : sSel,
       N: $("cfg-N").value, W: $("cfg-EW").value, E: $("cfg-EW").value,
@@ -21954,6 +21959,8 @@ if (typeof document !== "undefined") (() => {
       ["pointerup", "pointercancel"].forEach(t => document.addEventListener(t, () => { if (app._countHold) hideCountOverlay(); }, true));   
       window.addEventListener("blur", () => { if (app._countHold) hideCountOverlay(); });
   } }
+  /* v223.5 STS: 起動時に 1 度、保存した相方・相手の段をフォームへ戻す（選択肢に無い値は捨てる） */
+  (function () { const put = (id, v) => { const el = $(id); if (el && typeof v === "string" && [...el.options].some(o => o.value === v)) el.value = v; }; put("cfg-N", app.cfg.tierN); put("cfg-EW", app.cfg.tierEW); })();
   wireCoachTier("cfg"); syncSetupFormFromCfg();
   $("setup-screen").addEventListener("change", renderSetupSummary); renderSetupSummary();   
   initMatchResumeUI();   
@@ -24877,6 +24884,9 @@ if (typeof document !== "undefined") (() => {
 
 
   const APP_CHANGELOG = [
+    {v: "v223.5", d: "2026-11-14", tag: "fix", tagJa: "直した", t: "相手・相方の AI の強さが、アプリを開き直しても残るようになりました", p: [
+      "これまでは、相手や相方の AI の強さを選んで対局しても、アプリを開き直すと「強い」に戻っていました。対局プリセットの「はじめて」（相手が標準）や「大会仕様」（相手・相方が最強）を選んだ時も同じでした。",
+      "対局を始めた時の強さを覚えておき、次に開いた時もその強さから始められるようにしました。自分の席（あなたが打つ／AI）は、これまでどおり毎回「あなたが打つ」から始まります。"]},
     {v: "v223.4", d: "2026-11-14", tag: "ui", tagJa: "使いやすくなった", t: "対局プリセットの印が、今の設定と合っている時だけ付くようになりました", p: [
       "対局プリセット（はじめて・腕試し・大会仕様）を選んだ後に、下の設定を手で変えると、印が外れるようにしました。設定を元に戻すと、印も戻ります。これまでは、設定を変えても印が残っていました。",
       "アプリを開き直した時も、今の設定がプリセットと同じなら、そのプリセットに印が付きます。先取点のように、そのプリセットが決めていない項目は、変えても印は残ります。"]},
