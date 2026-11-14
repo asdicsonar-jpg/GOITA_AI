@@ -5,6 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>ごいた — 能登の伝承遊戯</title>
   <!-- build: v220.6 に短い入門コース（3 場面・5 着手）と助言つきの 1 局練習を当てた（配信候補 v220.7 の元）。計画: docs/PLAN_短い入門コース_rev4_Opus5.5.md（§14 の裁定）・docs/PLAN_v220.7_入門コース配信_rev2_Opus5.5.md。適用: harness/apply_quickstart_v2.py。エンジン区画（G・G_B・T1）は不変。 -->
+  <!-- build: v223.4「プリセットの選択の印を、今の設定と合っている時だけ付ける（一致判定: LMJ）」base=v223.3。UI の便。
+       指示: 初期画面の改善提案 改訂第5版 2-1（Sonar 2026-11-14: 明示する全項目・語は出さない・今の設定から付け直す）。報告: docs/IMPLEMENTATION_REPORT_v223.4_rev1_Fable5.2.md。
+       変更: harness/spec/v223_4_apply.py → lib/release.py（版数・CHANGELOG・バッジ・sw.js）。エンジン・保存の形・画面の並びは v223.3 と同じ。
+       CACHE_NAME: goita-v223.3 → goita-v223.4. -->
   <!-- build: v223.3「保存した対局の破棄の確認の窓と、プリセットの選択の読み上げ（RDC・LAP）」base=v223.2。UI の便。
        指示: 初期画面の改善提案 改訂第5版 2-3・3-2（Sonar 2026-11-14 進める・やめるを先で強調）。検証: docs/REVIEW_初期画面改善提案_改訂第5版_妥当性の検証_2026-11-14.md。報告: docs/IMPLEMENTATION_REPORT_v223.3_rev1_Fable5.2.md。
        変更: harness/spec/v223_3_apply.py → lib/release.py（版数・CHANGELOG・バッジ・sw.js）。エンジン・保存の形・画面の並びは v223.2 と同じ。
@@ -2173,7 +2177,7 @@ body.noto #wincut.show .wc-label{animation:wcFude .62s cubic-bezier(.2,.9,.3,1.2
 <div id="setup-screen">
   <!-- build v208: 版数表示は APP_CHANGELOG[0] から起動時に上書きされる(JS が動かない場合の保険としてここにも同じ版数を書いておく)。 -->
   <button type="button" class="setup-version" id="btn-version"
-          aria-label="バージョン v223.3 — 更新内容を見る" title="更新内容を見る"><span id="btn-version-num">v223.3</span><span class="sv-i" aria-hidden="true">ⓘ</span></button>
+          aria-label="バージョン v223.4 — 更新内容を見る" title="更新内容を見る"><span id="btn-version-num">v223.4</span><span class="sv-i" aria-hidden="true">ⓘ</span></button>
   <div class="title-block">
     <h1 class="serif">ごいた</h1>
     <div class="title-sub">能登・宇出津に伝わる竹駒の伝承遊戯</div>
@@ -21885,6 +21889,7 @@ if (typeof document !== "undefined") (() => {
     const adv = adviceActive(Object.fromEntries([...ADVICE_FLAGS, "hints"].map(k => [k, on("cfg-" + k)]))) ? "助言あり（表示した局は成績対象外）"
       : (HELP.some(k => on("cfg-" + k)) ? "推奨手なし（ヒント・読み筋などの補助あり）" : "補助なし");
     el.textContent = `${who}／相手 ${ew}・相方 ${n}／先取 ${v("cfg-target")} 点／${adv}。目的を選んだだけでは始まりません。「対局をはじめる」で開始。`;
+    if (app._ladderReady) ladderSync();   /* v223.4 LMJ: 要約を書き直す時に、プリセットの印も今の設定から算出し直す */
   }
   
   
@@ -22015,6 +22020,29 @@ if (typeof document !== "undefined") (() => {
     renderSetupSummary();   
   }
   document.querySelectorAll(".ladder-btn").forEach(b => b.addEventListener("click", () => applyLadderPreset(b.dataset.ladder)));
+  /* v223.4 LMJ: プリセットの印は「今の設定（フォーム）が、そのプリセットの書き換える項目の全部と合う」時だけ付ける */
+  const LADDER_NOTE0 = ($("ladder-note") || {}).textContent || "";
+  const LADDER_BOOLS = ["livebar", "explain", "tempo", "riverseq", "undo", "pvPreview", "countsHold"];
+  function ladderMatchKind() {
+    const val = id => { const e = $(id); return e ? e.value : null; };
+    const chk = id => { const e = $(id); return e ? !!e.checked : null; };
+    for (const kind of Object.keys(LADDER_PRESETS)) {
+      const p = LADDER_PRESETS[kind], t = COACH_TIERS[p.coach];
+      if (!t || val("cfg-EW") !== p.EW || val("cfg-N") !== p.N) continue;
+      if (p.target != null && val("cfg-target") !== String(p.target)) continue;
+      if (!COACH_FLAGS.every(k => chk("cfg-" + k) === !!t[k])) continue;
+      if (!LADDER_BOOLS.every(k => p[k] == null || chk("cfg-" + k) === p[k])) continue;
+      return kind;
+    }
+    return null;
+  }
+  function ladderSync() {
+    const kind = ladderMatchKind();
+    document.querySelectorAll(".ladder-btn").forEach(b => { const on = b.dataset.ladder === kind; b.classList.toggle("on", on); b.setAttribute("aria-pressed", on ? "true" : "false"); });
+    if (!kind) { const note = $("ladder-note"); if (note && note.textContent !== LADDER_NOTE0) note.textContent = LADDER_NOTE0; }
+  }
+  app._ladderReady = true;
+  ladderSync();
   
   if (FIRST_RUN_DEVICE) {
     try {
@@ -24849,6 +24877,9 @@ if (typeof document !== "undefined") (() => {
 
 
   const APP_CHANGELOG = [
+    {v: "v223.4", d: "2026-11-14", tag: "ui", tagJa: "使いやすくなった", t: "対局プリセットの印が、今の設定と合っている時だけ付くようになりました", p: [
+      "対局プリセット（はじめて・腕試し・大会仕様）を選んだ後に、下の設定を手で変えると、印が外れるようにしました。設定を元に戻すと、印も戻ります。これまでは、設定を変えても印が残っていました。",
+      "アプリを開き直した時も、今の設定がプリセットと同じなら、そのプリセットに印が付きます。先取点のように、そのプリセットが決めていない項目は、変えても印は残ります。"]},
     {v: "v223.3", d: "2026-11-14", tag: "ui", tagJa: "使いやすくなった", t: "保存した対局の破棄に、確認の窓を付けました", p: [
       "はじめの画面の「破棄」は、押すとすぐに保存が消えていました。押すと確認の窓が出て、「破棄する」を選んだ時だけ消えるようにしました。「やめる」や窓の外を押した時は、保存はそのまま残ります。",
       "対局プリセット（はじめて・腕試し・大会仕様）のどれが選ばれているかが、読み上げでも伝わるようにしました。見た目と並びは変わりません。"]},
