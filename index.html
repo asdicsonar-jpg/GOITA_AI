@@ -5,6 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>ごいた — 能登の伝承遊戯</title>
   <!-- build: v220.6 に短い入門コース（3 場面・5 着手）と助言つきの 1 局練習を当てた（配信候補 v220.7 の元）。計画: docs/PLAN_短い入門コース_rev4_Opus5.5.md（§14 の裁定）・docs/PLAN_v220.7_入門コース配信_rev2_Opus5.5.md。適用: harness/apply_quickstart_v2.py。エンジン区画（G・G_B・T1）は不変。 -->
+  <!-- build: v223.8「保存が無い時は稽古札をカードの下へ・主操作のボタンの字を 16px に（KPL・MBF）」base=v223.7。UI の便。
+       指示: Sonar 2026-11-15（案 A・主操作のボタンの字は 16px）。報告: docs/IMPLEMENTATION_REPORT_v223.8_rev1_Fable5.2.md。
+       変更: harness/spec/v223_8_apply.py → lib/release.py（版数・CHANGELOG・バッジ・sw.js）。稽古札の中身と出る条件・エンジン・保存の形は v223.7 と同じ。
+       CACHE_NAME: goita-v223.7 → goita-v223.8. -->
+  <!-- build: v223.7「はじめの画面の小さい字と、文字を大きくした時の題字（SFT・RFL）」base=v223.6。UI の便（CSS だけ）。
+       指示: 初期画面の改善提案 改訂第5版 4・5（Sonar 2026-11-15: 進める）。報告: docs/IMPLEMENTATION_REPORT_v223.7_rev1_Fable5.2.md。
+       変更: harness/spec/v223_7_apply.py → lib/release.py（版数・CHANGELOG・バッジ・sw.js）。HTML・JS・エンジン・保存の形は v223.6 と同じ。
+       CACHE_NAME: goita-v223.6 → goita-v223.7. -->
   <!-- build: v223.6「はじめの画面の配置と字の色（LAY・CTR）」base=v223.5。UI の便（CSS と HTML）。
        指示: 初期画面の改善提案 改訂第5版 1・4（Sonar 2026-11-15 の決め）。報告: docs/IMPLEMENTATION_REPORT_v223.6_rev1_Fable5.2.md。
        変更: harness/spec/v223_6_apply.py → lib/release.py（版数・CHANGELOG・バッジ・sw.js）。JS・エンジン・保存の形は v223.5 と同じ。
@@ -2182,6 +2190,14 @@ body:not(.theme-kinari):not(.theme-hc) #setup-screen{--shu:#e46b54}
 body.theme-kinari #setup-screen{--gin-d:#675f50;--kin:#745d20;--shu:#aa3824}
 body.theme-kinari #setup-screen .title-sub,body.theme-kinari #setup-note,body.theme-kinari #setup-screen .title-link,body.theme-kinari #setup-adv>summary,body.theme-kinari #setup-adv>summary::before,body.theme-kinari #setup-screen .setup-version .sv-i{color:var(--gin)}
 body.theme-kinari #setup-screen .setup-card h2,body.theme-kinari #setup-screen .tutorial-card h2,body.theme-kinari #setup-screen .tut-tag,body.theme-kinari #setup-screen .tut-toggle{color:#745d20}
+/* v223.7 SFT: はじめの画面の 13px 未満の字を 13px に（説明の段落は 14px）。画面の外の同じ部品は変えない */
+#setup-screen .ladder-btn .btn-sub-txt,#setup-screen .btn-sub-txt,#setup-screen .tut-tag,#setup-screen .setup-version,#setup-screen .setup-version .sv-i,#setup-screen .title-sub,#setup-screen #setup-note,#setup-screen .toggle .desc,#setup-screen .title-link,#setup-screen .btn.small,#setup-screen .coach-adv>summary,#setup-screen .coach-tier-wrap .lbl2,#setup-screen .setup-card:not(.tutorial-card) h2,#setup-screen #setup-adv>summary,#setup-screen #seat-detail summary,#setup-screen .progress-text,#setup-screen .coachbadge,#setup-screen .qs-done-label,#setup-screen .matsuri-note{font-size:.8125rem}
+#setup-screen .qs-desc,#setup-screen .tutorial-desc{font-size:.875rem}
+/* v223.7 RFL: 題字の字の大きさに上限（幅の 20%）・順番の枠は幅が足りなければ折り返す。文字を 200% にした 320 幅で横にはみ出さない */
+#setup-screen h1{font-size:min(2.4rem,20vw)}
+#setup-screen .path-steps{grid-template-columns:repeat(auto-fit,minmax(min(100%,3.9rem),1fr))}
+/* v223.8 MBF: はじめの画面の主操作のボタンの字を 16px に */
+#setup-screen .actions .btn,#setup-screen #resume-continue,#setup-screen #btn-qr-scan{font-size:1rem}
 </style>
 </head>
 <body>
@@ -2196,7 +2212,7 @@ body.theme-kinari #setup-screen .setup-card h2,body.theme-kinari #setup-screen .
 <div id="setup-screen">
   <!-- build v208: 版数表示は APP_CHANGELOG[0] から起動時に上書きされる(JS が動かない場合の保険としてここにも同じ版数を書いておく)。 -->
   <button type="button" class="setup-version" id="btn-version"
-          aria-label="バージョン v223.6 — 更新内容を見る" title="更新内容を見る"><span id="btn-version-num">v223.6</span><span class="sv-i" aria-hidden="true">ⓘ</span></button>
+          aria-label="バージョン v223.8 — 更新内容を見る" title="更新内容を見る"><span id="btn-version-num">v223.8</span><span class="sv-i" aria-hidden="true">ⓘ</span></button>
   <div class="title-block">
     <h1 class="serif">ごいた</h1>
     <div class="title-sub">能登・宇出津に伝わる竹駒の伝承遊戯</div>
@@ -12958,8 +12974,8 @@ if (typeof document !== "undefined") (() => {
     const panel = $("resume-panel");
     if (!panel) return;
     const d = loadMatchProgress();
-    if (!d) { panel.style.display = "none"; return; }
-    panel.style.display = "";
+    if (!d) { panel.style.display = "none"; keikoPlace(); return; }
+    panel.style.display = ""; keikoPlace();   /* v223.8 KPL */
     const desc = $("resume-desc");
     if (desc) desc.textContent = matchResumeDesc(d);
     const cont = $("resume-continue"), disc = $("resume-discard");
@@ -24191,8 +24207,15 @@ if (typeof document !== "undefined") (() => {
       if (dismissBtn) { dismissBtn.textContent = "やめる"; dismissBtn.onclick = () => gradTrialRevert(sf); }
     }
   }
+  /* v223.8 KPL: 稽古札の置き場。保存した対局が無い時は開始の枠の後（QR のボタンの直前）、在る時はプリセットの枠の直前（今までの場所）。同じ場所なら動かさない */
+  function keikoPlace() {
+    const panel = $("keiko-panel"), rp = $("resume-panel"), qr = $("btn-qr-scan"), lp = $("ladder-panel"); if (!panel) return;
+    if (rp && rp.style.display !== "none") { if (lp && panel.nextElementSibling !== lp) lp.before(panel); }
+    else if (qr && panel.nextElementSibling !== qr) qr.before(panel);
+  }
   function renderKeikoPanel() {
     const panel = $("keiko-panel"); if (!panel) return;
+    keikoPlace();
     if (keikoDismissedToday()) { panel.style.display = "none"; return; }
     
     const gradPending = keikoProposeGrad();
@@ -24899,6 +24922,12 @@ if (typeof document !== "undefined") (() => {
 
 
   const APP_CHANGELOG = [
+    {v: "v223.8", d: "2026-11-15", tag: "ui", tagJa: "使いやすくなった", t: "はじめの画面で、今日の稽古の札が開始ボタンを押し出さないようにしました", p: [
+      "保存した対局が無い時は、今日の稽古の札を、対局をはじめるボタンのある枠の下に置くようにしました。札が出ていても、開始ボタンが最初の画面に収まります。保存した対局がある時の置き場は今までどおりです。",
+      "対局をはじめる、観戦、今日の一局、再開する、QR 局面コードのボタンの字を 16px にしました。"]},
+    {v: "v223.7", d: "2026-11-14", tag: "ui", tagJa: "使いやすくなった", t: "はじめの画面の小さい字を大きくしました", p: [
+      "はじめの画面で 13px より小さかった字（プリセットの副題、設定の説明、下の注など）を、13px 以上にしました。入門と完全ガイドの説明は 14px です。",
+      "端末の設定で文字を大きくしている時に、幅のせまい画面で題字が横にはみ出していたのを直しました。"]},
     {v: "v223.6", d: "2026-11-14", tag: "ui", tagJa: "使いやすくなった", t: "はじめの画面を整理し、対局をはじめるボタンが画面に収まりやすくなりました", p: [
       "対局プリセットと「対局をはじめる」を 1 枚のカードにまとめ、説明の字を少し小さくして、スマートフォンでもボタンが画面の中に入りやすくしました。",
       "「QRコード・局面コードから局面を開く」のボタンは、カードの下へ移しました。",
