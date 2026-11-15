@@ -1,5 +1,5 @@
 // ごいた — Service Worker
-// 対象: index.html (build v223.5, SHA-256 fbb454ad8ca83a4f48d88b8cdcb6b9f3d60e53695251d36cf0cf96ad8db82e4b)
+// 対象: index.html (build v223.6, SHA-256 43f6666b9585ecbc5b828eda9ab4266bb8ac191100ca0900a5110c3a67fbb480)
 //
 // v205: A-1「ddSolve の Packed 化(PACKED_SOLVE、既定0=legacy)」。出荷既定では1行も
 // 実行されない基盤整備であり、着手列SHA-256 は v204 と完全一致することを機械確認済み。
@@ -108,6 +108,7 @@
 // v223.3: 保存した対局の破棄の確認の窓と、プリセットの選択の読み上げ（v223_3_apply.py・RDC・LAP）。UI の便。エンジン・保存の形・画面の並びは v223.2 と同じ。
 // v223.4: プリセットの選択の印を、今の設定と合っている時だけ付ける（v223_4_apply.py・LMJ）。UI の便。エンジン・保存の形・画面の並びは v223.3 と同じ。
 // v223.5: 相手・相方の AI の段を保存する（v223_5_apply.py・STS）。UI の便。エンジン・対局と記録の保存の形は v223.4 と同じ。
+// v223.6: はじめの画面の配置と字の色（v223_6_apply.py・LAY・CTR）。UI の便（CSS と HTML）。JS・エンジン・保存の形は v223.5 と同じ。
 //
 // このファイルは index.html と同じディレクトリに配置すること。index.html 側は
 // すでに以下の登録コードを持っている(http(s)配信時のみ有効。file://や未配置時は
@@ -120,7 +121,7 @@
 // アプリを開いたことがある端末には古いキャッシュが残り続け、新しい index.html が
 // 配信されない(PWAの典型的な事故)。
 
-// Web 公開版（mkweb.py）: 上の注釈の sha は単一 HTML 版の物。この SW が配る Web 版の index.html は sha256 0cb0219b98e4cf63af635410c583b71f3bdd5bb56d485c08909538b16c98ca6d、重みは t1w.84589aaf8f4a.js（sha256 84589aaf8f4af589b76912cb3eb8e3ff71a21434a9cf65ab025c6afb8d03a5ae）。
+// Web 公開版（mkweb.py）: 上の注釈の sha は単一 HTML 版の物。この SW が配る Web 版の index.html は sha256 1ea91c47099746936a43819e6959afcc0b6f5354c64c28cc13a4bef27c1a1318、重みは t1w.84589aaf8f4a.js（sha256 84589aaf8f4af589b76912cb3eb8e3ff71a21434a9cf65ab025c6afb8d03a5ae）。
 
 // ===== Web 公開版（harness/kit/mkweb.py が作る・軽量化 W1b）=====
 // W1 との違い（Web 版の直しの提案 2026-11-07 の P1〜P3・7.1〜7.3）:
@@ -132,10 +133,10 @@
 //   - キャッシュへの書き込みは event.waitUntil で待つ。
 const SCOPE = new URL(self.registration.scope);
 const PFX = "goita|" + SCOPE.pathname + "|";
-const BUILD = "v223.5+0cb0219b98e4";
+const BUILD = "v223.6+1ea91c470997";
 const CACHE_NAME = PFX + "shell|" + BUILD;
 const ASSET_CACHE = PFX + "assets";
-const INDEX_SHA = "0cb0219b98e4cf63af635410c583b71f3bdd5bb56d485c08909538b16c98ca6d";
+const INDEX_SHA = "1ea91c47099746936a43819e6959afcc0b6f5354c64c28cc13a4bef27c1a1318";
 const ASSETS = [{"u": "t1w.84589aaf8f4a.js", "sha256": "84589aaf8f4af589b76912cb3eb8e3ff71a21434a9cf65ab025c6afb8d03a5ae", "bytes": 2443143}];
 const MARK = new URL("__goita_complete__", SCOPE).href;
 const PRECACHE_OPTIONAL = [

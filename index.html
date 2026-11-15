@@ -5,6 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>ごいた — 能登の伝承遊戯</title>
   <!-- build: v220.6 に短い入門コース（3 場面・5 着手）と助言つきの 1 局練習を当てた（配信候補 v220.7 の元）。計画: docs/PLAN_短い入門コース_rev4_Opus5.5.md（§14 の裁定）・docs/PLAN_v220.7_入門コース配信_rev2_Opus5.5.md。適用: harness/apply_quickstart_v2.py。エンジン区画（G・G_B・T1）は不変。 -->
+  <!-- build: v223.6「はじめの画面の配置と字の色（LAY・CTR）」base=v223.5。UI の便（CSS と HTML）。
+       指示: 初期画面の改善提案 改訂第5版 1・4（Sonar 2026-11-15 の決め）。報告: docs/IMPLEMENTATION_REPORT_v223.6_rev1_Fable5.2.md。
+       変更: harness/spec/v223_6_apply.py → lib/release.py（版数・CHANGELOG・バッジ・sw.js）。JS・エンジン・保存の形は v223.5 と同じ。
+       CACHE_NAME: goita-v223.5 → goita-v223.6. -->
   <!-- build: v223.5「相手・相方の AI の段を保存する（STS）」base=v223.4。UI の便。
        指示: Sonar 2026-11-15（段を保存する）。報告: docs/IMPLEMENTATION_REPORT_v223.5_rev1_Fable5.2.md。
        変更: harness/spec/v223_5_apply.py → lib/release.py（版数・CHANGELOG・バッジ・sw.js）。設定の保存に鍵 2 つ（tierN・tierEW）が増える。エンジン・対局と記録の保存の形は v223.4 と同じ。
@@ -2167,6 +2171,17 @@ body.noto #wincut.show .wc-label{animation:wcFude .62s cubic-bezier(.2,.9,.3,1.2
   55%{opacity:.7}72%{opacity:.95}
   100%{transform:translate(var(--dx,0),var(--fall,320px)) scale(.2);opacity:0}}
 @media (prefers-reduced-motion:reduce){.kf-ember{display:none!important}}
+/* v223.6 LAY: プリセットの枠と開始の枠を 1 枚に見せる（DOM は動かさない）・説明の字を 14px に・QR のボタンは開始の枠の後へ */
+#setup-screen>#ladder-panel{border-bottom:0;border-bottom-left-radius:0;border-bottom-right-radius:0}
+#setup-screen>#ladder-panel+#setup-go{border-top:0;border-top-left-radius:0;border-top-right-radius:0;margin-top:-14px}
+#ladder-note,#setup-summary,#daily-note,#setup-go>p.desc{font-size:.875rem;line-height:1.6}
+body.noto #setup-screen>#btn-qr-scan{position:relative;z-index:1}
+/* v223.6 CTR: はじめの画面の中だけ、足りない字の色を既存の型（#review 等）の色に。生成りの枠の外の字は --gin に */
+@media not (prefers-contrast:more){body:not(.theme-kinari):not(.theme-hc) #setup-screen{--gin-d:#8191a3}}
+body:not(.theme-kinari):not(.theme-hc) #setup-screen{--shu:#e46b54}
+body.theme-kinari #setup-screen{--gin-d:#675f50;--kin:#745d20;--shu:#aa3824}
+body.theme-kinari #setup-screen .title-sub,body.theme-kinari #setup-note,body.theme-kinari #setup-screen .title-link,body.theme-kinari #setup-adv>summary,body.theme-kinari #setup-adv>summary::before,body.theme-kinari #setup-screen .setup-version .sv-i{color:var(--gin)}
+body.theme-kinari #setup-screen .setup-card h2,body.theme-kinari #setup-screen .tutorial-card h2,body.theme-kinari #setup-screen .tut-tag,body.theme-kinari #setup-screen .tut-toggle{color:#745d20}
 </style>
 </head>
 <body>
@@ -2181,22 +2196,11 @@ body.noto #wincut.show .wc-label{animation:wcFude .62s cubic-bezier(.2,.9,.3,1.2
 <div id="setup-screen">
   <!-- build v208: 版数表示は APP_CHANGELOG[0] から起動時に上書きされる(JS が動かない場合の保険としてここにも同じ版数を書いておく)。 -->
   <button type="button" class="setup-version" id="btn-version"
-          aria-label="バージョン v223.5 — 更新内容を見る" title="更新内容を見る"><span id="btn-version-num">v223.5</span><span class="sv-i" aria-hidden="true">ⓘ</span></button>
+          aria-label="バージョン v223.6 — 更新内容を見る" title="更新内容を見る"><span id="btn-version-num">v223.6</span><span class="sv-i" aria-hidden="true">ⓘ</span></button>
   <div class="title-block">
     <h1 class="serif">ごいた</h1>
     <div class="title-sub">能登・宇出津に伝わる竹駒の伝承遊戯</div>
   </div>
-  <button type="button" class="btn-qr-prominent" id="btn-qr-scan">
-    <svg class="qr-mark" viewBox="0 0 21 21" aria-hidden="true" focusable="false">
-      <rect x="0" y="0" width="7" height="7" rx="1"/><rect x="2" y="2" width="3" height="3" fill="var(--ink0)"/>
-      <rect x="14" y="0" width="7" height="7" rx="1"/><rect x="16" y="2" width="3" height="3" fill="var(--ink0)"/>
-      <rect x="0" y="14" width="7" height="7" rx="1"/><rect x="2" y="16" width="3" height="3" fill="var(--ink0)"/>
-      <rect x="9" y="0" width="2" height="2"/><rect x="9" y="9" width="2" height="2"/><rect x="12" y="9" width="2" height="2"/>
-      <rect x="9" y="12" width="2" height="2"/><rect x="16" y="9" width="2" height="2"/><rect x="9" y="16" width="2" height="2"/>
-      <rect x="16" y="16" width="2" height="2"/><rect x="19" y="9" width="2" height="2"/><rect x="12" y="19" width="2" height="2"/>
-    </svg>
-    <span>QRコード・局面コードから局面を開く</span>
-  </button>
   <p class="matsuri-note" id="matsuri-note" style="display:none"></p>
   <!-- v66【能登・案1】あばれ祭の奉燈(キリコ)シルエット。body.noto時のみ・極薄の背景装飾 -->
   <svg class="noto-kiriko" aria-hidden="true" viewBox="0 0 120 220" preserveAspectRatio="xMidYMax meet">
@@ -2287,6 +2291,17 @@ body.noto #wincut.show .wc-label{animation:wcFude .62s cubic-bezier(.2,.9,.3,1.2
     <p class="desc" id="daily-note">日ごとに変わる配りで1局打ちます。何度でも打てますが、成績に入るのはその日の1回目だけです。連続の記録は取りません。</p>
     <p class="desc">席の構成・先取点・AIと表示は下の「詳しい設定」で変えられます。</p>
   </div>
+  <button type="button" class="btn-qr-prominent" id="btn-qr-scan">
+    <svg class="qr-mark" viewBox="0 0 21 21" aria-hidden="true" focusable="false">
+      <rect x="0" y="0" width="7" height="7" rx="1"/><rect x="2" y="2" width="3" height="3" fill="var(--ink0)"/>
+      <rect x="14" y="0" width="7" height="7" rx="1"/><rect x="16" y="2" width="3" height="3" fill="var(--ink0)"/>
+      <rect x="0" y="14" width="7" height="7" rx="1"/><rect x="2" y="16" width="3" height="3" fill="var(--ink0)"/>
+      <rect x="9" y="0" width="2" height="2"/><rect x="9" y="9" width="2" height="2"/><rect x="12" y="9" width="2" height="2"/>
+      <rect x="9" y="12" width="2" height="2"/><rect x="16" y="9" width="2" height="2"/><rect x="9" y="16" width="2" height="2"/>
+      <rect x="16" y="16" width="2" height="2"/><rect x="19" y="9" width="2" height="2"/><rect x="12" y="19" width="2" height="2"/>
+    </svg>
+    <span>QRコード・局面コードから局面を開く</span>
+  </button>
   <details id="setup-adv">
     <summary>詳しい設定（席の構成・先取点・AIと表示）</summary>
     <div class="setup-adv-body">
@@ -24884,6 +24899,10 @@ if (typeof document !== "undefined") (() => {
 
 
   const APP_CHANGELOG = [
+    {v: "v223.6", d: "2026-11-14", tag: "ui", tagJa: "使いやすくなった", t: "はじめの画面を整理し、対局をはじめるボタンが画面に収まりやすくなりました", p: [
+      "対局プリセットと「対局をはじめる」を 1 枚のカードにまとめ、説明の字を少し小さくして、スマートフォンでもボタンが画面の中に入りやすくしました。",
+      "「QRコード・局面コードから局面を開く」のボタンは、カードの下へ移しました。",
+      "はじめの画面の小さい字のうち、背景との差が足りなかった色を、読みやすい色に直しました（夜藍・生成り）。"]},
     {v: "v223.5", d: "2026-11-14", tag: "fix", tagJa: "直した", t: "相手・相方の AI の強さが、アプリを開き直しても残るようになりました", p: [
       "これまでは、相手や相方の AI の強さを選んで対局しても、アプリを開き直すと「強い」に戻っていました。対局プリセットの「はじめて」（相手が標準）や「大会仕様」（相手・相方が最強）を選んだ時も同じでした。",
       "対局を始めた時の強さを覚えておき、次に開いた時もその強さから始められるようにしました。自分の席（あなたが打つ／AI）は、これまでどおり毎回「あなたが打つ」から始まります。"]},
