@@ -5,6 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>ごいた — 能登の伝承遊戯</title>
   <!-- build: v220.6 に短い入門コース（3 場面・5 着手）と助言つきの 1 局練習を当てた（配信候補 v220.7 の元）。計画: docs/PLAN_短い入門コース_rev4_Opus5.5.md（§14 の裁定）・docs/PLAN_v220.7_入門コース配信_rev2_Opus5.5.md。適用: harness/apply_quickstart_v2.py。エンジン区画（G・G_B・T1）は不変。 -->
+  <!-- build: v223.13「選択の傾向（件数）: 助言を出した局を別にする・条件の内訳を添える（HNT）」base=v223.12。UI の便。
+       指示: Sonar 2026-11-16（助言の局だけ別の行）。報告: docs/IMPLEMENTATION_REPORT_v223.13_rev1_Fable5.2.md。
+       変更: harness/spec/v223_13_apply.py → lib/release.py（版数・CHANGELOG・バッジ・sw.js）。エンジン・保存の形・成績の集計は v223.12 と同じ。
+       CACHE_NAME: goita-v223.12 → goita-v223.13. -->
   <!-- build: v223.12「はじめの画面に 学ぶ・記録 の入口（ENT）」base=v223.11。UI の便。
        指示: Sonar 2026-11-16（工程 6 に進んで・置き場は完全ガイドの下・復習は期日の札が在る時だけ）。報告: docs/IMPLEMENTATION_REPORT_v223.12_rev1_Fable5.2.md。
        変更: harness/spec/v223_12_apply.py → lib/release.py（版数・CHANGELOG・バッジ・sw.js）。エンジン・保存の形・それぞれの窓の中身は v223.11 と同じ。
@@ -2233,7 +2237,7 @@ body.theme-kinari #setup-screen .setup-card h2,body.theme-kinari #setup-screen .
 <div id="setup-screen">
   <!-- build v208: 版数表示は APP_CHANGELOG[0] から起動時に上書きされる(JS が動かない場合の保険としてここにも同じ版数を書いておく)。 -->
   <button type="button" class="setup-version" id="btn-version"
-          aria-label="バージョン v223.12 — 更新内容を見る" title="更新内容を見る"><span id="btn-version-num">v223.12</span><span class="sv-i" aria-hidden="true">ⓘ</span></button>
+          aria-label="バージョン v223.13 — 更新内容を見る" title="更新内容を見る"><span id="btn-version-num">v223.13</span><span class="sv-i" aria-hidden="true">ⓘ</span></button>
   <div class="title-block">
     <h1 class="serif">ごいた</h1>
     <div class="title-sub">能登・宇出津に伝わる竹駒の伝承遊戯</div>
@@ -19818,7 +19822,8 @@ if (typeof document !== "undefined") (() => {
     if (rec.imported && rec.origin !== "local") return "imported";
     const m = rec.meta;
     if (!m || rec.condMixed !== false) return "unknown";
-    return m.mode === "daily" ? "daily" : (m.mode === "match" ? "match" : "unknown");
+    if (m.mode === "match") return rec.hinted === true ? "hinted" : "match";   /* v223.13 HNT: 助言を出した局は別の組 */
+    return m.mode === "daily" ? "daily" : "unknown";
   }
   function kftOppKind(obs) {
     if (!obs || obs.phase !== "respond" || !obs.attacker || obs.pending == null) return null;
@@ -19876,8 +19881,10 @@ if (typeof document !== "undefined") (() => {
   }
   function kftSum(list) {
     const S = kftZero(); S.games = list.length; S.bad = 0;
+    const tk = new Set(), gk = new Set();   /* v223.13 HNT: 条件の内訳（段の組み合わせ・先取点が何通りか） */
     for (const e of list) {
       const row = e.row;
+      { const m = e.rec && e.rec.meta; if (m) { tk.add(JSON.stringify([m.hs, m.tiers ? ["N", "W", "S", "E"].map(x => m.tiers[x] || null) : null])); gk.add(String(m.target)); } }
       if (!row || !row.ok) { S.bad++; continue; }
       S.dec += row.dec; S.moves += row.moves;
       for (const t of ["A", "B"]) { S[t].opp += row[t].opp; S[t].pass += row[t].pass; S[t].recv += row[t].recv; for (const i of row[t].at) S[t].at.push({rec: e.rec, i}); }
@@ -19886,6 +19893,7 @@ if (typeof document !== "undefined") (() => {
       for (const i of row.C.rv) S.C.rv.push({rec: e.rec, i});
       for (const f of Object.keys(S.lines)) S.lines[f] += row.lines[f] || 0;
     }
+    S.cond = {tiers: tk.size, target: gk.size};
     S.ok = true;
     return S;
   }
@@ -19895,7 +19903,7 @@ if (typeof document !== "undefined") (() => {
   }
   function kftShape(recs) {
     const of = g => recs.filter(e => e.g === g), M = of("match");
-    return {recent: kftSum(M.slice(-KFT_WINDOW)), all: kftSum(M), daily: kftSum(of("daily")), imported: kftSum(of("imported")), unknown: kftSum(of("unknown"))};
+    return {recent: kftSum(M.slice(-KFT_WINDOW)), all: kftSum(M), hinted: kftSum(of("hinted")), daily: kftSum(of("daily")), imported: kftSum(of("imported")), unknown: kftSum(of("unknown"))};
   }
   function kftMoveLabel(e) {
     const rec = e.rec, mv = rec.moves[e.i], a = mv && mv.action;
@@ -19933,10 +19941,13 @@ if (typeof document !== "undefined") (() => {
   }
   function kftPaint(host, D) {
     const other = (name, S) => S.games ? name + " " + S.games + " 局（選べた: 相方の攻め " + S.A.opp + "・王 " + S.B.opp + "・終盤 " + S.C.opp + "）" : "";
-    const others = [other("今日の一局", D.daily), other("読み込んだ棋譜", D.imported), other("条件が分からない棋譜", D.unknown)].filter(Boolean);
+    const others = [other("助言を出した局", D.hinted), other("今日の一局", D.daily), other("読み込んだ棋譜", D.imported), other("条件が分からない棋譜", D.unknown)].filter(Boolean);
+    const cond = S => { const c = S.cond || {tiers: 0, target: 0}; if (!S.games) return "";   /* v223.13 HNT */
+      return '<div class="note kft-cond">' + (c.tiers <= 1 && c.target <= 1 ? "この " + S.games + " 局は、相方と相手の段・先取点が全部同じです。"
+        : "この " + S.games + " 局には、相方と相手の段の組み合わせ " + c.tiers + " 通り・先取点 " + c.target + " 通りが混ざっています（分けずに数えています）。") + "</div>"; };
     host.innerHTML = '<p class="note">件数は、あなたが選べた場面を数えた物です。良し悪しの判定ではありません。評価できるのは、今は「最後の 2 枚の伏せ」だけです。</p>' +
-      (D.all.games ? '<div class="note"><b>直近 ' + KFT_WINDOW + " 局</b>（勝負の対局 " + D.recent.games + " 局）</div>" + kftWinHtml(D.recent, "recent") +
-        '<div class="note"><b>保存の全部</b>（勝負の対局 ' + D.all.games + " 局）</div>" + kftWinHtml(D.all, "all")
+      (D.all.games ? '<div class="note"><b>直近 ' + KFT_WINDOW + " 局</b>（勝負の対局 " + D.recent.games + " 局）</div>" + kftWinHtml(D.recent, "recent") + cond(D.recent) +
+        '<div class="note"><b>保存の全部</b>（勝負の対局 ' + D.all.games + " 局）</div>" + kftWinHtml(D.all, "all") + cond(D.all)
         : '<p class="note">数えられる勝負の対局が、まだありません。</p>') +
       (others.length ? '<p class="note">上の数に入れていない棋譜: ' + others.join("／") + "</p>" : "") +
       '<div id="kft-list"></div>';
@@ -25142,6 +25153,9 @@ if (typeof document !== "undefined") (() => {
 
 
   const APP_CHANGELOG = [
+    {v: "v223.13", d: "2026-11-16", tag: "ui", tagJa: "使いやすくなった", t: "選択の傾向（件数）で、助言を出した局を別に数えるようにしました", p: [
+      "成績の窓の 選択の傾向（件数） で、推奨手や受けの助言を出した局を、直近 20 局と保存の全部の数から外しました。外した局の数は、下の 上の数に入れていない棋譜 に出ます。",
+      "それぞれの数の下に、その中で相方と相手の段や先取点が同じか、混ざっているかを 1 行で書くようにしました。混ざっていても、分けずに数えています。"]},
     {v: "v223.12", d: "2026-11-16", tag: "ui", tagJa: "使いやすくなった", t: "はじめの画面から、成績や詰めごいたを開けるようにしました", p: [
       "はじめの画面の下の方に、学ぶ・記録 という枠を足しました。成績、詰めごいた、定石、協調ドリルを、対局を始めなくても開けます。",
       "逃した上がりが残っている時は 逃し復習 のボタンが、復習の日が来た問題が在る時は 復習 のボタンが出ます。無い時は出ません。",
