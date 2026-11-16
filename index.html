@@ -5,6 +5,22 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>ごいた — 能登の伝承遊戯</title>
   <!-- build: v220.6 に短い入門コース（3 場面・5 着手）と助言つきの 1 局練習を当てた（配信候補 v220.7 の元）。計画: docs/PLAN_短い入門コース_rev4_Opus5.5.md（§14 の裁定）・docs/PLAN_v220.7_入門コース配信_rev2_Opus5.5.md。適用: harness/apply_quickstart_v2.py。エンジン区画（G・G_B・T1）は不変。 -->
+  <!-- build: v223.12「はじめの画面に 学ぶ・記録 の入口（ENT）」base=v223.11。UI の便。
+       指示: Sonar 2026-11-16（工程 6 に進んで・置き場は完全ガイドの下・復習は期日の札が在る時だけ）。報告: docs/IMPLEMENTATION_REPORT_v223.12_rev1_Fable5.2.md。
+       変更: harness/spec/v223_12_apply.py → lib/release.py（版数・CHANGELOG・バッジ・sw.js）。エンジン・保存の形・それぞれの窓の中身は v223.11 と同じ。
+       CACHE_NAME: goita-v223.11 → goita-v223.12. -->
+  <!-- build: v223.11「成績の窓に 選択の傾向（件数）（KF-03・案 A）（KFT）」base=v223.10。UI の便。
+       指示: Sonar 2026-11-16（検証仕様 案 A の承認）。報告: docs/IMPLEMENTATION_REPORT_v223.11_rev1_Fable5.2.md。
+       変更: harness/spec/v223_11_apply.py → lib/release.py（版数・CHANGELOG・バッジ・sw.js）。エンジン・保存の形・今の成績と解析は v223.10 と同じ。
+       CACHE_NAME: goita-v223.10 → goita-v223.11. -->
+  <!-- build: v223.10「合図・受けの助言・悪手ツアーの文の言い直し（SGT・MGT・TET）」base=v223.9。UI の便（文だけ）。
+       指示: Sonar 2026-11-16（文案どおり・し攻めの語の訂正）。報告: docs/IMPLEMENTATION_REPORT_v223.10_rev1_Fable5.2.md。
+       変更: harness/spec/v223_10_apply.py → lib/release.py（版数・CHANGELOG・バッジ・sw.js）。出る条件・働き・エンジン・保存の形は v223.9 と同じ。
+       CACHE_NAME: goita-v223.9 → goita-v223.10. -->
+  <!-- build: v223.9「局の終わりの帯を、振り返り・練習から戻った後も同じ並びに／流局の局も共有できる（OBK・SHO）」base=v223.8。UI の便。
+       指示: Sonar 2026-11-15（統合見直し案の工程 6 の残り・小さい便を順に）。報告: docs/IMPLEMENTATION_REPORT_v223.9_rev1_Fable5.2.md。
+       変更: harness/spec/v223_9_apply.py → lib/release.py（版数・CHANGELOG・バッジ・sw.js）。エンジン・保存の形・解析は v223.8 と同じ。
+       CACHE_NAME: goita-v223.8 → goita-v223.9. -->
   <!-- build: v223.8「保存が無い時は稽古札をカードの下へ・主操作のボタンの字を 16px に（KPL・MBF）」base=v223.7。UI の便。
        指示: Sonar 2026-11-15（案 A・主操作のボタンの字は 16px）。報告: docs/IMPLEMENTATION_REPORT_v223.8_rev1_Fable5.2.md。
        変更: harness/spec/v223_8_apply.py → lib/release.py（版数・CHANGELOG・バッジ・sw.js）。稽古札の中身と出る条件・エンジン・保存の形は v223.7 と同じ。
@@ -2198,6 +2214,11 @@ body.theme-kinari #setup-screen .setup-card h2,body.theme-kinari #setup-screen .
 #setup-screen .path-steps{grid-template-columns:repeat(auto-fit,minmax(min(100%,3.9rem),1fr))}
 /* v223.8 MBF: はじめの画面の主操作のボタンの字を 16px に */
 #setup-screen .actions .btn,#setup-screen #resume-continue,#setup-screen #btn-qr-scan{font-size:1rem}
+/* v223.11 KFT: 成績の窓の「選択の傾向（件数）」 */
+.kft{margin:10px 0;border-top:1px solid var(--hair2);padding-top:8px}.kft>summary{cursor:pointer;min-height:44px;display:flex;align-items:center;font-size:.9rem;color:var(--fg)}
+.kft .kft-ul{margin:4px 0 10px;padding-left:1.1em;font-size:.86rem;line-height:1.7}.kft .kft-ul li{margin-bottom:8px}.kft .kft-seg{display:block}.kft .kft-sep{display:none}.kft .btn.small{min-height:44px;margin:2px 4px 2px 0}.kft #kft-list{margin-top:8px}
+/* v223.12 ENT: はじめの画面の「学ぶ・記録」の枠 */
+#setup-screen .ent-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,7.2rem),1fr));gap:8px;margin-top:8px}#setup-screen .ent-grid .btn{min-height:44px;font-size:.875rem}#setup-screen .ent-grid .btn[hidden]{display:none}
 </style>
 </head>
 <body>
@@ -2212,7 +2233,7 @@ body.theme-kinari #setup-screen .setup-card h2,body.theme-kinari #setup-screen .
 <div id="setup-screen">
   <!-- build v208: 版数表示は APP_CHANGELOG[0] から起動時に上書きされる(JS が動かない場合の保険としてここにも同じ版数を書いておく)。 -->
   <button type="button" class="setup-version" id="btn-version"
-          aria-label="バージョン v223.8 — 更新内容を見る" title="更新内容を見る"><span id="btn-version-num">v223.8</span><span class="sv-i" aria-hidden="true">ⓘ</span></button>
+          aria-label="バージョン v223.12 — 更新内容を見る" title="更新内容を見る"><span id="btn-version-num">v223.12</span><span class="sv-i" aria-hidden="true">ⓘ</span></button>
   <div class="title-block">
     <h1 class="serif">ごいた</h1>
     <div class="title-sub">能登・宇出津に伝わる竹駒の伝承遊戯</div>
@@ -2306,6 +2327,17 @@ body.theme-kinari #setup-screen .setup-card h2,body.theme-kinari #setup-screen .
     <div class="actions" id="daily-row"><button class="btn" id="btn-daily" disabled>今日の一局</button></div>
     <p class="desc" id="daily-note">日ごとに変わる配りで1局打ちます。何度でも打てますが、成績に入るのはその日の1回目だけです。連続の記録は取りません。</p>
     <p class="desc">席の構成・先取点・AIと表示は下の「詳しい設定」で変えられます。</p>
+  </div>
+  <div class="panel setup-card ent-card" id="ent-panel" role="group" aria-labelledby="ent-ttl">
+    <h2 class="serif" id="ent-ttl">学ぶ・記録</h2>
+    <div class="ent-grid">
+      <button type="button" class="btn" id="ent-career">成績</button>
+      <button type="button" class="btn" id="ent-puzzle">詰めごいた</button>
+      <button type="button" class="btn" id="ent-joseki">定石</button>
+      <button type="button" class="btn" id="ent-drill">協調ドリル</button>
+      <button type="button" class="btn" id="ent-miss" hidden>逃し復習</button>
+      <button type="button" class="btn" id="ent-srs" hidden>復習</button>
+    </div>
   </div>
   <button type="button" class="btn-qr-prominent" id="btn-qr-scan">
     <svg class="qr-mark" viewBox="0 0 21 21" aria-hidden="true" focusable="false">
@@ -14638,7 +14670,7 @@ if (typeof document !== "undefined") (() => {
       const sigs = pvPreviewSignals(st, me, a); if (!sigs.length) return [];
       const tier = app.tiers[G.partnerOf(me)];
       if (tier === "naive") return ["この相方（初心者）は合図を読みません"];
-      const t = "相方には『" + sigs.map(s => s.text).join("・") + "』と伝わります";
+      const t = "相方には『" + sigs.map(s => s.text).join("・") + "』の合図と読まれることがあります";
       return [tier === "t1" ? t + "（最強の相方がこのとおりに読むとは限りません）" : t];
     } catch (e) { return []; }
   }
@@ -15600,7 +15632,7 @@ if (typeof document !== "undefined") (() => {
   const JK_DEEP = {
     barabara: "脅威モデル: ペア無しの手でし先打ち(ごめんなさいのし)をすると、人間の相方は『し攻めの誘い』と誤読し、来ないし攻めに備えて手を歪める。相方の予想応手: 大駒先打ちを見たら『ペア無し・かかり応え不要』と読み、自分が主導権を握りに動く。やらないと: 符丁が濁り二人の狙いがズレて上がりを逃す。",
     kakari: "脅威モデル: 相方の1打目(多く持つ駒)に応えないと、相方は『こちらもその駒を持つ』確証を得られず戦略を固めにくい。相方の予想応手: 同駒で返せば『2枚目は王でしか止まらない』が確定して心配が消える。別駒を出せば『その駒は持たない／別が厚い』と伝わる。やらないと: 残り駒の所在が読めず二人とも受け身になる。",
-    shi_signal: "脅威モデル: し合図(初手し攻め)に、し薄なのに乗ると受けきれず主導権を敵に渡す。相方の予想応手: し4枚なら乗って五し攻めへ、し3枚で参加、し薄なら受けに回る。乗るべき時に乗らないと: 占有90%のし攻めチャンスを逃す。",
+    shi_signal: "脅威モデル: し合図(初手し攻め)に、し薄なのに乗ると受けきれず主導権を敵に渡す。相方の予想応手: し4枚なら乗ってし攻めへ、し3枚で参加、し薄なら受けに回る。乗るべき時に乗らないと: 占有90%のし攻めチャンスを逃す。",
     teki_kyo: "脅威モデル: 敵が香を固め持つ気配で即受けすると、敵は香を温存でき終盤に切れない香で上がられる。相方の予想応手: 最後の香を自分が握れると確定した時のみ温存し確実に止める。やりすぎ注意: 素朴な無条件温存はEVを落とす(実測)。全香判明後は温存無意味。",
     agari_cnt: "脅威モデル: 角角で上がる計画は途中で香などを止められた瞬間に破綻する — 角は場に2枚しかなく相手から出て来ないため『止めて上がる』が成立しない。回避: 上がりに使う駒が場にまだ残っているか、種類ごとの残枚数を数える。",
     signal_honesty: "脅威モデル: 受けも攻めも相手に手の内を教える行為。嘘の合図(騙し香・偽し攻め・偽ペア)は一度は欺けるが、読まれると二度と信用されず相方も混乱する。対人プレイでは読める符丁だけを出すのが基本。熟練した相手では裏をかくこともある。",
@@ -15629,20 +15661,20 @@ if (typeof document !== "undefined") (() => {
     const hist = view.hist, partner = G.partnerOf(seat), c = G.counter(view.hand);
     const out = [];
     if (G.partnerSignaledOu(hist, partner))
-      out.push({jk:"ou_signal", text:"王で上がり間近。点を渡さず相方の上がりを通せ。"});
+      out.push({jk:"ou_signal", text:"相方は「王で上がりが近い」合図と読めます。点を渡さず、相方の上がりを通す手があります。"});
     if (G.partnerSignaledShi(hist, seat)) {
       out.push({jk:"shi_signal", text:
-        G.canShiAttackC(c) ? "し攻めを示唆。し4枚で乗れる — 五し攻めのチャンス。"
-        : (c["し"]||0) >= 3 ? "し攻めを示唆。し3枚で参加できる。"
-        : "し攻めを示唆。し薄なら無理に乗らず受けに備えよ。"});
+        G.canShiAttackC(c) ? "相方は「し攻め」の合図と読めます。し が 4 枚あるので、し攻めに乗れます。"
+        : (c["し"]||0) >= 3 ? "相方は「し攻め」の合図と読めます。し が 3 枚あるので参加できます。"
+        : "相方は「し攻め」の合図と読めます。し が少ない時は、無理に乗らず受けに備える手があります。"});
     }
     const kakari = G.kakariGotae(view);
     if (kakari !== null)
       out.push({jk:"kakari", text:
-        (c[kakari]||0) >= 1 ? ("「"+kakari+"」かかり。同じ"+kakari+"で応えて占有を伝えよ。")
-                            : ("「"+kakari+"」かかり。"+kakari+"が無いので別駒で『持たない』と伝わる。")});
+        (c[kakari]||0) >= 1 ? ("「"+kakari+"」のかかりと読めます。同じ"+kakari+"で応えると、"+kakari+"を持っている合図になります。")
+                            : ("「"+kakari+"」のかかりと読めます。"+kakari+"が無いので、別の駒で応えると「持たない」と伝わります。")});
     if (G.shiStarted(hist, seat) && (c["し"]||0) >= 1)
-      out.push({jk:"shi_attack", text:"し攻め進行中。し を続けて継続できる。"});
+      out.push({jk:"shi_attack", text:"し攻めが続いています。し を出せば続けられます。"});
     return out;
   }
   let _declRenderSignature = null;
@@ -16700,7 +16732,7 @@ if (typeof document !== "undefined") (() => {
     const bestTxt = best === "なし" ? "「なし」（受けない）" : ("「" + best.replace(/^受/, "") + "」で受け");
     const m = modal(
       `<h2 class="serif">AIの助言 — この受け</h2>` +
-      `<p class="mg-p">この局面は <b>${bestTxt}</b> が明確におすすめです。<br>それでも <b>「${k}」で受け</b> ますか？</p>` +
+      `<p class="mg-p">この局面は、推定では <b>${bestTxt}</b> の方がよい見込みです（確定ではありません）。<br>それでも <b>「${k}」で受け</b> ますか？</p>` +
       `<div class="mg-btns"><button class="btn" id="mg-stay">選び直す</button>` +
       `<button class="btn primary" id="mg-go">このまま「${k}」で受ける</button></div>` +
       `<label class="mg-off"><input type="checkbox" id="mg-never"> 今後この助言を出さない</label>`);
@@ -18960,7 +18992,7 @@ if (typeof document !== "undefined") (() => {
         actionbar("（観戦中 — 自動で次の局へ）", [rb, {label: "ここで止める", fn: stopToSetup}]);
         scheduleAppTimer(() => { if (!app.stopped && !app.review) startGame(); }, 1800);
       } else {
-        actionbar(km ? km.html : "", [rb, ...(km ? [km.btn] : []), ...(tourBtn ? [tourBtn] : []),
+        overBandKeep(finishedRec, km ? km.html : "", [rb, {label: "この局を共有", fn: () => shareGame(app.lastRec)}, ...(km ? [km.btn] : []), ...(tourBtn ? [tourBtn] : []),
           _dl ? {label: "設定へ戻る", primary: true, fn: stopToSetup} : {label: "次の局へ", primary: true, fn: startGame}]);   
         tourAutoMaybe(finishedRec);   
       }
@@ -19013,16 +19045,16 @@ if (typeof document !== "undefined") (() => {
     const kmBtn = km ? [km.btn] : [];
     const kmHtml = km ? km.html : "";
     if (over) {
-      actionbar(kmHtml, [reviewBtn, shareBtn, ...kmBtn, ...(tourBtn ? [tourBtn] : []), {label: "結果を見る", primary: true, fn: showMatchEnd}]);
+      overBandKeep(finishedRec, kmHtml, [reviewBtn, shareBtn, ...kmBtn, ...(tourBtn ? [tourBtn] : []), {label: "結果を見る", primary: true, fn: showMatchEnd}]);
     } else if (_dl) {   
-      actionbar(kmHtml, [reviewBtn, shareBtn, ...kmBtn, ...(tourBtn ? [tourBtn] : []), {label: "設定へ戻る", primary: true, fn: stopToSetup}]);
+      overBandKeep(finishedRec, kmHtml, [reviewBtn, shareBtn, ...kmBtn, ...(tourBtn ? [tourBtn] : []), {label: "設定へ戻る", primary: true, fn: stopToSetup}]);
       if (!winSpecial) tourAutoMaybe(finishedRec);
     } else if (!app.humanSeat) {
       actionbar("（観戦中 — 自動で次の局へ）",
         [reviewBtn, shareBtn, {label: "ここで止める", fn: stopToSetup}]);
       scheduleAppTimer(() => { if (!app.stopped && !app.review) startGame(); }, 1800);
     } else {
-      actionbar(kmHtml, [reviewBtn, shareBtn, ...kmBtn, ...(tourBtn ? [tourBtn] : []), {label: "次の局へ", primary: true, fn: startGame}]);
+      overBandKeep(finishedRec, kmHtml, [reviewBtn, shareBtn, ...kmBtn, ...(tourBtn ? [tourBtn] : []), {label: "次の局へ", primary: true, fn: startGame}]);
       if (!winSpecial) tourAutoMaybe(finishedRec);   
     }
   }
@@ -19095,6 +19127,7 @@ if (typeof document !== "undefined") (() => {
     if (_seatBack) { app.humanSeat = null; $("handarea").classList.remove("show"); }
     if (practiceLiveRestore(_live)) return;
     const over = app.scores.NS >= app.cfg.target || app.scores.EW >= app.cfg.target;
+    if (app._fromSetup || app.daily || !overBandKept(false))   /* v223.9 OBK: 直前の局の帯が在れば、それを出し直す */
     actionbar("", (app._fromSetup || app.daily) ? [{label: "設定へ戻る", primary: true, fn: stopToSetup}]   
       : over
       ? [{label: "結果を見る", primary: true, fn: showMatchEnd}]
@@ -19340,8 +19373,8 @@ if (typeof document !== "undefined") (() => {
       mv.sig = {type: sig.signal_type, koma: sig.koma, honest,
                 jk: sig.signal_type === "kyo2" ? "kyo2" : "kgb_pair",
                 text: honest
-                  ? ("相方へ " + msg + " を正しく伝えています。")
-                  : ("この攻めは相方に " + msg + " を意味しますが、手元にその裏付けがありません。相方が期待してズレます。")};
+                  ? ("相方へ " + msg + " の合図と読める攻めで、手元の駒とも合っています。")
+                  : ("この攻めは相方に " + msg + " の合図と読まれることがありますが、手元にその裏付けがありません。相方の読みとずれるおそれがあります。")};
     });
   }
   function computeCoach(rec) {
@@ -19772,6 +19805,171 @@ if (typeof document !== "undefined") (() => {
   }
   app._kf = Object.freeze({BUDGET: KF_BUDGET, observe: kfObserve, legalFirst: kfLegalFirst, analyzeCandidate: kfAnalyzeCandidate, verify: kfVerifyLine,
     moveLines: kfMoveLines, lineText: kfLineText, revKey: kfRevKey, linesGet: kfLinesGet, facts: kfFacts, seatOf: kfSeatOf, analyze: rec => kfAnalyze(rec)});
+  /* v223.11 KFT: 選択の傾向（件数）。棋譜分析の実装指示書 第6版 §3（KF-03）の検証仕様 案 A（Sonar 2026-11-16 承認）。
+     出すのは件数と根拠の棋譜だけ（割合・弱点の認定・練習の提案は出さない）。数えるのは着手の直前の観測と合法手だけで、実際の配り・後の手・結果は使わない。
+     結果は保存しない。旧い走査（buildConceptProfile・computeCoach）は呼ばない。 */
+  const KFT_MIN = 5, KFT_WINDOW = 20, KFT_LIST_MAX = 60;
+  const _kftMemo = new WeakMap();
+  let _kftJob = 0, _kftMiss = 0, _kftHit = 0;
+  function kftGroup(rec) {
+    if (!rec || rec.practice || rec.undone || rec.dailyReplay || !Array.isArray(rec.moves) || !rec.moves.length || !rec.initialHands) return null;
+    let me = null; try { me = kfSeatOf(rec); } catch (e) { me = null; }
+    if (!me) return null;
+    if (rec.imported && rec.origin !== "local") return "imported";
+    const m = rec.meta;
+    if (!m || rec.condMixed !== false) return "unknown";
+    return m.mode === "daily" ? "daily" : (m.mode === "match" ? "match" : "unknown");
+  }
+  function kftOppKind(obs) {
+    if (!obs || obs.phase !== "respond" || !obs.attacker || obs.pending == null) return null;
+    const lr = G.legalReceives(obs.hand, obs.pending);
+    if (!lr.length) return null;
+    if (G.team(obs.attacker) === G.team(obs.seat)) return "A";
+    return (!obs.hand.includes(obs.pending) && lr.every(k => k === "王")) ? "B" : null;
+  }
+  function kftZero() {
+    return {ok: false, dec: 0, moves: 0, A: {opp: 0, pass: 0, recv: 0, at: []}, B: {opp: 0, pass: 0, recv: 0, at: []},
+      C: {opp: 0, played: 0, alt: 0, both: 0, ev: 0, review: 0, cond: 0, failed: 0, oos: 0, at: [], rv: []},
+      lines: {confirmed: 0, notFound: 0, outOfScope: 0, budget: 0, failed: 0}};
+  }
+  function kftRow(rec) {
+    const key = kfRevKey(rec), hit = _kftMemo.get(rec);
+    if (hit && hit.key === key) { _kftHit++; return hit.row; }
+    _kftMiss++;
+    const row = kftZero();
+    try {
+      const k = kfAnalyze(rec);
+      if (k && k.sum && k.me) {
+        const items = new Map((k.items || []).map(it => [it.i, it]));
+        for (let i = 0; i < rec.moves.length; i++) {
+          const mv = rec.moves[i];
+          if (!mv || mv.seat !== k.me || !mv.action) continue;
+          const obs = kfObserve(rec, i, k.me, k.facts);
+          if (!obs || kfLegalFirst(obs).length < 2) continue;
+          row.dec++;
+          let th = 0;
+          const kind = kftOppKind(obs);
+          if (kind) { const T = row[kind]; T.opp++; if (mv.action.type === "pass") T.pass++; else T.recv++; T.at.push(i); th++; }
+          let ml; try { ml = kfMoveLines(obs, mv.action); } catch (e) { ml = {kind: "failed"}; }
+          row.lines[ml.kind] = (row.lines[ml.kind] || 0) + 1;
+          if (ml.kind === "confirmed") {
+            const C = row.C; C.opp++; C.at.push(i); th++;
+            if (ml.sub === "playedOnly") C.played++; else if (ml.sub === "altOnly") C.alt++; else C.both++;
+            const it = items.get(i);
+            if (!it) C.oos++;
+            else if (it.status === "evaluated") { C.ev++; if (it.review) { C.review++; C.rv.push(i); } }
+            else if (it.status === "unverified") C.cond++;
+            else C.failed++;
+          }
+          if (th) row.moves++;
+        }
+        row.ok = true;
+      }
+    } catch (e) { row.ok = false; }
+    _kftMemo.set(rec, {key, row});
+    return row;
+  }
+  function kftRecs() {
+    const all = [...(app.importedRecs || []), ...(app.matchRecs || [])], seen = new Set(), out = [];
+    for (const r of all) { if (!r || seen.has(r)) continue; seen.add(r); const g = kftGroup(r); if (g) out.push({rec: r, g}); }
+    return out;
+  }
+  function kftSum(list) {
+    const S = kftZero(); S.games = list.length; S.bad = 0;
+    for (const e of list) {
+      const row = e.row;
+      if (!row || !row.ok) { S.bad++; continue; }
+      S.dec += row.dec; S.moves += row.moves;
+      for (const t of ["A", "B"]) { S[t].opp += row[t].opp; S[t].pass += row[t].pass; S[t].recv += row[t].recv; for (const i of row[t].at) S[t].at.push({rec: e.rec, i}); }
+      for (const f of ["opp", "played", "alt", "both", "ev", "review", "cond", "failed", "oos"]) S.C[f] += row.C[f];
+      for (const i of row.C.at) S.C.at.push({rec: e.rec, i});
+      for (const i of row.C.rv) S.C.rv.push({rec: e.rec, i});
+      for (const f of Object.keys(S.lines)) S.lines[f] += row.lines[f] || 0;
+    }
+    S.ok = true;
+    return S;
+  }
+  function kftCollect() {   /* 細切れにせず 1 度に数える（試験用の出し口と、表示の中身の元） */
+    const recs = kftRecs().map(e => ({rec: e.rec, g: e.g, row: kftRow(e.rec)}));
+    return kftShape(recs);
+  }
+  function kftShape(recs) {
+    const of = g => recs.filter(e => e.g === g), M = of("match");
+    return {recent: kftSum(M.slice(-KFT_WINDOW)), all: kftSum(M), daily: kftSum(of("daily")), imported: kftSum(of("imported")), unknown: kftSum(of("unknown"))};
+  }
+  function kftMoveLabel(e) {
+    const rec = e.rec, mv = rec.moves[e.i], a = mv && mv.action;
+    const what = !a ? "" : a.type === "pass" ? "なし" : (a.type === "bury" ? "伏せ" : a.type === "attack" ? "攻め" : "受け") + "「" + a.koma + "」";
+    return "第" + (rec.matchNo || "?") + "勝負・第" + (rec.gameNo || "?") + "局・第" + (e.i + 1) + "手（" + what + "）";
+  }
+  function kftList(host, title, at) {
+    const box = host.querySelector("#kft-list"); if (!box) return;
+    const items = at.slice(-KFT_LIST_MAX).reverse();
+    box.innerHTML = '<div class="note" role="status">' + escapeHtml(title) + " — " + at.length + " 件" + (at.length > items.length ? "（新しい " + items.length + " 件を表示）" : "") + "。押すと、その手で振り返りを開きます。</div>" +
+      items.map((e, n) => '<button type="button" class="btn small kft-go" data-n="' + n + '">' + escapeHtml(kftMoveLabel(e)) + "</button>").join("");
+    box.querySelectorAll(".kft-go").forEach(b => b.onclick = () => {
+      const e = items[+b.dataset.n]; if (!e) return;
+      closeModal();
+      enterFromSetupScreen();
+      openReviewOn(e.rec, e.i);
+    });
+  }
+  function kftWinHtml(S, w) {
+    const btn = (k, n) => n > 0 ? '<button type="button" class="btn small kft-n" data-kft="' + w + ":" + k + '">' + n + " 件</button>" : "0 件";
+    const wait = n => "データ収集中（" + n + " 件・" + KFT_MIN + " 件から内訳を出します）";
+    const none = "評価できた 0（この種類は、まだ評価の方法がありません）";
+    const A = S.A, B = S.B, C = S.C, un = C.oos + C.cond + C.failed;
+    const seg = parts => parts.map(x => '<span class="kft-seg">' + x + "</span>").join('<span class="kft-sep">｜</span>');
+    const li = (k, title, body) => '<li data-kft-row="' + k + '"><b>' + title + '</b><span class="kft-sep"> — </span>' + body + "</li>";
+    return '<ul class="kft-ul">' +
+      li("A", "相方の攻めへの応答", A.opp < KFT_MIN ? seg([wait(A.opp)]) : seg(["選べた " + btn("A", A.opp), "通した " + A.pass + "・受けた " + A.recv, none])) +
+      li("B", "王を切るか温存するか", B.opp < KFT_MIN ? seg([wait(B.opp)]) : seg(["選べた " + btn("B", B.opp), "温存した " + B.pass + "・王で切った " + B.recv, none])) +
+      li("C", "終盤の読み切り", C.opp < KFT_MIN ? seg([wait(C.opp)]) : seg(["選べた " + btn("C", C.opp), "実戦の手に上がり筋 " + C.played + "・別の手にだけ " + C.alt + "・両方に " + C.both,
+        "評価できた " + C.ev, "見直しの候補 " + btn("R", C.review) + "（評価できた " + C.ev + " 件の中で。評価できなかった " + un + " 件は含みません）",
+        "評価できなかった " + un + " 件: 対象外 " + C.oos + "・条件不明 " + C.cond + "・失敗 " + C.failed])) +
+      "</ul>" +
+      '<div class="note">選べた場面の合計 ' + S.moves + " 手（同じ一手が 2 つの種類に入る時は 1 手と数えます）。選べる手は全部で " + S.dec + " 手で、そのうち上がり筋を調べる範囲の外が " + S.lines.outOfScope + " 手・範囲の中で未発見が " + S.lines.notFound + " 手でした。" +
+      (S.bad ? "読めなかった棋譜 " + S.bad + " 局は数えていません。" : "") + "</div>";
+  }
+  function kftPaint(host, D) {
+    const other = (name, S) => S.games ? name + " " + S.games + " 局（選べた: 相方の攻め " + S.A.opp + "・王 " + S.B.opp + "・終盤 " + S.C.opp + "）" : "";
+    const others = [other("今日の一局", D.daily), other("読み込んだ棋譜", D.imported), other("条件が分からない棋譜", D.unknown)].filter(Boolean);
+    host.innerHTML = '<p class="note">件数は、あなたが選べた場面を数えた物です。良し悪しの判定ではありません。評価できるのは、今は「最後の 2 枚の伏せ」だけです。</p>' +
+      (D.all.games ? '<div class="note"><b>直近 ' + KFT_WINDOW + " 局</b>（勝負の対局 " + D.recent.games + " 局）</div>" + kftWinHtml(D.recent, "recent") +
+        '<div class="note"><b>保存の全部</b>（勝負の対局 ' + D.all.games + " 局）</div>" + kftWinHtml(D.all, "all")
+        : '<p class="note">数えられる勝負の対局が、まだありません。</p>') +
+      (others.length ? '<p class="note">上の数に入れていない棋譜: ' + others.join("／") + "</p>" : "") +
+      '<div id="kft-list"></div>';
+    host.dataset.kft = "done";
+    const pick = {A: ["相方の攻めへの応答", S => S.A.at], B: ["王を切るか温存するか", S => S.B.at], C: ["終盤の読み切り", S => S.C.at], R: ["見直しの候補", S => S.C.rv]};
+    host.querySelectorAll(".kft-n").forEach(b => b.onclick = () => {
+      const [w, k] = String(b.dataset.kft).split(":"), p = pick[k], S = D[w];
+      if (p && S) kftList(host, (w === "recent" ? "直近 " + KFT_WINDOW + " 局" : "保存の全部") + "・" + p[0], p[1](S));
+    });
+  }
+  function kftStart(host) {
+    const job = ++_kftJob, recs = kftRecs();
+    let n = 0;
+    host.dataset.kft = "run";
+    host.innerHTML = '<p class="note" role="status">数えています…</p>';
+    const run = () => {
+      if (job !== _kftJob || !host.isConnected) return;
+      const t0 = kfNow();
+      while (n < recs.length && kfNow() - t0 < KF_BUDGET.sliceMs) { recs[n].row = kftRow(recs[n].rec); n++; }
+      if (n < recs.length) { setTimeout(run, 0); return; }
+      try { kftPaint(host, kftShape(recs)); } catch (e) { host.dataset.kft = "fail"; host.innerHTML = '<p class="note">数えられませんでした。成績やほかの表示には影響しません。</p>'; }
+    };
+    setTimeout(run, 0);
+  }
+  function kftHtml() {
+    return '<details class="kft" id="kft"><summary>選択の傾向（件数）</summary><div id="kft-body"></div></details>';
+  }
+  function kftBind(m) {
+    const d = m ? m.querySelector("#kft") : null, host = d ? d.querySelector("#kft-body") : null;
+    if (!d || !host) return;
+    d.addEventListener("toggle", () => { if (d.open) kftStart(host); else _kftJob++; });
+  }
+  app._kft = Object.freeze({group: kftGroup, oppKind: kftOppKind, row: kftRow, recs: kftRecs, collect: kftCollect, stat: () => ({miss: _kftMiss, hit: _kftHit, job: _kftJob}), MIN: KFT_MIN, WINDOW: KFT_WINDOW});
   /* v221.7 KFQ: 今回の 1 問（棋譜分析の実装指示書 第6版 §2・§2.1。出題の範囲は Sonar 2026-11-13「広げて作る」: 見直し → 別の上がり筋 → 実戦の手が確認済みの局面）。
      専用の画面を JS で作って重ねる。出す物は着手の直前の観測と合法な選択肢だけ。元の対局（app.st・棋譜・点・乱数・設定・保存）には触れない。
      通常の着手の処理・G.advance（元の対局に対して）・AI の手の予約・1 手戻しの履歴の更新・保存をしない。答えの履歴は画面の中だけ。 */
@@ -20465,6 +20663,7 @@ if (typeof document !== "undefined") (() => {
     return st;
   }
   async function sharePositionLive() {
+    if (app.st && !app.review && app.st.phase === "over" && app.lastRec && app.rec === app.lastRec && app.lastRec.moves && app.lastRec.moves.length) return shareGame(app.lastRec);   /* v223.9 SHO: 局の後は、終わった局の共有 */
     if (!app.st || app.review || app.st.phase === "over") { toast("対局中の局面のみ共有できます"); return; }
     const me = app.humanSeat || "S";
     const ply = app.st.history ? app.st.history.length : 0;
@@ -21306,8 +21505,18 @@ if (typeof document !== "undefined") (() => {
     if (!overBand() && app.st && app.st.phase !== "over" && !app.stopped && !app.matchOver && !app._dealing && !app.tutorial && app.timer === null) step();   /* v223.2 TXS: 局の途中なら対局の進みを呼び直す */
   }
   
+  /* v223.9 OBK: 局の終わりの帯（人が打つ局）を覚えておき、振り返り・練習から戻った時に同じ並びで出し直す */
+  function overBandDecided() { return app.scores.NS >= app.cfg.target || app.scores.EW >= app.cfg.target; }
+  function overBandKeep(rec, html, btns) { app._ovb = {rec, html, btns, dec: overBandDecided()}; actionbar(html, btns); }
+  function overBandKept(onScreen) {
+    const k = app._ovb; if (!k || !k.rec || k.rec !== app.lastRec || (onScreen && app.rec !== k.rec) || k.dec !== overBandDecided()) return false;   /* 勝負が決まったかどうかが、覚えた時と違えば使わない */
+    actionbar(k.html, k.btns); try { kfQuizOffer(k.rec); } catch (e) {}
+    return true;
+  }
   function overBand() {
     if (app._dealing) return false;   
+    if (app.st && !app.matchOver && ((app.st.phase === "over" && overBandKept(true))
+        || (app.rec && app.rec.practice && !app.preDrill && !app.tutorial && !app._fromSetup && !app.daily && overBandKept(false)))) return true;   /* 終えた練習の局面が画面に残っている時も、直前の局の帯へ戻す（練習の局面を対局として進めない） */
     if (app.daily && app.st && app.st.phase === "over") {   
       actionbar("", [...(app.lastRec ? [{label: "振り返り", fn: openReview}] : []), {label: "設定へ戻る", primary: true, fn: stopToSetup}]);
       return true;
@@ -21572,7 +21781,7 @@ if (typeof document !== "undefined") (() => {
     const t = app.tour;
     if (!t) { host.classList.remove("show"); host.innerHTML = ""; return; }
     host.classList.add("show");
-    if (t.empty) { host.innerHTML = `<div class="tour-msg">この局に検出された悪手はありません</div>`; return; }
+    if (t.empty) { host.innerHTML = `<div class="tour-msg">調べた範囲では、見直しの候補は見つかりませんでした</div>`; return; }
     if (t.waiting) {
       host.innerHTML = `<div class="tour-msg">悪手を解析中… ⚠は確定 / ☆を判定中${t.partial ? "（解析途中・☆は暫定）" : ""}</div>`;
       return;
@@ -23752,7 +23961,7 @@ if (typeof document !== "undefined") (() => {
   const DRILLS = [
     {id: "d_sig",      concept: "sig_send", tut: "kakari",   title: "符丁の発信",           goal: "ペア保有時はペアから攻めて『ペアあり』を相方に伝える"},
     {id: "d_ou",       concept: "ou_play",  tut: "ou",       title: "王合図と譲り",         goal: "相方の王合図を読み、点を渡さず上がりを通す"},
-    {id: "d_goshi",    concept: "shi_atk",  tut: "goshi",    title: "五し攻め",             goal: "し4枚のし攻めに乗る／薄いなら受けに回る"},
+    {id: "d_goshi",    concept: "shi_atk",  tut: "goshi",    title: "し攻め",               goal: "し4枚のし攻めに乗る／薄いなら受けに回る"},
     {id: "d_uke",      concept: "uke",      tut: "uke",      title: "受けの幅",             goal: "受けを広く保ち主導権を渡さない"},
     {id: "d_ukenai",   concept: "uke",      tut: "ukenai",   title: "受けない判断",         goal: "相棒受けは確定勝ちか阻止の時だけ"},
     {id: "d_kakari",   concept: "atk_sel",  tut: "kakari",   title: "かかり応え",           goal: "相方の1打目に応えて手の内を伝え合う"},
@@ -23803,7 +24012,7 @@ if (typeof document !== "undefined") (() => {
       '<button type="button" data-diff="easy">やさしい</button>' +
       '<button type="button" data-diff="normal">ふつう</button>' +
       '<button type="button" data-diff="hard">つよい</button></div>' +
-      '<div class="desc" style="margin-top:6px">相方は基本手(naive)、連携ヒントでサポートします。相手組（上家・下家）の強さが変わります。型を学ぶドリルは相手の手順が固定のため、この設定は「実戦」表示のドリル（五し攻め・終盤・読み）にのみ効きます。</div></div>') : '';
+      '<div class="desc" style="margin-top:6px">相方は基本手(naive)、連携ヒントでサポートします。相手組（上家・下家）の強さが変わります。型を学ぶドリルは相手の手順が固定のため、この設定は「実戦」表示のドリル（し攻め・終盤・読み）にのみ効きます。</div></div>') : '';
     const m = modal('<h2 class="serif">' + title + '</h2>' +
       '<p class="note">相方は基本手(naive)、連携ヒントでサポートします。合図を送り合い読み合う練習ができます。得点・成績には影響しません。</p>' +
       diffCtl + mixCard +
@@ -24213,9 +24422,18 @@ if (typeof document !== "undefined") (() => {
     if (rp && rp.style.display !== "none") { if (lp && panel.nextElementSibling !== lp) lp.before(panel); }
     else if (qr && panel.nextElementSibling !== qr) qr.before(panel);
   }
+  /* v223.12 ENT: はじめの画面の「学ぶ・記録」の枠。逃し復習は逃しが在る時だけ、復習は期日の札が在る時だけ出す */
+  function entRender() {
+    try {
+      const mi = $("ent-miss"), sr = $("ent-srs");
+      if (mi) mi.hidden = !(allMisses().length > 0);
+      if (sr) { const n = srsDue().length; sr.hidden = !(n > 0); if (n > 0) sr.textContent = "復習（" + n + " 問）"; }
+    } catch (e) {}
+  }
   function renderKeikoPanel() {
     const panel = $("keiko-panel"); if (!panel) return;
     keikoPlace();
+    entRender();
     if (keikoDismissedToday()) { panel.style.display = "none"; return; }
     
     const gradPending = keikoProposeGrad();
@@ -24643,6 +24861,7 @@ if (typeof document !== "undefined") (() => {
       body = rankHtml + grid + bars + trend + hist;
     }
     body += playStyleHtml();
+    body += kftHtml();   /* v223.11 KFT */
     body += gradLedgerHtml();   
     body += tempoHtml();        
     body += pastEntryHtml();    
@@ -24665,6 +24884,7 @@ if (typeof document !== "undefined") (() => {
       <p class="note">「保存」で集計と逃し局面（配牌・全手・注釈）をファイルに出力し、後日「読み込み」で続きから解き直せます。</p>`);
     m.querySelector("#c-close").onclick = closeModal;
     m.querySelector("#c-save").onclick = saveCareer;
+    kftBind(m);   /* v223.11 KFT */
     m.querySelector("#c-load").onclick = () => $("file-career").click();
     const cm = m.querySelector("#c-miss");
     if (cm) cm.onclick = () => { closeModal(); openMissDrill(); };
@@ -24922,6 +25142,22 @@ if (typeof document !== "undefined") (() => {
 
 
   const APP_CHANGELOG = [
+    {v: "v223.12", d: "2026-11-16", tag: "ui", tagJa: "使いやすくなった", t: "はじめの画面から、成績や詰めごいたを開けるようにしました", p: [
+      "はじめの画面の下の方に、学ぶ・記録 という枠を足しました。成績、詰めごいた、定石、協調ドリルを、対局を始めなくても開けます。",
+      "逃した上がりが残っている時は 逃し復習 のボタンが、復習の日が来た問題が在る時は 復習 のボタンが出ます。無い時は出ません。",
+      "開く窓の中身は今までと同じです。対局を始めるボタンの位置は変わりません。"]},
+    {v: "v223.11", d: "2026-11-16", tag: "ui", tagJa: "使いやすくなった", t: "成績に、選択の傾向（件数）を足しました", p: [
+      "成績の窓の下の方に、選択の傾向（件数）という欄を足しました。開くと、相方の攻めを受けられた場面、王で切るか温存するかを選べた場面、確実に上がれる手順があった場面が、それぞれ何回あって、どちらを選んだかを数えて出します。",
+      "件数を押すと、その場面の一覧が出ます。1 つ選ぶと、その局のその手で振り返りが開きます。",
+      "これは良し悪しの判定ではありません。割合や弱点は出しません。評価できるのは、今は最後の 2 枚の伏せだけです。直近 20 局と、保存してある全部の 2 通りで数えます。"]},
+    {v: "v223.10", d: "2026-11-16", tag: "ui", tagJa: "使いやすくなった", t: "合図や助言の文を、言い切らない形に直しました", p: [
+      "相方からの合図、相方への伝わり方、振り返りの符丁の文を、合図と読めます、読まれることがあります、という形にしました。合図の読み方そのものは変えていません。",
+      "受けの助言の確認の文を、推定である事が分かる形にしました。悪手を振り返るで何も無い時の文は、調べた範囲では見つからなかった、という言い方にしました。",
+      "し攻めの呼び名をそろえました。"]},
+    {v: "v223.9", d: "2026-11-15", tag: "ui", tagJa: "使いやすくなった", t: "局が終わったあと、振り返りや練習から戻ってもボタンが消えないようにしました", p: [
+      "局が終わったあとに振り返りを開いて戻ると、下の帯からこの局を共有や解き直しのボタンが消えていました。戻ったあとも、局が終わった時と同じボタンが並びます。",
+      "局が終わったあとに練習へ入って戻った時も同じです。その局の振り返りを開けるようになりました。",
+      "流局の局にも、この局を共有のボタンを出すようにしました。局が終わったあとは、上のメニューの共有からも終わった局を共有できます。"]},
     {v: "v223.8", d: "2026-11-15", tag: "ui", tagJa: "使いやすくなった", t: "はじめの画面で、今日の稽古の札が開始ボタンを押し出さないようにしました", p: [
       "保存した対局が無い時は、今日の稽古の札を、対局をはじめるボタンのある枠の下に置くようにしました。札が出ていても、開始ボタンが最初の画面に収まります。保存した対局がある時の置き場は今までどおりです。",
       "対局をはじめる、観戦、今日の一局、再開する、QR 局面コードのボタンの字を 16px にしました。"]},
@@ -25318,6 +25554,9 @@ if (typeof document !== "undefined") (() => {
   $("btn-puzzle").addEventListener("click", () => openPuzzle());
   { const bp = document.getElementById("btn-patterns"); if (bp) bp.addEventListener("click", () => openPatterns()); }
   $("btn-career").addEventListener("click", openCareer);
+  { const on = (id, fn) => { const b = $(id); if (b) b.addEventListener("click", fn); };   /* v223.12 ENT */
+    on("ent-career", () => openCareer()); on("ent-puzzle", () => openPuzzle()); on("ent-joseki", () => { const jb = $("btn-joseki"); if (jb) jb.click(); });
+    on("ent-drill", () => openDrillList()); on("ent-miss", () => openMissDrill()); on("ent-srs", () => srsReviewStart()); }
   $("file-career").addEventListener("change", ev => {
     if (ev.target.files[0]) loadCareer(ev.target.files[0]);
     ev.target.value = "";

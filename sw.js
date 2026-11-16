@@ -1,5 +1,5 @@
 // ごいた — Service Worker
-// 対象: index.html (build v223.8, SHA-256 e0eca8518ae10e6188aa7b1b23a7ced900086f59bb98f21d6b814488b3b98346)
+// 対象: index.html (build v223.12, SHA-256 6c192d4738aa9e41051fd64d79ae7209de00d352017c94e39b469796741f3949)
 //
 // v205: A-1「ddSolve の Packed 化(PACKED_SOLVE、既定0=legacy)」。出荷既定では1行も
 // 実行されない基盤整備であり、着手列SHA-256 は v204 と完全一致することを機械確認済み。
@@ -111,6 +111,10 @@
 // v223.6: はじめの画面の配置と字の色（v223_6_apply.py・LAY・CTR）。UI の便（CSS と HTML）。JS・エンジン・保存の形は v223.5 と同じ。
 // v223.7: はじめの画面の小さい字と、文字を大きくした時の題字（v223_7_apply.py・SFT・RFL）。UI の便（CSS だけ）。HTML・JS・エンジン・保存の形は v223.6 と同じ。
 // v223.8: 保存が無い時は稽古札をカードの下へ・主操作のボタンの字を 16px に（v223_8_apply.py・KPL・MBF）。UI の便。稽古札の中身と出る条件・エンジン・保存の形は v223.7 と同じ。
+// v223.9: 局の終わりの帯を、振り返り・練習から戻った後も同じ並びに／流局の局も共有できる（v223_9_apply.py・OBK・SHO）。UI の便。エンジン・保存の形・解析は v223.8 と同じ。
+// v223.10: 合図・受けの助言・悪手ツアーの文の言い直し（v223_10_apply.py・SGT・MGT・TET）。UI の便（文だけ）。出る条件・働き・エンジン・保存の形は v223.9 と同じ。
+// v223.11: 成績の窓に 選択の傾向（件数）（v223_11_apply.py・KFT・KF-03 案 A）。UI の便。エンジン・保存の形・今の成績と解析は v223.10 と同じ。
+// v223.12: はじめの画面に 学ぶ・記録 の入口（v223_12_apply.py・ENT）。UI の便。エンジン・保存の形・それぞれの窓の中身は v223.11 と同じ。
 //
 // このファイルは index.html と同じディレクトリに配置すること。index.html 側は
 // すでに以下の登録コードを持っている(http(s)配信時のみ有効。file://や未配置時は
@@ -123,7 +127,7 @@
 // アプリを開いたことがある端末には古いキャッシュが残り続け、新しい index.html が
 // 配信されない(PWAの典型的な事故)。
 
-// Web 公開版（mkweb.py）: 上の注釈の sha は単一 HTML 版の物。この SW が配る Web 版の index.html は sha256 5d342aa68086c9c055f33da7b60c787ebc32ffcd2b33850d6c363a7abcbfa2f8、重みは t1w.84589aaf8f4a.js（sha256 84589aaf8f4af589b76912cb3eb8e3ff71a21434a9cf65ab025c6afb8d03a5ae）。
+// Web 公開版（mkweb.py）: 上の注釈の sha は単一 HTML 版の物。この SW が配る Web 版の index.html は sha256 b823b92ba0fe44aec7fb2adfc71f0577063ceb1150410d2757a13dea1795c816、重みは t1w.84589aaf8f4a.js（sha256 84589aaf8f4af589b76912cb3eb8e3ff71a21434a9cf65ab025c6afb8d03a5ae）。
 
 // ===== Web 公開版（harness/kit/mkweb.py が作る・軽量化 W1b）=====
 // W1 との違い（Web 版の直しの提案 2026-11-07 の P1〜P3・7.1〜7.3）:
@@ -135,10 +139,10 @@
 //   - キャッシュへの書き込みは event.waitUntil で待つ。
 const SCOPE = new URL(self.registration.scope);
 const PFX = "goita|" + SCOPE.pathname + "|";
-const BUILD = "v223.8+5d342aa68086";
+const BUILD = "v223.12+b823b92ba0fe";
 const CACHE_NAME = PFX + "shell|" + BUILD;
 const ASSET_CACHE = PFX + "assets";
-const INDEX_SHA = "5d342aa68086c9c055f33da7b60c787ebc32ffcd2b33850d6c363a7abcbfa2f8";
+const INDEX_SHA = "b823b92ba0fe44aec7fb2adfc71f0577063ceb1150410d2757a13dea1795c816";
 const ASSETS = [{"u": "t1w.84589aaf8f4a.js", "sha256": "84589aaf8f4af589b76912cb3eb8e3ff71a21434a9cf65ab025c6afb8d03a5ae", "bytes": 2443143}];
 const MARK = new URL("__goita_complete__", SCOPE).href;
 const PRECACHE_OPTIONAL = [
