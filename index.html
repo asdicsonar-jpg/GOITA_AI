@@ -5,6 +5,22 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>ごいた — 能登の伝承遊戯</title>
   <!-- build: v220.6 に短い入門コース（3 場面・5 着手）と助言つきの 1 局練習を当てた（配信候補 v220.7 の元）。計画: docs/PLAN_短い入門コース_rev4_Opus5.5.md（§14 の裁定）・docs/PLAN_v220.7_入門コース配信_rev2_Opus5.5.md。適用: harness/apply_quickstart_v2.py。エンジン区画（G・G_B・T1）は不変。 -->
+  <!-- build: v223.17「駒数ボタンを押して出したままに・動きを減らす 設定（CPN・RMO）」base=v223.16。UI の便。
+       指示: Sonar 2026-11-17（次に進んで・6-F の決め: 駒数ボタンを押して出したままに・動きを減らす設定を作る）。報告: docs/IMPLEMENTATION_REPORT_v223.17_rev1_Fable5.2.md。
+       変更: harness/spec/v223_17_apply.py → lib/release.py（版数・CHANGELOG・バッジ・sw.js）。エンジンは v223.16 と同じ。設定に reduceMotion が 1 つ増える。
+       CACHE_NAME: goita-v223.16 → goita-v223.17. -->
+  <!-- build: v223.16「状況表示を高さの足りる広い画面でも出す・出せる駒の下に線（TFW・LGM）」base=v223.15。UI の便。
+       指示: Sonar 2026-11-17（v223.16を作れ・状況表示は高さが足りる時だけ・出せる駒は下に短い線）。報告: docs/IMPLEMENTATION_REPORT_v223.16_rev1_Fable5.2.md。
+       変更: harness/spec/v223_16_apply.py → lib/release.py（版数・CHANGELOG・バッジ・sw.js）。CSS だけ。エンジン・保存の形は v223.15 と同じ。
+       CACHE_NAME: goita-v223.15 → goita-v223.16. -->
+  <!-- build: v223.15「はじめの画面の 学ぶ・記録 に 調整 と 過去の局（ADJ・PGL）」base=v223.14。UI の便。
+       指示: Sonar 2026-11-16（工程 6 の残りを進めて）・2026-11-17（進めて）。報告: docs/IMPLEMENTATION_REPORT_v223.15_rev1_Fable5.2.md。
+       変更: harness/spec/v223_15_apply.py → lib/release.py（版数・CHANGELOG・バッジ・sw.js）。エンジン・保存の形・調整の窓の中身・振り返りは v223.14 と同じ。
+       CACHE_NAME: goita-v223.14 → goita-v223.15. -->
+  <!-- build: v223.14「対局中の 成績の対象外 の札・振り返りと観戦の 全公開 の札（XTG・OTG）」base=v223.13。UI の便。
+       指示: Sonar 2026-11-17（対象外の札は理由も書く・全公開の札は振り返りと観戦の両方）。報告: docs/IMPLEMENTATION_REPORT_v223.14_rev1_Fable5.2.md。
+       変更: harness/spec/v223_14_apply.py → lib/release.py（版数・CHANGELOG・バッジ・sw.js）。エンジン・保存の形・成績の集計は v223.13 と同じ。
+       CACHE_NAME: goita-v223.13 → goita-v223.14. -->
   <!-- build: v223.13「選択の傾向（件数）: 助言を出した局を別にする・条件の内訳を添える（HNT）」base=v223.12。UI の便。
        指示: Sonar 2026-11-16（助言の局だけ別の行）。報告: docs/IMPLEMENTATION_REPORT_v223.13_rev1_Fable5.2.md。
        変更: harness/spec/v223_13_apply.py → lib/release.py（版数・CHANGELOG・バッジ・sw.js）。エンジン・保存の形・成績の集計は v223.12 と同じ。
@@ -1841,6 +1857,7 @@ body.cud .pcard .phead .nm:not(.ally){color:#e8b89f}
   #actionbar .btn.undo-btn{order:-2}    
 }
 body.reviewing #turn-focus{display:none!important}
+@media (min-width:620px) and (min-height:880px){#turn-focus:not([hidden]){display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}body.reviewing #turn-focus,body.tut-quickstart #turn-focus{display:none!important}}
  
 
 @media (min-width:1024px) and (hover:hover) and (pointer:fine){
@@ -2223,6 +2240,13 @@ body.theme-kinari #setup-screen .setup-card h2,body.theme-kinari #setup-screen .
 .kft .kft-ul{margin:4px 0 10px;padding-left:1.1em;font-size:.86rem;line-height:1.7}.kft .kft-ul li{margin-bottom:8px}.kft .kft-seg{display:block}.kft .kft-sep{display:none}.kft .btn.small{min-height:44px;margin:2px 4px 2px 0}.kft #kft-list{margin-top:8px}
 /* v223.12 ENT: はじめの画面の「学ぶ・記録」の枠 */
 #setup-screen .ent-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,7.2rem),1fr));gap:8px;margin-top:8px}#setup-screen .ent-grid .btn{min-height:44px;font-size:.875rem}#setup-screen .ent-grid .btn[hidden]{display:none}
+/* v223.14 XTG・OTG: 成績の対象外の札・全公開の札 */
+body.excl-on:not(.reviewing) #card-s .phead .nm::after{content:"成績の対象外";margin-left:8px;font-size:.8125rem;font-weight:400;letter-spacing:0;line-height:1;color:var(--kin);white-space:nowrap}.open-tag{font-size:.8125rem;color:var(--kin);border:1px solid var(--hair2);border-radius:999px;padding:2px 8px;white-space:nowrap;letter-spacing:0}
+/* v223.15 PGL: 過去の局の一覧 */
+#pgl-list{display:flex;flex-direction:column;gap:6px;margin:8px 0}#pgl-list .pgl-go{min-height:44px;font-size:.875rem;text-align:left;justify-content:flex-start}
+#hand .koma-slot.ks-act:not(:has(.rh-badge))::after{content:"";position:absolute;left:12%;right:12%;bottom:-6px;height:3px;border-radius:2px;background:var(--aoi);pointer-events:none}@media (forced-colors:active){#hand .koma-slot.ks-act:not(:has(.rh-badge))::after{background:Highlight}}
+body.rm *{animation:none!important;transition:none!important}body.rm .pts-fly,body.rm #yaku-splash .ys-flags,body.rm #noto-glow,body.rm #kiriko-fire,body.rm .kf-ember{display:none!important}body.rm #kessen.show,body.rm #wincut.show,body.rm #wincut.show .wc-pts{opacity:1;transform:none}body.rm #wincut.out,body.rm .seat-float{opacity:0}body.rm #yaku-splash .ys-rays{opacity:.4}body.rm .farea .fghost{opacity:.34}body.rm .koma.armed{transform:none}body.rm .pcard.reach{box-shadow:0 0 0 1px rgba(224,85,58,.5) inset}
+#count-hold[aria-pressed="true"]{border-color:var(--kin);color:var(--kin);background:rgba(194,163,93,.14)}
 </style>
 </head>
 <body>
@@ -2237,7 +2261,7 @@ body.theme-kinari #setup-screen .setup-card h2,body.theme-kinari #setup-screen .
 <div id="setup-screen">
   <!-- build v208: 版数表示は APP_CHANGELOG[0] から起動時に上書きされる(JS が動かない場合の保険としてここにも同じ版数を書いておく)。 -->
   <button type="button" class="setup-version" id="btn-version"
-          aria-label="バージョン v223.13 — 更新内容を見る" title="更新内容を見る"><span id="btn-version-num">v223.13</span><span class="sv-i" aria-hidden="true">ⓘ</span></button>
+          aria-label="バージョン v223.17 — 更新内容を見る" title="更新内容を見る"><span id="btn-version-num">v223.17</span><span class="sv-i" aria-hidden="true">ⓘ</span></button>
   <div class="title-block">
     <h1 class="serif">ごいた</h1>
     <div class="title-sub">能登・宇出津に伝わる竹駒の伝承遊戯</div>
@@ -2339,6 +2363,8 @@ body.theme-kinari #setup-screen .setup-card h2,body.theme-kinari #setup-screen .
       <button type="button" class="btn" id="ent-puzzle">詰めごいた</button>
       <button type="button" class="btn" id="ent-joseki">定石</button>
       <button type="button" class="btn" id="ent-drill">協調ドリル</button>
+      <button type="button" class="btn" id="ent-adjust">調整</button>
+      <button type="button" class="btn" id="ent-games" hidden>過去の局</button>
       <button type="button" class="btn" id="ent-miss" hidden>逃し復習</button>
       <button type="button" class="btn" id="ent-srs" hidden>復習</button>
     </div>
@@ -2561,7 +2587,7 @@ body.theme-kinari #setup-screen .setup-card h2,body.theme-kinari #setup-screen .
     <div id="qsi-btns" class="qsi-btns"></div>
   </section>
   <div class="panel" id="handarea">
-    <div class="hd"><span id="hand-name">あなたの手駒</span><span id="hand-hint"></span><span id="count-bar" style="margin-left:auto;color:var(--gin-d);font-variant-numeric:tabular-nums"></span><button type="button" id="count-hold" class="btn small" hidden aria-label="駒数（押している間だけ盤に表示）">駒数</button></div>
+    <div class="hd"><span id="hand-name">あなたの手駒</span><span id="hand-hint"></span><span id="count-bar" style="margin-left:auto;color:var(--gin-d);font-variant-numeric:tabular-nums"></span><button type="button" id="count-hold" class="btn small" hidden aria-pressed="false" aria-label="駒数（押すと盤に出したまま・もう一度押すと消える。長く押している間だけ出す事もできる）">駒数</button></div>
     <div id="hand"></div>
     <div id="rh-legend" hidden>数字=敵2席とも受けられないと推定される割合（推定・誤差あり）。受けられても見送る場合があります　<span class="rh-badge rh-safe">通65%〜</span>=通りやすい　<span class="rh-badge rh-risk">〜通64%</span>=受けられやすい</div>
   </div>
@@ -2582,6 +2608,7 @@ body.theme-kinari #setup-screen .setup-card h2,body.theme-kinari #setup-screen .
 
   <div class="panel" id="review" role="complementary" aria-labelledby="rv-title">
     <div class="rv-head"><h2 class="ttl serif" id="rv-title">振り返り</h2>
+      <span class="open-tag" id="rv-open-tag">全公開（4 席の手駒を表にしています）</span>
       <label><input type="checkbox" id="rv-human">人間の手のみ</label>
       <label><input type="checkbox" id="rv-coach" checked>実戦情報コーチ</label>
       <label><input type="checkbox" id="rv-partner">相方の視点</label>
@@ -12478,7 +12505,7 @@ if (typeof document !== "undefined") (() => {
   const byPts = (a, b) => G.POINTS[b] - G.POINTS[a];
 
   const app = {
-    cfg: {target: 150, speed: 850, mc: true, solver: true, explain: true, hints: true, counts: false, belief: "off", ouSignal: true, reading: true, advice: false, sighonest: false, pvPreview: false, undo: false, cand: false, coach: "std", tempo: true, livebar: false, riverseq: false, passHist: false, watchReveal: false, countsHold: false, opMode: "tap", sound: false, haptics: true, cud: false, nashiSide: "right", autoPass: false, theme: "yoai", assistHi: false, missGuard: false, notoAccent: true, srVerbosity: "normal", autoWorstTour: false, wakeLock: true, fxLen: "full", sigEcho: false, readHint: false, tierN: "strong", tierEW: "strong"},   /* v223.5 STS: 相方・相手の段（フォームの値）を保存する */
+    cfg: {reduceMotion: false, target: 150, speed: 850, mc: true, solver: true, explain: true, hints: true, counts: false, belief: "off", ouSignal: true, reading: true, advice: false, sighonest: false, pvPreview: false, undo: false, cand: false, coach: "std", tempo: true, livebar: false, riverseq: false, passHist: false, watchReveal: false, countsHold: false, opMode: "tap", sound: false, haptics: true, cud: false, nashiSide: "right", autoPass: false, theme: "yoai", assistHi: false, missGuard: false, notoAccent: true, srVerbosity: "normal", autoWorstTour: false, wakeLock: true, fxLen: "full", sigEcho: false, readHint: false, tierN: "strong", tierEW: "strong"},   /* v223.5 STS: 相方・相手の段（フォームの値）を保存する */
     tiers: {N: "strong", W: "strong", S: "human", E: "strong"},
     humanSeat: "S",
     scores: {NS: 0, EW: 0}, parent: null, st: null, rng: null,
@@ -13105,6 +13132,7 @@ if (typeof document !== "undefined") (() => {
     document.body.classList.toggle("theme-kinari", app.cfg.theme === "kinari");
     document.body.classList.toggle("theme-hc", app.cfg.theme === "hc");
     document.body.classList.toggle("cud", app.cfg.cud);
+    document.body.classList.toggle("rm", !!app.cfg.reduceMotion);
     document.body.classList.toggle("nashi-left", app.cfg.nashiSide === "left");
     document.body.classList.toggle("noto", app.cfg.notoAccent !== false);
     document.body.classList.toggle("readHint", app.cfg.readHint);   
@@ -14855,6 +14883,7 @@ if (typeof document !== "undefined") (() => {
     const a = document.createElement("span"); a.className = "wi-pts"; a.textContent = line1;
     const b = document.createElement("span"); b.className = "wi-key"; b.textContent = line2;
     el.appendChild(a); el.appendChild(b);
+    if (app._watchReveal) { const c = document.createElement("span"); c.className = "open-tag wi-open"; c.textContent = "全公開（4 席の手駒を表にしています）"; el.appendChild(c); }   /* v223.14 OTG */
     el.hidden = false;
   }
   function renderScores() {
@@ -15992,7 +16021,14 @@ if (typeof document !== "undefined") (() => {
     ov.hidden = false; ov.setAttribute("aria-hidden", "false");
   }
   function showCountOverlay() { app._countHold = true; renderCountOverlay(); const ov = $("count-overlay"); const g = ov && !ov.hidden ? ov.querySelector(".cgrid") : null; if (g) announce(g.getAttribute("aria-label")); }   
-  function hideCountOverlay() { app._countHold = false; const ov = $("count-overlay"); if (ov) { ov.hidden = true; ov.setAttribute("aria-hidden", "true"); ov.textContent = ""; ov.dataset.sig = ""; } }
+  /* v223.17 CPN: 駒数ボタンは、短く押す（0.4 秒より短い）と出したまま・もう一度短く押すと消える。長く押している間だけ出す形も今までどおり */
+  const COUNT_TAP_MS = 400;
+  function countPinMark(on) { const hb = $("count-hold"); if (hb) hb.setAttribute("aria-pressed", on ? "true" : "false"); }
+  function countPinSet(on) {
+    if (on && countsCanShow() && app.cfg.countsHold) { app._countPin = true; countPinMark(true); if (!app._countHold) { app._countHold = true; renderCountOverlay(); } }
+    else hideCountOverlay();
+  }
+  function hideCountOverlay() { app._countPin = false; countPinMark(false); app._countHold = false; const ov = $("count-overlay"); if (ov) { ov.hidden = true; ov.setAttribute("aria-hidden", "true"); ov.textContent = ""; ov.dataset.sig = ""; } }
   function renderAll() {
     const _renderT0 = perfNow();
     _flipCapture();
@@ -16021,6 +16057,7 @@ if (typeof document !== "undefined") (() => {
     updateTurnToken();   
     qsAfterRender();   
     syncKifuBtn();   
+    exclTagSync();
     recordPerf("render", perfNow() - _renderT0);
   }
    
@@ -16030,7 +16067,7 @@ if (typeof document !== "undefined") (() => {
   
   const _flipFirst = new Map();
   function _flipReduced() {
-    try { return matchMedia("(prefers-reduced-motion:reduce)").matches; } catch (e) { return false; }
+    try { if (app.cfg && app.cfg.reduceMotion) return true; return matchMedia("(prefers-reduced-motion:reduce)").matches; } catch (e) { return false; }
   }
   function _flipCapture() {
     _flipFirst.clear();
@@ -16557,11 +16594,22 @@ if (typeof document !== "undefined") (() => {
     announce(msg, true);
     kifu(msg);
   }
+  /* v223.14 XTG: 成績の対象外の札。助言を表示した局・1 手戻した局（どちらも今までどおり成績から外れる）で、その局の間 出し続ける。
+     練習・観戦・入門・今日の一局の 2 回目以降（帯に同じ事を書いてある）では出さない */
+  function exclTagOn() {
+    const r = app.rec;
+    if (!r || r.practice || !app.humanSeat || app.tutorial || (app.daily && app.daily.replay)) return false;
+    return r.undone === true || r.hinted === true;
+  }
+  /* v223.15 XTC: 上と下の v223.14 の注釈（帯に出す・自分の番の間は新しく出さない）は古い。札は、盤の中の自分の名札の横に小さく出す（body.excl-on・CSS）。
+     画面の高さを変えないので、助言が出た・1 手戻した、その時にすぐ出す。Sonar 2026-11-17「自分の名札の横の小さい札」 */
+  /* 札が新しく出ると盤と手駒が下がる。自分の番の間に下がると押し間違えるので、新しく出すのは自分の番でない時（相手の番・局の終わり）だけ。もう出ている札はそのまま */
   function modeBanner(html) {
     const el = $("mode-banner");
     if (!html) { el.classList.remove("show"); el.innerHTML = ""; }
     else { el.innerHTML = html; el.classList.add("show"); }
   }
+  function exclTagSync() { document.body.classList.toggle("excl-on", exclTagOn()); }
   function bannerVerdict(s) {
     if (!app.bannerBase) return;
     modeBanner(app.bannerBase + (s ? `<span class="verdict">${s}</span>` : ""));
@@ -17815,6 +17863,7 @@ if (typeof document !== "undefined") (() => {
     step();
   }
   function startGame() {
+    hideCountOverlay();
     if (!T1AD.ready && G.SEATS.some(s => app.tiers[s] === "t1")) { t1Unavailable(() => startGame()); return; }   /* v220.58 T1G: 配りと 五し の判断の前に知らせる */
     if (app.daily && app.daily.dealt) { try { toast("今日の一局は1局だけです"); } catch (e) {} stopToSetup(); return; }   
     if (app.tutorial && qsIsKey(app.tutorial.key)) return;   
@@ -18115,7 +18164,7 @@ if (typeof document !== "undefined") (() => {
   function winParticles(big) {
     const _lv = fx().particles;   
     if (!_lv) return;
-    try { if (matchMedia("(prefers-reduced-motion:reduce)").matches) return; } catch (e) {}
+    try { if ((app.cfg && app.cfg.reduceMotion) || matchMedia("(prefers-reduced-motion:reduce)").matches) return; } catch (e) {}
     const cx = window.innerWidth / 2, cy = window.innerHeight * 0.42;
     const burst = (n, distBase, distRange, szBase, szRange, durBase, durRange, life, emberEvery) => {
       for (let i = 0; i < n; i++) {
@@ -18135,7 +18184,7 @@ if (typeof document !== "undefined") (() => {
     if (!big) { burst(Math.round(16 * _lv), 60, 120, 4, 4, 0.9, 0.7, 1800, 0); return; }
     burst(Math.round(40 * _lv), 90, 200, 4, 6, 1.05, 0.9, 2200, 3);   
     setTimeout(() => {
-      try { if (matchMedia("(prefers-reduced-motion:reduce)").matches) return; } catch (e) {}
+      try { if ((app.cfg && app.cfg.reduceMotion) || matchMedia("(prefers-reduced-motion:reduce)").matches) return; } catch (e) {}
       burst(Math.round(16 * _lv), 50, 140, 3, 4, 0.8, 0.6, 1700, 2);   
     }, 220);
   }
@@ -18143,7 +18192,7 @@ if (typeof document !== "undefined") (() => {
   function notoWinGlow(res) {
     if (!document.body.classList.contains("noto")) return;
     if (!res || res.draw) return;
-    try { if (matchMedia("(prefers-reduced-motion:reduce)").matches) return; } catch (e) {}
+    try { if ((app.cfg && app.cfg.reduceMotion) || matchMedia("(prefers-reduced-motion:reduce)").matches) return; } catch (e) {}
     let cx = window.innerWidth / 2, cy = window.innerHeight * 0.44;
     const card = res.winner && cardOf[res.winner];
     if (card && card.getBoundingClientRect) { const r = card.getBoundingClientRect(); cx = r.left + r.width / 2; cy = r.top + r.height / 2; }
@@ -18178,7 +18227,7 @@ if (typeof document !== "undefined") (() => {
   
   
   function kirikoSwayLoop(els){
-    try { if (matchMedia("(prefers-reduced-motion:reduce)").matches) return; } catch (e) {}   
+    try { if ((app.cfg && app.cfg.reduceMotion) || matchMedia("(prefers-reduced-motion:reduce)").matches) return; } catch (e) {}   
     if (!els || !els.length) return;
     var seeds = [], phases = [];
     for (var i = 0; i < els.length; i++) {
@@ -18353,7 +18402,7 @@ if (typeof document !== "undefined") (() => {
   
   
   function spawnKirikoEmbers(n, sources){
-    try { if (matchMedia("(prefers-reduced-motion:reduce)").matches) return; } catch (e) {}
+    try { if ((app.cfg && app.cfg.reduceMotion) || matchMedia("(prefers-reduced-motion:reduce)").matches) return; } catch (e) {}
     var W = window.innerWidth, H = window.innerHeight;
     var srcs = (sources && sources.length) ? sources : [{x: 50, h: 0.22}];
     for (var i = 0; i < n; i++) {
@@ -18426,7 +18475,7 @@ if (typeof document !== "undefined") (() => {
     if (!tier) return;
     var dbl = !!res.dbl;   
     var hold = !!(fxv.hold && (app.humanSeat || (opts && opts.button)));   
-    try { if (matchMedia("(prefers-reduced-motion:reduce)").matches) return; } catch (e) {}
+    try { if ((app.cfg && app.cfg.reduceMotion) || matchMedia("(prefers-reduced-motion:reduce)").matches) return; } catch (e) {}
     cancelAnimationFrame(app._kirikoSwayRAF);   
     var stage = document.getElementById("kiriko-fire");
     if (!stage) { stage = document.createElement("div"); stage.id = "kiriko-fire"; stage.setAttribute("aria-hidden", "true"); document.body.appendChild(stage); }
@@ -21723,7 +21772,7 @@ if (typeof document !== "undefined") (() => {
     poll();
   }
   function tourReducedMotion() {
-    try { return matchMedia("(prefers-reduced-motion:reduce)").matches; } catch (e) { return false; }
+    try { if (app.cfg && app.cfg.reduceMotion) return true; return matchMedia("(prefers-reduced-motion:reduce)").matches; } catch (e) { return false; }
   }
   function tourStart(rec, partial) {
     clearTimeout(app._tourWaitT);
@@ -21968,6 +22017,7 @@ if (typeof document !== "undefined") (() => {
     startGame();
   }
   function stopToSetup() {
+    hideCountOverlay();
     app._dealingSt = null;   
     settleDealing("keep");   
     app._fromSetup = false;   
@@ -22201,14 +22251,19 @@ if (typeof document !== "undefined") (() => {
   { const _bd = $("btn-daily"); if (_bd) { _bd.addEventListener("click", () => enterGame(false, true)); _bd.disabled = false; } }   
   { const hb = $("count-hold"); if (hb) {
       const isKey = ev => ev.key === " " || ev.key === "Enter" || ev.key === "Spacebar";
-      hb.addEventListener("pointerdown", ev => { ev.preventDefault(); try { hb.setPointerCapture(ev.pointerId); } catch (e) {} showCountOverlay(); });
-      ["pointerup", "pointercancel", "lostpointercapture", "blur"].forEach(t => hb.addEventListener(t, hideCountOverlay));
-      hb.addEventListener("keydown", ev => { if (!isKey(ev)) return; ev.preventDefault(); if (!ev.repeat) showCountOverlay(); });
-      hb.addEventListener("keyup", ev => { if (isKey(ev)) hideCountOverlay(); });
+      let t0 = 0, wasPin = false;
+      const press = ev => { t0 = ev.timeStamp; wasPin = !!app._countPin; if (!app._countHold) showCountOverlay(); };
+      const lift = ev => countPinSet(ev.timeStamp - t0 < COUNT_TAP_MS ? !wasPin : false);
+      const release = () => { if (!app._countPin) hideCountOverlay(); };
+      hb.addEventListener("pointerdown", ev => { ev.preventDefault(); try { hb.setPointerCapture(ev.pointerId); } catch (e) {} press(ev); });
+      hb.addEventListener("pointerup", lift);
+      ["pointercancel", "lostpointercapture", "blur"].forEach(t => hb.addEventListener(t, release));
+      hb.addEventListener("keydown", ev => { if (!isKey(ev)) return; ev.preventDefault(); if (!ev.repeat) press(ev); });
+      hb.addEventListener("keyup", ev => { if (isKey(ev)) lift(ev); });
       hb.addEventListener("click", ev => ev.preventDefault());
       hb.addEventListener("contextmenu", ev => ev.preventDefault());
-      ["pointerup", "pointercancel"].forEach(t => document.addEventListener(t, () => { if (app._countHold) hideCountOverlay(); }, true));   
-      window.addEventListener("blur", () => { if (app._countHold) hideCountOverlay(); });
+      ["pointerup", "pointercancel"].forEach(t => document.addEventListener(t, () => { if (app._countHold) release(); }, true));
+      window.addEventListener("blur", () => { if (app._countHold) release(); });
   } }
   /* v223.5 STS: 起動時に 1 度、保存した相方・相手の段をフォームへ戻す（選択肢に無い値は捨てる） */
   (function () { const put = (id, v) => { const el = $(id); if (el && typeof v === "string" && [...el.options].some(o => o.value === v)) el.value = v; }; put("cfg-N", app.cfg.tierN); put("cfg-EW", app.cfg.tierEW); })();
@@ -23138,7 +23193,7 @@ if (typeof document !== "undefined") (() => {
     qsDescribe(target, storageFirst ? ["qsi-storage", ...parts] : parts);
     if (!target) qsAnnounce(parts.map(id => $(id)).filter(e => e && !e.hidden && (e.textContent || "").trim() !== "").map(e => e.textContent.trim()).join(" "));   
     if (target) { try { target.focus({preventScroll: true}); } catch (e) { try { target.focus(); } catch (e2) {} } }
-    const reduce = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const reduce = !!(app.cfg && app.cfg.reduceMotion) || (typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches);
     
     const keepEl = QS_SEAT_STEPS[t.stepId] ? $(QS_SEAT_STEPS[t.stepId]) : null;
     try { qsScrollIntoPlace(target, reduce, keepEl); } catch (e) {}
@@ -24434,10 +24489,51 @@ if (typeof document !== "undefined") (() => {
     else if (qr && panel.nextElementSibling !== qr) qr.before(panel);
   }
   /* v223.12 ENT: はじめの画面の「学ぶ・記録」の枠。逃し復習は逃しが在る時だけ、復習は期日の札が在る時だけ出す */
+  /* v223.15 ADJ: はじめの画面から開く調整の窓。「詳しい設定」に同じ項目が在る物は隠す（はじめの画面の編集中の値と食い違わせない） */
+  const ADJ_IN_SETUP = ["hints", "reading", "advice", "cand", "assistHi", "readHint", "missGuard", "counts", "sighonest", "pvPreview", "undo", "autoWorstTour",
+    "mc", "solver", "explain", "speed", "tempo", "livebar", "riverseq", "passHist", "watchReveal", "countsHold"];
+  function openAdjustFromSetup() {
+    const b = $("btn-settings"); if (!b) return;
+    b.click();
+    const mb = $("modal-body"); if (!mb || !mb.querySelector("#s-close")) return;
+    for (const k of ADJ_IN_SETUP) { const el = mb.querySelector("#s-" + k), lab = el ? el.closest("label.toggle") : null; if (lab) lab.style.display = "none"; }
+    mb.querySelectorAll("details.settings-group").forEach(d => {
+      const left = [...d.querySelectorAll("label.toggle")].some(l => l.style.display !== "none");
+      if (!left) d.style.display = "none"; else d.open = true;
+    });
+    const h = mb.querySelector("h2");
+    if (h) { const p = document.createElement("p"); p.className = "note"; p.id = "adj-setup-note"; p.textContent = "ここでは、操作・音・見た目を変えられます。相方と相手の強さ・助言・盤面の表示は、はじめの画面の「詳しい設定」で変えます。"; h.after(p); }
+  }
+  /* v223.15 PGL: 過去の局の一覧（新しい順）。選ぶと、その局の振り返りを初めの手で開く */
+  const PGL_MAX = 40;
+  function pglRecs() {
+    const all = [...(app.importedRecs || []), ...(app.matchRecs || [])], seen = new Set(), out = [];
+    for (const r of all) { if (!r || seen.has(r) || r.practice || !Array.isArray(r.moves) || !r.moves.length || !r.initialHands) continue; seen.add(r); out.push(r); }
+    return out.map((r, i) => ({r, i})).sort((a, b) => ((b.r.matchNo || 0) - (a.r.matchNo || 0)) || ((b.r.gameNo || 0) - (a.r.gameNo || 0)) || (b.i - a.i)).map(x => x.r);
+  }
+  function pglLabel(rec) {
+    let me = null; try { me = kfSeatOf(rec); } catch (e) { me = null; }
+    const res = rec.result;
+    const what = !res ? "途中まで" : res.draw ? "流局" : !res.winner ? "結果なし" : !me ? seatDisp(res.winner) + "の上がり " + res.pts + " 点"
+      : (G.team(res.winner) === G.team(me) ? "あなたの組の上がり " : "相手の組の上がり ") + res.pts + " 点";
+    const tags = [rec.imported && rec.origin !== "local" ? "読込" : "", rec.daily ? "今日の一局" : "", rec.undone ? "1 手戻し" : (rec.hinted ? "助言あり" : "")].filter(Boolean);
+    return "第" + (rec.matchNo || "?") + "勝負・第" + (rec.gameNo || "?") + "局 — " + what + (tags.length ? "（" + tags.join("・") + "）" : "");
+  }
+  function openPastGames() {
+    const recs = pglRecs(), items = recs.slice(0, PGL_MAX);
+    const m = modal('<h2 class="serif">過去の局</h2>' +
+      (items.length ? '<p class="note">保存してある ' + recs.length + " 局" + (recs.length > items.length ? "のうち、新しい " + items.length + " 局" : "") + "です。選ぶと、その局の振り返りを開きます。</p>"
+        + '<div id="pgl-list">' + items.map((r, n) => '<button type="button" class="btn pgl-go" data-n="' + n + '">' + escapeHtml(pglLabel(r)) + "</button>").join("") + "</div>"
+        : '<p class="note">保存してある局が、まだありません。</p>') +
+      '<div class="row"><button type="button" class="btn primary" id="pgl-close">閉じる</button></div>');
+    m.querySelector("#pgl-close").onclick = closeModal;
+    m.querySelectorAll(".pgl-go").forEach(b => b.onclick = () => { const r = items[+b.dataset.n]; if (!r) return; closeModal(); enterFromSetupScreen(); openReviewOn(r, 0); });
+  }
   function entRender() {
     try {
       const mi = $("ent-miss"), sr = $("ent-srs");
       if (mi) mi.hidden = !(allMisses().length > 0);
+      { const pg = $("ent-games"); if (pg) pg.hidden = !(pglRecs().length > 0); }
       if (sr) { const n = srsDue().length; sr.hidden = !(n > 0); if (n > 0) sr.textContent = "復習（" + n + " 問）"; }
     } catch (e) {}
   }
@@ -25153,6 +25249,19 @@ if (typeof document !== "undefined") (() => {
 
 
   const APP_CHANGELOG = [
+    {v: "v223.17", d: "2026-11-17", tag: "ui", tagJa: "使いやすくなった", t: "駒数の表を出したままにでき、動きを減らす設定を足しました", p: [
+      "駒数 のボタンを短く押すと、盤の駒数の表が出たままになります。もう一度短く押すと消えます。長く押している間だけ出す使い方も、今までどおりできます。次の局が始まると消えます。",
+      "調整 に 動きを減らす を足しました。入れると、駒の移動や点の数え上げ、祝いの演出などの動きが止まります。端末の側で動きを減らす設定にしている時は、今までどおり、入れなくても止まります。"]},
+    {v: "v223.16", d: "2026-11-17", tag: "ui", tagJa: "使いやすくなった", t: "出せる駒の下に線を付け、タブレットでも状況の表示を出すようにしました", p: [
+      "自分の番で出せる駒の下に、短い線が付きます。出せない駒は今までどおり薄くなります。",
+      "盤の上の 手番・攻め・操作 の表示が、タブレットなどの広い画面でも、縦の長さが足りる時は出るようになりました。横向きで縦が足りない時は出ません。",
+      "成績の対象外 の札は、前の版から、盤の中の自分の名札の横に出ます。"]},
+    {v: "v223.15", d: "2026-11-17", tag: "ui", tagJa: "使いやすくなった", t: "はじめの画面から、調整と過去の局を開けるようにしました", p: [
+      "はじめの画面の 学ぶ・記録 に、調整 のボタンを足しました。操作の方式、音、テーマ、色覚サポート、読み上げなどを、対局を始める前に変えられます。相方と相手の強さ・助言・盤面の表示は、今までどおり 詳しい設定 で変えます。",
+      "保存してある局が在る時は、過去の局 のボタンが出ます。新しい順の一覧から 1 つ選ぶと、その局の振り返りが開きます。"]},
+    {v: "v223.14", d: "2026-11-17", tag: "ui", tagJa: "使いやすくなった", t: "成績に入らない局と、手駒を全部見せている画面に、札を出すようにしました", p: [
+      "推奨手を表示した局と、1 手戻した局では、盤の上に 成績の対象外 の札が出ます。その局が終わるまで出たままです。どの局が成績に入らないかの決まりは、今までと同じです。",
+      "振り返りの見出しの横と、観戦で 4 席の手駒を見せている間に、全公開 の札が出ます。"]},
     {v: "v223.13", d: "2026-11-16", tag: "ui", tagJa: "使いやすくなった", t: "選択の傾向（件数）で、助言を出した局を別に数えるようにしました", p: [
       "成績の窓の 選択の傾向（件数） で、推奨手や受けの助言を出した局を、直近 20 局と保存の全部の数から外しました。外した局の数は、下の 上の数に入れていない棋譜 に出ます。",
       "それぞれの数の下に、その中で相方と相手の段や先取点が同じか、混ざっているかを 1 行で書くようにしました。混ざっていても、分けずに数えています。"]},
@@ -25570,7 +25679,7 @@ if (typeof document !== "undefined") (() => {
   $("btn-career").addEventListener("click", openCareer);
   { const on = (id, fn) => { const b = $(id); if (b) b.addEventListener("click", fn); };   /* v223.12 ENT */
     on("ent-career", () => openCareer()); on("ent-puzzle", () => openPuzzle()); on("ent-joseki", () => { const jb = $("btn-joseki"); if (jb) jb.click(); });
-    on("ent-drill", () => openDrillList()); on("ent-miss", () => openMissDrill()); on("ent-srs", () => srsReviewStart()); }
+    on("ent-drill", () => openDrillList()); on("ent-adjust", () => openAdjustFromSetup()); on("ent-games", () => openPastGames()); on("ent-miss", () => openMissDrill()); on("ent-srs", () => srsReviewStart()); }
   $("file-career").addEventListener("change", ev => {
     if (ev.target.files[0]) loadCareer(ev.target.files[0]);
     ev.target.value = "";
@@ -25702,6 +25811,8 @@ if (typeof document !== "undefined") (() => {
               <option value="kinari" ${app.cfg.theme === "kinari" ? "selected" : ""}>生成り（和紙・明るい）</option>
               <option value="hc" ${app.cfg.theme === "hc" ? "selected" : ""}>高コントラスト</option>
             </select></label>
+          <label class="toggle"><input type="checkbox" id="s-reducemotion" ${app.cfg.reduceMotion ? "checked" : ""}>
+            <span>動きを減らす<span class="desc">駒の移動・点の数え上げ・祝いの演出などの動きを止めます。端末の「視差効果を減らす／アニメーションを減らす」設定が ON の時は、ここが OFF でも止まります（既定OFF）。</span></span></label>
           <label class="toggle"><input type="checkbox" id="s-haptics" ${app.cfg.haptics ? "checked" : ""}>
             <span>触覚フィードバック（バイブ）<span class="desc">手番・出牌・上がり・エラーで短く振動します（対応端末のみ）。</span></span></label>
           <label class="toggle"><input type="checkbox" id="s-sound" ${app.cfg.sound ? "checked" : ""}>
@@ -25761,6 +25872,8 @@ if (typeof document !== "undefined") (() => {
       app.cfg.fxLen = m.querySelector("#s-fxlen") ? m.querySelector("#s-fxlen").value : app.cfg.fxLen;   
       app.cfg.cud = m.querySelector("#s-cud").checked;
       document.body.classList.toggle("cud", app.cfg.cud);
+      app.cfg.reduceMotion = m.querySelector("#s-reducemotion") ? m.querySelector("#s-reducemotion").checked : app.cfg.reduceMotion;
+      document.body.classList.toggle("rm", !!app.cfg.reduceMotion);
       app.cfg.notoAccent = m.querySelector("#s-noto") ? m.querySelector("#s-noto").checked : app.cfg.notoAccent;
       app.cfg.srVerbosity = m.querySelector("#s-srverbosity") ? m.querySelector("#s-srverbosity").value : app.cfg.srVerbosity;
       document.body.classList.toggle("noto", app.cfg.notoAccent !== false);
