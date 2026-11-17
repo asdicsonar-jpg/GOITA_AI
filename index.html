@@ -5,6 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>ごいた — 能登の伝承遊戯</title>
   <!-- build: v220.6 に短い入門コース（3 場面・5 着手）と助言つきの 1 局練習を当てた（配信候補 v220.7 の元）。計画: docs/PLAN_短い入門コース_rev4_Opus5.5.md（§14 の裁定）・docs/PLAN_v220.7_入門コース配信_rev2_Opus5.5.md。適用: harness/apply_quickstart_v2.py。エンジン区画（G・G_B・T1）は不変。 -->
+  <!-- build: v223.18「出したままの駒数の表を盤のすぐ下へ・出せない駒はタップで駒札（CPS・KTP）」base=v223.17。UI の便。
+       指示: Sonar 2026-11-17（案Ａで進めて）・2026-11-18 の決め（表の置き場は盤のすぐ下・駒札は出せない駒のタップで開く）。報告: docs/IMPLEMENTATION_REPORT_v223.18_rev1_Fable5.2.md。
+       変更: harness/spec/v223_18_apply.py → lib/release.py（版数・CHANGELOG・バッジ・sw.js）。エンジン・保存の形は v223.17 と同じ。
+       CACHE_NAME: goita-v223.17 → goita-v223.18. -->
   <!-- build: v223.17「駒数ボタンを押して出したままに・動きを減らす 設定（CPN・RMO）」base=v223.16。UI の便。
        指示: Sonar 2026-11-17（次に進んで・6-F の決め: 駒数ボタンを押して出したままに・動きを減らす設定を作る）。報告: docs/IMPLEMENTATION_REPORT_v223.17_rev1_Fable5.2.md。
        変更: harness/spec/v223_17_apply.py → lib/release.py（版数・CHANGELOG・バッジ・sw.js）。エンジンは v223.16 と同じ。設定に reduceMotion が 1 つ増える。
@@ -2247,6 +2251,7 @@ body.excl-on:not(.reviewing) #card-s .phead .nm::after{content:"成績の対象�
 #hand .koma-slot.ks-act:not(:has(.rh-badge))::after{content:"";position:absolute;left:12%;right:12%;bottom:-6px;height:3px;border-radius:2px;background:var(--aoi);pointer-events:none}@media (forced-colors:active){#hand .koma-slot.ks-act:not(:has(.rh-badge))::after{background:Highlight}}
 body.rm *{animation:none!important;transition:none!important}body.rm .pts-fly,body.rm #yaku-splash .ys-flags,body.rm #noto-glow,body.rm #kiriko-fire,body.rm .kf-ember{display:none!important}body.rm #kessen.show,body.rm #wincut.show,body.rm #wincut.show .wc-pts{opacity:1;transform:none}body.rm #wincut.out,body.rm .seat-float{opacity:0}body.rm #yaku-splash .ys-rays{opacity:.4}body.rm .farea .fghost{opacity:.34}body.rm .koma.armed{transform:none}body.rm .pcard.reach{box-shadow:0 0 0 1px rgba(224,85,58,.5) inset}
 #count-hold[aria-pressed="true"]{border-color:var(--kin);color:var(--kin);background:rgba(194,163,93,.14)}
+@media (max-width:379px),(max-height:799px){#count-bar .cgrid.pin{display:grid;grid-template-columns:repeat(4,auto);gap:3px 8px;justify-content:end}#count-bar .cgrid.pin .cg-pips{display:none}#count-bar .cgrid.pin .cg-n{font-size:.74rem}}
 </style>
 </head>
 <body>
@@ -2261,7 +2266,7 @@ body.rm *{animation:none!important;transition:none!important}body.rm .pts-fly,bo
 <div id="setup-screen">
   <!-- build v208: 版数表示は APP_CHANGELOG[0] から起動時に上書きされる(JS が動かない場合の保険としてここにも同じ版数を書いておく)。 -->
   <button type="button" class="setup-version" id="btn-version"
-          aria-label="バージョン v223.17 — 更新内容を見る" title="更新内容を見る"><span id="btn-version-num">v223.17</span><span class="sv-i" aria-hidden="true">ⓘ</span></button>
+          aria-label="バージョン v223.18 — 更新内容を見る" title="更新内容を見る"><span id="btn-version-num">v223.18</span><span class="sv-i" aria-hidden="true">ⓘ</span></button>
   <div class="title-block">
     <h1 class="serif">ごいた</h1>
     <div class="title-sub">能登・宇出津に伝わる竹駒の伝承遊戯</div>
@@ -2587,7 +2592,7 @@ body.rm *{animation:none!important;transition:none!important}body.rm .pts-fly,bo
     <div id="qsi-btns" class="qsi-btns"></div>
   </section>
   <div class="panel" id="handarea">
-    <div class="hd"><span id="hand-name">あなたの手駒</span><span id="hand-hint"></span><span id="count-bar" style="margin-left:auto;color:var(--gin-d);font-variant-numeric:tabular-nums"></span><button type="button" id="count-hold" class="btn small" hidden aria-pressed="false" aria-label="駒数（押すと盤に出したまま・もう一度押すと消える。長く押している間だけ出す事もできる）">駒数</button></div>
+    <div class="hd"><span id="hand-name">あなたの手駒</span><span id="hand-hint"></span><span id="count-bar" style="margin-left:auto;color:var(--gin-d);font-variant-numeric:tabular-nums"></span><button type="button" id="count-hold" class="btn small" hidden aria-pressed="false" aria-label="駒数（押すと手駒の上に小さく出したまま・もう一度押すと消える。長く押している間は盤に大きく出す）">駒数</button></div>
     <div id="hand"></div>
     <div id="rh-legend" hidden>数字=敵2席とも受けられないと推定される割合（推定・誤差あり）。受けられても見送る場合があります　<span class="rh-badge rh-safe">通65%〜</span>=通りやすい　<span class="rh-badge rh-risk">〜通64%</span>=受けられやすい</div>
   </div>
@@ -14803,7 +14808,8 @@ if (typeof document !== "undefined") (() => {
         }
       } else {
         el.setAttribute("aria-label", k + (mode === "pick" ? "（選べません）" : ""));
-        if (mode === "pick" && app.tutorial && app.tutorial.awaiting) slot.addEventListener("click", () => tutMissTap(k));   
+        if (mode === "pick" && app.tutorial && app.tutorial.awaiting) slot.addEventListener("click", () => tutMissTap(k));
+        else if (!app.tutorial) slot.addEventListener("click", () => openKomaCardPinned(el, k, {fromHand: true}));   
       }
       if (_dealAnim && app.humanSeat) { el.classList.add("deal-in"); el.style.animationDelay = dealDelayMs(app.humanSeat, ki) + "ms"; }
       tray.appendChild(slot);
@@ -15999,9 +16005,9 @@ if (typeof document !== "undefined") (() => {
     const can = countsCanShow();
     const hb = $("count-hold");
     if (hb) hb.hidden = !(can && app.cfg.countsHold);
-    if (app._countHold && !(can && app.cfg.countsHold)) hideCountOverlay();
+    if ((app._countHold || app._countPin) && !(can && app.cfg.countsHold)) hideCountOverlay();
     let sig = "", c = null;
-    if (can && app.cfg.counts) { c = G.countsFor(app.st, app.humanSeat); sig = "g:" + countGridSig(c); }
+    if (can && (app.cfg.counts || app._countPin)) { c = G.countsFor(app.st, app.humanSeat); sig = (app.cfg.counts ? "g:" : "p:") + countGridSig(c); }
     { const hn = $("hand-name"); if (hn) { const t = (c && !app.tutorial) ? "手駒" : "あなたの手駒"; if (hn.textContent !== t) hn.textContent = t; } }   
     if (_countRenderSignature === sig) {
       recordRenderWork("count", true);
@@ -16010,7 +16016,7 @@ if (typeof document !== "undefined") (() => {
     recordRenderWork("count", false);
     const el = $("count-bar");
     el.textContent = "";
-    if (c) el.appendChild(renderCountGrid(c, false));
+    if (c) { const _cg = renderCountGrid(c, false); if (!app.cfg.counts) _cg.classList.add("pin"); el.appendChild(_cg); }
     _countRenderSignature = sig;
   }
   function renderCountOverlay() {
@@ -16025,10 +16031,12 @@ if (typeof document !== "undefined") (() => {
   const COUNT_TAP_MS = 400;
   function countPinMark(on) { const hb = $("count-hold"); if (hb) hb.setAttribute("aria-pressed", on ? "true" : "false"); }
   function countPinSet(on) {
-    if (on && countsCanShow() && app.cfg.countsHold) { app._countPin = true; countPinMark(true); if (!app._countHold) { app._countHold = true; renderCountOverlay(); } }
+    if (on && countsCanShow() && app.cfg.countsHold) { app._countPin = true; countPinMark(true); countOverlayOff(); }
     else hideCountOverlay();
+    renderCountBar();
   }
-  function hideCountOverlay() { app._countPin = false; countPinMark(false); app._countHold = false; const ov = $("count-overlay"); if (ov) { ov.hidden = true; ov.setAttribute("aria-hidden", "true"); ov.textContent = ""; ov.dataset.sig = ""; } }
+  function countOverlayOff() { app._countHold = false; const ov = $("count-overlay"); if (ov) { ov.hidden = true; ov.setAttribute("aria-hidden", "true"); ov.textContent = ""; ov.dataset.sig = ""; } }
+  function hideCountOverlay() { app._countPin = false; countPinMark(false); countOverlayOff(); }
   function renderAll() {
     const _renderT0 = perfNow();
     _flipCapture();
@@ -22254,7 +22262,7 @@ if (typeof document !== "undefined") (() => {
       let t0 = 0, wasPin = false;
       const press = ev => { t0 = ev.timeStamp; wasPin = !!app._countPin; if (!app._countHold) showCountOverlay(); };
       const lift = ev => countPinSet(ev.timeStamp - t0 < COUNT_TAP_MS ? !wasPin : false);
-      const release = () => { if (!app._countPin) hideCountOverlay(); };
+      const release = () => { if (!app._countPin) hideCountOverlay(); else countOverlayOff(); };
       hb.addEventListener("pointerdown", ev => { ev.preventDefault(); try { hb.setPointerCapture(ev.pointerId); } catch (e) {} press(ev); });
       hb.addEventListener("pointerup", lift);
       ["pointercancel", "lostpointercapture", "blur"].forEach(t => hb.addEventListener(t, release));
@@ -25249,6 +25257,9 @@ if (typeof document !== "undefined") (() => {
 
 
   const APP_CHANGELOG = [
+    {v: "v223.18", d: "2026-11-18", tag: "ui", tagJa: "使いやすくなった", t: "出したままの駒数の表が盤を隠さなくなり、出せない駒はタップで駒札が開きます", p: [
+      "駒数 のボタンを短く押して出したままにした時、表は盤の上ではなく、手駒の見出しの中に小さく出ます。盤は隠れません。画面が小さい時は数字だけの形になります。長く押している間は、今までどおり盤に大きく出ます。",
+      "手駒のうち、今は出せない駒（自分の番でない時の駒や、選べない駒）をタップすると、その駒の点と枚数の札が開きます。閉じる を押すか、ほかの所を触ると閉じます。出せる駒のタップは、今までどおり駒を出します。出せる駒の札は長押しで見られます。"]},
     {v: "v223.17", d: "2026-11-17", tag: "ui", tagJa: "使いやすくなった", t: "駒数の表を出したままにでき、動きを減らす設定を足しました", p: [
       "駒数 のボタンを短く押すと、盤の駒数の表が出たままになります。もう一度短く押すと消えます。長く押している間だけ出す使い方も、今までどおりできます。次の局が始まると消えます。",
       "調整 に 動きを減らす を足しました。入れると、駒の移動や点の数え上げ、祝いの演出などの動きが止まります。端末の側で動きを減らす設定にしている時は、今までどおり、入れなくても止まります。"]},
