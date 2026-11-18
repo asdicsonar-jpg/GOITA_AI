@@ -5,6 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>ごいた — 能登の伝承遊戯</title>
   <!-- build: v220.6 に短い入門コース（3 場面・5 着手）と助言つきの 1 局練習を当てた（配信候補 v220.7 の元）。計画: docs/PLAN_短い入門コース_rev4_Opus5.5.md（§14 の裁定）・docs/PLAN_v220.7_入門コース配信_rev2_Opus5.5.md。適用: harness/apply_quickstart_v2.py。エンジン区画（G・G_B・T1）は不変。 -->
+  <!-- build: v224.0「相方の合図の文をし攻めに（SKW）」base=v223.21。エンジンの便（文だけ）。
+       指示: Sonar 2026-11-16（し攻めの語の訂正・エンジンの中の 1 か所は次のエンジンの便で）・2026-11-18（先に進める）。計画: docs/PLAN_v224.0_し攻めの言い方_rev1_Opus5.5.md。報告: docs/IMPLEMENTATION_REPORT_v224.0_rev1_Opus5.5.md。
+       変更: harness/spec/v224_0_apply.py → lib/release.py（版数・CHANGELOG・バッジ・sw.js）。指し手・出る条件・保存の形は v223.21 と同じ。
+       CACHE_NAME: goita-v223.21 → goita-v224.0. -->
   <!-- build: v223.21「振り返りで、選んだ 1 手をほかの候補と推定で比べる（KF-04・KFE）」base=v223.20。UI の便。
        指示: Sonar 2026-11-18（工程 7 を進めて・KF-04 の検証仕様を承認）。仕様: docs/SPEC_KF-04_検証仕様_rev2_承認済み_Fable5.2.md。報告: docs/IMPLEMENTATION_REPORT_v223.21_rev1_Fable5.2.md。
        変更: harness/spec/v223_21_apply.py → lib/release.py（版数・CHANGELOG・バッジ・sw.js）。エンジン・保存の形は v223.20 と同じ（エンジンの公開の関数を呼ぶだけ）。
@@ -2281,7 +2285,7 @@ body.rm *{animation:none!important;transition:none!important}body.rm .pts-fly,bo
 <div id="setup-screen">
   <!-- build v208: 版数表示は APP_CHANGELOG[0] から起動時に上書きされる(JS が動かない場合の保険としてここにも同じ版数を書いておく)。 -->
   <button type="button" class="setup-version" id="btn-version"
-          aria-label="バージョン v223.21 — 更新内容を見る" title="更新内容を見る"><span id="btn-version-num">v223.21</span><span class="sv-i" aria-hidden="true">ⓘ</span></button>
+          aria-label="バージョン v224.0 — 更新内容を見る" title="更新内容を見る"><span id="btn-version-num">v224.0</span><span class="sv-i" aria-hidden="true">ⓘ</span></button>
   <div class="title-block">
     <h1 class="serif">ごいた</h1>
     <div class="title-sub">能登・宇出津に伝わる竹駒の伝承遊戯</div>
@@ -9318,7 +9322,7 @@ const G = (() => {
     // 以下は自分の攻め番での連携行動 — 受け(respond)フェーズでは非該当のため出さない
     if (st.phase !== "respond") {
       if (partnerSignaledShi(hist, seat)) {
-        if (canShiAttackC(c)) return {tag: "shi", text: "相方がし攻めを示唆。し4枚で乗れる — 五し攻めのチャンス。"};
+        if (canShiAttackC(c)) return {tag: "shi", text: "相方がし攻めを示唆。し4枚で乗れる — し攻めのチャンス。"};
         if ((c["し"] || 0) >= 3) return {tag: "shi", text: "相方がし攻めを示唆。し3枚で参加できる。"};
         return {tag: "shi", text: "相方がし攻めを示唆。し薄なら無理に乗らず受けに備える。"};
       }
@@ -25473,6 +25477,9 @@ if (typeof document !== "undefined") (() => {
 
 
   const APP_CHANGELOG = [
+    {v: "v224.0", d: "2026-11-18", tag: "fix", tagJa: "直した", t: "相方の狙いの文で、し攻めの呼び名をそろえました", p: [
+      "相方がしで攻めた後、し4枚で乗れる時に出る相方の狙いの文を、し攻めのチャンス、という言い方に直しました。",
+      "AIの手、文が出る条件、ほかの文は変えていません。"]},
     {v: "v223.21", d: "2026-11-18", tag: "ui", tagJa: "変わった", t: "振り返りで、自分の 1 手をほかの候補と推定で比べられるようにしました", p: [
       "振り返りで自分の手を開くと、この手を比べる（推定） が出ることがあります（候補が 2 つ以上あった手）。押すと、その時あなたに見えていた物だけから駒の配り方を 256 個（決まらなければ 512 個）作り、実戦の手とほかの候補を同じ配り方で打ち進めて比べます。",
       "結果は、比べる手の方が良い（推定）・実戦の手の方が良い（推定）・差は小さい はっきりしない の 3 通りです。勝率の差（ポイント）と局の点の差を、揺れの幅（±）と一緒に出します。先取点や点の記録が無い棋譜では、局の点だけを出します。",
