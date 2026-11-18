@@ -5,6 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>ごいた — 能登の伝承遊戯</title>
   <!-- build: v220.6 に短い入門コース（3 場面・5 着手）と助言つきの 1 局練習を当てた（配信候補 v220.7 の元）。計画: docs/PLAN_短い入門コース_rev4_Opus5.5.md（§14 の裁定）・docs/PLAN_v220.7_入門コース配信_rev2_Opus5.5.md。適用: harness/apply_quickstart_v2.py。エンジン区画（G・G_B・T1）は不変。 -->
+  <!-- build: v223.20「選択の傾向の一覧から、その手を 1 問で開く（KQL）」base=v223.19。UI の便。
+       指示: Sonar 2026-11-18（工程 7 を進めて）。棋譜分析の実装指示書 第6版 3 節（件数から対象の棋譜と手番号を開き、一手クイズへ進める）。報告: docs/IMPLEMENTATION_REPORT_v223.20_rev1_Fable5.2.md。
+       変更: harness/spec/v223_20_apply.py → lib/release.py（版数・CHANGELOG・バッジ・sw.js）。エンジン・保存の形は v223.19 と同じ。
+       CACHE_NAME: goita-v223.19 → goita-v223.20. -->
+  <!-- build: v223.19「はじめの画面へ戻るボタンの名前を揃える・小さい駒数の表は数字だけ・札が開いていても 1 回のタップで駒が出る（NAM・CP2・KT2）」base=v223.18。UI の便。
+       指示: Sonar 2026-11-18（1・2 ともに直す。6-C に進め）・2026-11-16 の決め（下の帯と窓は はじめの画面へ・上の帯は はじめへ）。報告: docs/IMPLEMENTATION_REPORT_v223.19_rev1_Fable5.2.md。
+       変更: harness/spec/v223_19_apply.py → lib/release.py（版数・CHANGELOG・バッジ・sw.js）。エンジン・保存の形は v223.18 と同じ。
+       CACHE_NAME: goita-v223.18 → goita-v223.19. -->
   <!-- build: v223.18「出したままの駒数の表を盤のすぐ下へ・出せない駒はタップで駒札（CPS・KTP）」base=v223.17。UI の便。
        指示: Sonar 2026-11-17（案Ａで進めて）・2026-11-18 の決め（表の置き場は盤のすぐ下・駒札は出せない駒のタップで開く）。報告: docs/IMPLEMENTATION_REPORT_v223.18_rev1_Fable5.2.md。
        変更: harness/spec/v223_18_apply.py → lib/release.py（版数・CHANGELOG・バッジ・sw.js）。エンジン・保存の形は v223.17 と同じ。
@@ -2251,7 +2259,9 @@ body.excl-on:not(.reviewing) #card-s .phead .nm::after{content:"成績の対象�
 #hand .koma-slot.ks-act:not(:has(.rh-badge))::after{content:"";position:absolute;left:12%;right:12%;bottom:-6px;height:3px;border-radius:2px;background:var(--aoi);pointer-events:none}@media (forced-colors:active){#hand .koma-slot.ks-act:not(:has(.rh-badge))::after{background:Highlight}}
 body.rm *{animation:none!important;transition:none!important}body.rm .pts-fly,body.rm #yaku-splash .ys-flags,body.rm #noto-glow,body.rm #kiriko-fire,body.rm .kf-ember{display:none!important}body.rm #kessen.show,body.rm #wincut.show,body.rm #wincut.show .wc-pts{opacity:1;transform:none}body.rm #wincut.out,body.rm .seat-float{opacity:0}body.rm #yaku-splash .ys-rays{opacity:.4}body.rm .farea .fghost{opacity:.34}body.rm .koma.armed{transform:none}body.rm .pcard.reach{box-shadow:0 0 0 1px rgba(224,85,58,.5) inset}
 #count-hold[aria-pressed="true"]{border-color:var(--kin);color:var(--kin);background:rgba(194,163,93,.14)}
-@media (max-width:379px),(max-height:799px){#count-bar .cgrid.pin{display:grid;grid-template-columns:repeat(4,auto);gap:3px 8px;justify-content:end}#count-bar .cgrid.pin .cg-pips{display:none}#count-bar .cgrid.pin .cg-n{font-size:.74rem}}
+#count-bar .cgrid.pin{display:grid;grid-template-columns:repeat(4,auto);gap:3px 8px;justify-content:end}#count-bar .cgrid.pin .cg-pips{display:none}#count-bar .cgrid.pin .cg-n{font-size:.74rem}
+@media (min-width:1024px) and (hover:hover) and (pointer:fine){#count-bar .cgrid.pin{grid-template-columns:repeat(8,auto)}}
+.kft .kft-ent{display:flex;flex-wrap:wrap;align-items:center}
 </style>
 </head>
 <body>
@@ -2266,7 +2276,7 @@ body.rm *{animation:none!important;transition:none!important}body.rm .pts-fly,bo
 <div id="setup-screen">
   <!-- build v208: 版数表示は APP_CHANGELOG[0] から起動時に上書きされる(JS が動かない場合の保険としてここにも同じ版数を書いておく)。 -->
   <button type="button" class="setup-version" id="btn-version"
-          aria-label="バージョン v223.18 — 更新内容を見る" title="更新内容を見る"><span id="btn-version-num">v223.18</span><span class="sv-i" aria-hidden="true">ⓘ</span></button>
+          aria-label="バージョン v223.20 — 更新内容を見る" title="更新内容を見る"><span id="btn-version-num">v223.20</span><span class="sv-i" aria-hidden="true">ⓘ</span></button>
   <div class="title-block">
     <h1 class="serif">ごいた</h1>
     <div class="title-sub">能登・宇出津に伝わる竹駒の伝承遊戯</div>
@@ -2531,7 +2541,7 @@ body.rm *{animation:none!important;transition:none!important}body.rm .pts-fly,bo
     </div>
     <button class="btn small ghost" id="btn-more" aria-haspopup="true" aria-expanded="false" aria-label="その他のメニュー">⋯</button>
     <input type="file" id="file-career" accept=".json" style="display:none">
-    <button class="btn small ghost" id="btn-back">設定へ</button>
+    <button class="btn small ghost" id="btn-back">はじめへ</button>
   </div>
 
   <div id="quickstart-bar" hidden role="region" aria-label="短い入門"><span class="qsb-title">短い入門　<span class="qsb-step" id="qsb-step"></span></span><button type="button" class="btn small" id="qsb-retry">この場面をやり直す</button><button type="button" class="btn small primary" id="qsb-exit">終了</button></div>
@@ -12943,7 +12953,7 @@ if (typeof document !== "undefined") (() => {
       g.trial.rate = rate;
       gradSave(g);
       
-      try { toast("3局での一致率は" + Math.round(rate * 100) + "%でした。次に設定へ戻ったとき選べます。"); } catch (e) {}
+      try { toast("3局での一致率は" + Math.round(rate * 100) + "%でした。次にはじめの画面へ戻ったとき選べます。"); } catch (e) {}
     }
   }
   
@@ -14058,7 +14068,7 @@ if (typeof document !== "undefined") (() => {
   }
   document.addEventListener("keydown", e => { if (_kcPin && e.key === "Escape") { e.preventDefault(); e.stopPropagation(); closeKomaCardPinned(true); } }, true);
   let _kcSwallow = 0;   
-  document.addEventListener("pointerdown", e => { if (_kcPin && !(e.target && e.target.closest && e.target.closest("#koma-card"))) { _kcSwallow = performance.now(); closeKomaCardPinned(false); } else _kcSwallow = 0; }, true);   
+  document.addEventListener("pointerdown", e => { if (_kcPin && !(e.target && e.target.closest && e.target.closest("#koma-card"))) { const _kt = e.target && e.target.closest ? e.target.closest("#hand .koma-slot, #actionbar .btn") : null; const _same = !!(_kt && _kcPin.from && _kt.contains(_kcPin.from)); _kcSwallow = (_kt && !_same) ? 0 : performance.now(); closeKomaCardPinned(false); } else _kcSwallow = 0; }, true);   
   document.addEventListener("pointercancel", () => { _kcSwallow = 0; }, true);
   document.addEventListener("contextmenu", () => { _kcSwallow = 0; }, true);
   document.addEventListener("click", e => { if (_kcSwallow && performance.now() - _kcSwallow < 800) { _kcSwallow = 0; e.preventDefault(); e.stopImmediatePropagation(); } }, true);
@@ -18603,7 +18613,7 @@ if (typeof document !== "undefined") (() => {
     if (app.daily) {   
       app.daily.done = true; app.rec = null;   
       try { toast("今日の一局の配りに手役が出ました"); } catch (e) {}
-      actionbar("", [{label: "設定へ戻る", primary: true, fn: stopToSetup}]);
+      actionbar("", [{label: "はじめの画面へ", primary: true, fn: stopToSetup}]);
       return;
     }
     app.rec = null;   
@@ -19054,7 +19064,7 @@ if (typeof document !== "undefined") (() => {
         scheduleAppTimer(() => { if (!app.stopped && !app.review) startGame(); }, 1800);
       } else {
         overBandKeep(finishedRec, km ? km.html : "", [rb, {label: "この局を共有", fn: () => shareGame(app.lastRec)}, ...(km ? [km.btn] : []), ...(tourBtn ? [tourBtn] : []),
-          _dl ? {label: "設定へ戻る", primary: true, fn: stopToSetup} : {label: "次の局へ", primary: true, fn: startGame}]);   
+          _dl ? {label: "はじめの画面へ", primary: true, fn: stopToSetup} : {label: "次の局へ", primary: true, fn: startGame}]);   
         tourAutoMaybe(finishedRec);   
       }
       return;
@@ -19108,7 +19118,7 @@ if (typeof document !== "undefined") (() => {
     if (over) {
       overBandKeep(finishedRec, kmHtml, [reviewBtn, shareBtn, ...kmBtn, ...(tourBtn ? [tourBtn] : []), {label: "結果を見る", primary: true, fn: showMatchEnd}]);
     } else if (_dl) {   
-      overBandKeep(finishedRec, kmHtml, [reviewBtn, shareBtn, ...kmBtn, ...(tourBtn ? [tourBtn] : []), {label: "設定へ戻る", primary: true, fn: stopToSetup}]);
+      overBandKeep(finishedRec, kmHtml, [reviewBtn, shareBtn, ...kmBtn, ...(tourBtn ? [tourBtn] : []), {label: "はじめの画面へ", primary: true, fn: stopToSetup}]);
       if (!winSpecial) tourAutoMaybe(finishedRec);
     } else if (!app.humanSeat) {
       actionbar("（観戦中 — 自動で次の局へ）",
@@ -19189,7 +19199,7 @@ if (typeof document !== "undefined") (() => {
     if (practiceLiveRestore(_live)) return;
     const over = app.scores.NS >= app.cfg.target || app.scores.EW >= app.cfg.target;
     if (app._fromSetup || app.daily || !overBandKept(false))   /* v223.9 OBK: 直前の局の帯が在れば、それを出し直す */
-    actionbar("", (app._fromSetup || app.daily) ? [{label: "設定へ戻る", primary: true, fn: stopToSetup}]   
+    actionbar("", (app._fromSetup || app.daily) ? [{label: "はじめの画面へ", primary: true, fn: stopToSetup}]   
       : over
       ? [{label: "結果を見る", primary: true, fn: showMatchEnd}]
       : [{label: "次の局へ", primary: true, fn: startGame}]);
@@ -19249,7 +19259,7 @@ if (typeof document !== "undefined") (() => {
     } else if (d) {
       btns.push({label: "逃し復習へ", fn: () => { openMissDrill(); }});
     }
-    btns.push((app._fromSetup || (app.daily && !(app.preDrill && app.preDrill.live))) ? {label: "設定へ戻る", fn: stopToSetup} : {label: "対局へ戻る", fn: endPractice});   
+    btns.push((app._fromSetup || (app.daily && !(app.preDrill && app.preDrill.live))) ? {label: "はじめの画面へ", fn: stopToSetup} : {label: "対局へ戻る", fn: endPractice});   
     actionbar(verdict, btns);
     status("練習終了" + (verdict ? `: ${verdict}` : ""));
   }
@@ -19306,7 +19316,7 @@ if (typeof document !== "undefined") (() => {
         ${allMisses().length ? `<button class="btn small" id="m-miss">逃し復習 (${allMisses().length})</button>` : ""}
         <button class="btn small" id="m-share">局を選んで共有</button>
         <button class="btn small" id="m-kifu">棋譜を保存</button>
-        <button class="btn small" id="m-setup">設定へ</button>
+        <button class="btn small" id="m-setup">はじめの画面へ</button>
       </div>`);
     m.querySelector("#m-new").onclick = () => { closeModal(); newMatch(); };
     m.querySelector("#m-setup").onclick = () => { closeModal(); stopToSetup(); };
@@ -19967,11 +19977,13 @@ if (typeof document !== "undefined") (() => {
     const what = !a ? "" : a.type === "pass" ? "なし" : (a.type === "bury" ? "伏せ" : a.type === "attack" ? "攻め" : "受け") + "「" + a.koma + "」";
     return "第" + (rec.matchNo || "?") + "勝負・第" + (rec.gameNo || "?") + "局・第" + (e.i + 1) + "手（" + what + "）";
   }
+  function kftQuizOk(e) { try { const r = kftRow(e.rec); return !!(r && r.ok && r.C.at.includes(e.i)); } catch (x) { return false; } }
   function kftList(host, title, at) {
     const box = host.querySelector("#kft-list"); if (!box) return;
     const items = at.slice(-KFT_LIST_MAX).reverse();
-    box.innerHTML = '<div class="note" role="status">' + escapeHtml(title) + " — " + at.length + " 件" + (at.length > items.length ? "（新しい " + items.length + " 件を表示）" : "") + "。押すと、その手で振り返りを開きます。</div>" +
-      items.map((e, n) => '<button type="button" class="btn small kft-go" data-n="' + n + '">' + escapeHtml(kftMoveLabel(e)) + "</button>").join("");
+    box.innerHTML = '<div class="note" role="status">' + escapeHtml(title) + " — " + at.length + " 件" + (at.length > items.length ? "（新しい " + items.length + " 件を表示）" : "") + "。押すと、その手で振り返りを開きます。" + (items.some(kftQuizOk) ? "「1問」は、その手の直前の場面を、答えを見ずに選び直します（確認できた上がり筋が在る手だけに出ます）。" : "") + "</div>" +
+      items.map((e, n) => { const lb = escapeHtml(kftMoveLabel(e)); return '<div class="kft-ent"><button type="button" class="btn small kft-go" data-n="' + n + '">' + lb + "</button>" + (kftQuizOk(e) ? '<button type="button" class="btn small kft-quiz" data-n="' + n + '" aria-label="' + lb + ' を1問で開く">1問</button>' : "") + "</div>"; }).join("");
+    box.querySelectorAll(".kft-quiz").forEach(b => b.onclick = () => { const e = items[+b.dataset.n]; if (e) kfQuizOpen(e.rec, b, e.i); });
     box.querySelectorAll(".kft-go").forEach(b => b.onclick = () => {
       const e = items[+b.dataset.n]; if (!e) return;
       closeModal();
@@ -20119,9 +20131,23 @@ if (typeof document !== "undefined") (() => {
     if (q.el && q.el.parentNode) q.el.parentNode.removeChild(q.el);
     try { const o = (q.opener && document.contains(q.opener)) ? q.opener : (document.querySelector(".kfq-open") || null); if (o && o.focus) o.focus(); } catch (e) {}
   }
-  function kfQuizOpen(rec, opener) {
+  function kfQuizAt(rec, i) {
+    const k = kfAnalyze(rec);
+    if (!k || !k.sum || !k.me) return null;
+    const mv = rec.moves[i];
+    if (!mv || mv.seat !== k.me || !mv.action) return null;
+    const it = (k.items || []).find(x => x.i === i);
+    if (it) { const a = it.cand[0], b = it.cand[1]; if (a.score != null && b.score != null) { const hi = Math.max(a.score, b.score), ps = (a.bury === it.played ? a : b).score; return {i, cls: it.review ? 0 : ((ps < hi && it.status === "unverified") ? 1 : 2), score: hi, kind: "terminal"}; } }
+    const obs = kfObserve(rec, i, k.me, k.facts);
+    if (!obs) return null;
+    let r; try { r = kfMoveLines(obs, mv.action); } catch (e) { return null; }
+    if (!r || r.kind !== "confirmed") return null;
+    const alt = r.sub === "altOnly" || r.sub === "bothDiffer";
+    return {i, cls: alt ? 1 : 2, score: alt ? r.alt.score : r.played.score, kind: "line"};
+  }
+  function kfQuizOpen(rec, opener, at) {
     if (_kfq) return false;
-    const cand = kfQuizPick(rec), k = kfAnalyze(rec);
+    const cand = at == null ? kfQuizPick(rec) : kfQuizAt(rec, at), k = kfAnalyze(rec);
     if (!cand || !k || !k.me) return false;
     const obs = kfObserve(rec, cand.i, k.me, k.facts);
     if (!obs) return false;
@@ -21242,7 +21268,7 @@ if (typeof document !== "undefined") (() => {
   }
   function openReviewOn(rec, idx) {
     if (!rec || !rec.moves.length) return;
-    { const rc = $("rv-close"); if (rc) rc.textContent = (app._fromSetup || dailyOverNow()) ? "設定へ戻る" : "対局へ戻る"; }   
+    { const rc = $("rv-close"); if (rc) rc.textContent = (app._fromSetup || dailyOverNow()) ? "はじめの画面へ" : "対局へ戻る"; }   
     const enteringReview = !app.review;
     if (enteringReview) app._reviewPrevFocus = document.activeElement || null;
     
@@ -21586,7 +21612,7 @@ if (typeof document !== "undefined") (() => {
     if (app.st && !app.matchOver && ((app.st.phase === "over" && overBandKept(true))
         || (app.rec && app.rec.practice && !app.preDrill && !app.tutorial && !app._fromSetup && !app.daily && overBandKept(false)))) return true;   /* 終えた練習の局面が画面に残っている時も、直前の局の帯へ戻す（練習の局面を対局として進めない） */
     if (app.daily && app.st && app.st.phase === "over") {   
-      actionbar("", [...(app.lastRec ? [{label: "振り返り", fn: openReview}] : []), {label: "設定へ戻る", primary: true, fn: stopToSetup}]);
+      actionbar("", [...(app.lastRec ? [{label: "振り返り", fn: openReview}] : []), {label: "はじめの画面へ", primary: true, fn: stopToSetup}]);
       return true;
     }
     if (app.st && app.st.phase === "over" && !app.matchOver) {
@@ -23784,9 +23810,9 @@ if (typeof document !== "undefined") (() => {
     }
     const nk = tutNextKey(p); tutSpotlight(null);
     if (nk) tutBubble(`「${TUT[t.key].title}」修了！　進度 ${tutPct(p)}%`,
-      [{label: "設定に戻る", fn: () => exitTutorial(false)}, {label: `${TUT[nk].title}へ`, primary: true, fn: () => { exitTutorial(true); startTutorial(nk); }}]);
+      [{label: "はじめの画面へ", fn: () => exitTutorial(false)}, {label: `${TUT[nk].title}へ`, primary: true, fn: () => { exitTutorial(true); startTutorial(nk); }}]);
     else tutBubble("免許皆伝 — 全課程を修了しました。お疲れさまでした。宇出津の大会は誰でも参加できます。",
-      [{label: "設定に戻る", primary: true, fn: () => exitTutorial(false)}, {label: "宇出津の大会について見る", fn: () => { exitTutorial(false); openUshitsuInfo(); }}]);
+      [{label: "はじめの画面へ", primary: true, fn: () => exitTutorial(false)}, {label: "宇出津の大会について見る", fn: () => { exitTutorial(false); openUshitsuInfo(); }}]);
   }
   function startTutorialFree(sc) {
     const t = app.tutorial; t.free = true;
@@ -23812,9 +23838,9 @@ if (typeof document !== "undefined") (() => {
     const nk = tutNextKey(p);
     $("tut-overlay").classList.add("on"); tutSpotlight(null);
     if (nk) tutBubble(`${rmsg}　実戦を完走しました。「${TUT[t.key].title}」修了！　進度 ${tutPct(p)}%`,
-      [{label: "設定に戻る", fn: () => exitTutorial(false)}, {label: `${TUT[nk].title}へ`, primary: true, fn: () => { exitTutorial(true); startTutorial(nk); }}]);
+      [{label: "はじめの画面へ", fn: () => exitTutorial(false)}, {label: `${TUT[nk].title}へ`, primary: true, fn: () => { exitTutorial(true); startTutorial(nk); }}]);
     else tutBubble(`${rmsg}　実戦を完走しました。免許皆伝です！　基本も実戦もすべて修了しました。対面や大会でも、ここで学んだ流れがそのまま使えます。`,
-      [{label: "設定に戻る", primary: true, fn: () => exitTutorial(false)}, {label: "宇出津の大会について見る", fn: () => { exitTutorial(false); openUshitsuInfo(); }}]);
+      [{label: "はじめの画面へ", primary: true, fn: () => exitTutorial(false)}, {label: "宇出津の大会について見る", fn: () => { exitTutorial(false); openUshitsuInfo(); }}]);
   }
   function exitTutorial(silent) {
     if ((_tutBackup && _tutBackup.kind === "qs") || (app.tutorial && qsIsKey(app.tutorial.key))) { exitQuickStart({silent: !!silent}); return; }   
@@ -24146,7 +24172,7 @@ if (typeof document !== "undefined") (() => {
       const total = q.drills.length;
       app._mixQueue = null;
       tutBubble("これは「" + label + "」の問題でした。混ぜ稽古（全" + total + "問）が終わりました。お疲れさまでした。",
-        [{label: "設定に戻る", primary: true, fn: () => exitTutorial(false)}]);
+        [{label: "はじめの画面へ", primary: true, fn: () => exitTutorial(false)}]);
     } else {
       tutBubble("これは「" + label + "」の問題でした。次の問題へ進みます。",
         [{label: "次の問題へ", primary: true, fn: () => { q.idx++; exitTutorial(true); startTutorial(q.drills[q.idx].tut); }}]);
@@ -24302,7 +24328,7 @@ if (typeof document !== "undefined") (() => {
     const prunedNote = pruned > 0
       ? ('<p class="note">解けない形になっていた復習カードを' + pruned + '件取り除きました。</p>') : "";
     const m = modal('<h2 class="serif">復習を終えました</h2>' + body + prunedNote +
-      '<div class="row"><button type="button" class="btn primary" id="srs-done-setup">設定へ戻る</button></div>');
+      '<div class="row"><button type="button" class="btn primary" id="srs-done-setup">はじめの画面へ</button></div>');
     const b = m.querySelector("#srs-done-setup");
     if (b) b.onclick = () => { closeModal(); stopToSetup(); };
   }
@@ -25223,7 +25249,7 @@ if (typeof document !== "undefined") (() => {
       if (!p) {
         actionbar("生成できませんでした", [
           {label: "再試行", fn: () => runPuzzleGen(band)},
-          app._fromSetup ? {label: "設定へ戻る", fn: stopToSetup} : {label: "対局を再開", fn: resumeAfterPause}]);   
+          app._fromSetup ? {label: "はじめの画面へ", fn: stopToSetup} : {label: "対局を再開", fn: resumeAfterPause}]);   
         return;
       }
       app.puzzleStats.tried++;
@@ -25257,6 +25283,13 @@ if (typeof document !== "undefined") (() => {
 
 
   const APP_CHANGELOG = [
+    {v: "v223.20", d: "2026-11-18", tag: "ui", tagJa: "使いやすくなった", t: "成績の 選択の傾向 の一覧から、その手を 1 問で開けるようにしました", p: [
+      "成績の 選択の傾向（件数） で件数を押して出る一覧に、1問 のボタンを足しました。確認できた上がり筋が在る手（終盤の読み切りに数えた手）にだけ出ます。",
+      "1問 を押すと、その手の直前の場面を、答えを見ずに選び直せます。局の後の 今回の1問 と同じ画面です。答えても、元の対局・成績・保存は変わりません。閉じると一覧へ戻ります。"]},
+    {v: "v223.19", d: "2026-11-18", tag: "ui", tagJa: "使いやすくなった", t: "はじめの画面へ戻るボタンの名前を揃えました", p: [
+      "対局や振り返り、教材、復習の終わりに出る 設定へ戻る・設定に戻る のボタンを、はじめの画面へ という名前に揃えました。上の帯の小さいボタンは はじめへ です。押した時の動きは今までと同じです。",
+      "駒数 を出したままにした時の小さい表を、どの画面でも数字だけの形にしました。手駒の位置が動きません。",
+      "駒札が開いている時に、手駒の別の駒や下のボタンを触ると、札が閉じて、そのまま駒が出る（ボタンが効く）ようにしました。前は、1 回目は札が閉じるだけでした。"]},
     {v: "v223.18", d: "2026-11-18", tag: "ui", tagJa: "使いやすくなった", t: "出したままの駒数の表が盤を隠さなくなり、出せない駒はタップで駒札が開きます", p: [
       "駒数 のボタンを短く押して出したままにした時、表は盤の上ではなく、手駒の見出しの中に小さく出ます。盤は隠れません。画面が小さい時は数字だけの形になります。長く押している間は、今までどおり盤に大きく出ます。",
       "手駒のうち、今は出せない駒（自分の番でない時の駒や、選べない駒）をタップすると、その駒の点と枚数の札が開きます。閉じる を押すか、ほかの所を触ると閉じます。出せる駒のタップは、今までどおり駒を出します。出せる駒の札は長押しで見られます。"]},
