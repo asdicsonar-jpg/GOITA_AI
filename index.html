@@ -5,6 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>ごいた — 能登の伝承遊戯</title>
   <!-- build: v220.6 に短い入門コース（3 場面・5 着手）と助言つきの 1 局練習を当てた（配信候補 v220.7 の元）。計画: docs/PLAN_短い入門コース_rev4_Opus5.5.md（§14 の裁定）・docs/PLAN_v220.7_入門コース配信_rev2_Opus5.5.md。適用: harness/apply_quickstart_v2.py。エンジン区画（G・G_B・T1）は不変。 -->
+  <!-- build: v223.21「振り返りで、選んだ 1 手をほかの候補と推定で比べる（KF-04・KFE）」base=v223.20。UI の便。
+       指示: Sonar 2026-11-18（工程 7 を進めて・KF-04 の検証仕様を承認）。仕様: docs/SPEC_KF-04_検証仕様_rev2_承認済み_Fable5.2.md。報告: docs/IMPLEMENTATION_REPORT_v223.21_rev1_Fable5.2.md。
+       変更: harness/spec/v223_21_apply.py → lib/release.py（版数・CHANGELOG・バッジ・sw.js）。エンジン・保存の形は v223.20 と同じ（エンジンの公開の関数を呼ぶだけ）。
+       CACHE_NAME: goita-v223.20 → goita-v223.21. -->
   <!-- build: v223.20「選択の傾向の一覧から、その手を 1 問で開く（KQL）」base=v223.19。UI の便。
        指示: Sonar 2026-11-18（工程 7 を進めて）。棋譜分析の実装指示書 第6版 3 節（件数から対象の棋譜と手番号を開き、一手クイズへ進める）。報告: docs/IMPLEMENTATION_REPORT_v223.20_rev1_Fable5.2.md。
        変更: harness/spec/v223_20_apply.py → lib/release.py（版数・CHANGELOG・バッジ・sw.js）。エンジン・保存の形は v223.19 と同じ。
@@ -2262,6 +2266,7 @@ body.rm *{animation:none!important;transition:none!important}body.rm .pts-fly,bo
 #count-bar .cgrid.pin{display:grid;grid-template-columns:repeat(4,auto);gap:3px 8px;justify-content:end}#count-bar .cgrid.pin .cg-pips{display:none}#count-bar .cgrid.pin .cg-n{font-size:.74rem}
 @media (min-width:1024px) and (hover:hover) and (pointer:fine){#count-bar .cgrid.pin{grid-template-columns:repeat(8,auto)}}
 .kft .kft-ent{display:flex;flex-wrap:wrap;align-items:center}
+#rv-kfe .kfe-res p{margin:2px 0}#rv-kfe .kfe-head{color:var(--kin)}#rv-kfe .kfe-res p:last-child{font-size:.8rem;margin-top:4px}#rv-kfe .btn.small{min-height:44px;margin:2px 6px 2px 0}
 </style>
 </head>
 <body>
@@ -2276,7 +2281,7 @@ body.rm *{animation:none!important;transition:none!important}body.rm .pts-fly,bo
 <div id="setup-screen">
   <!-- build v208: 版数表示は APP_CHANGELOG[0] から起動時に上書きされる(JS が動かない場合の保険としてここにも同じ版数を書いておく)。 -->
   <button type="button" class="setup-version" id="btn-version"
-          aria-label="バージョン v223.20 — 更新内容を見る" title="更新内容を見る"><span id="btn-version-num">v223.20</span><span class="sv-i" aria-hidden="true">ⓘ</span></button>
+          aria-label="バージョン v223.21 — 更新内容を見る" title="更新内容を見る"><span id="btn-version-num">v223.21</span><span class="sv-i" aria-hidden="true">ⓘ</span></button>
   <div class="title-block">
     <h1 class="serif">ごいた</h1>
     <div class="title-sub">能登・宇出津に伝わる竹駒の伝承遊戯</div>
@@ -20321,6 +20326,189 @@ if (typeof document !== "undefined") (() => {
     if (s.cmpEvaluated === 0) return `確かめた見直し: 比較対象なし。${scope}。相方との連携や途中の攻め選択の優劣は未評価です。`;
     return `今回の対象範囲では、確定した見直しはありません。相方との連携や途中の攻め選択の優劣は未評価です。${scope}。`;
   }
+  const KFE = Object.freeze({ver: "KFE1", n1: 256, n2: 512, z: 2.58, dEq: 2, dPts: 0.05, maxCmp: 4, sliceMs: 8, capMs: 10000, maxIter: 150});
+  const _kfeDone = new WeakMap();
+  let _kfe = null;
+  const kfeSame = (a, b) => !!a && !!b && a.type === b.type && (a.koma || null) === (b.koma || null);
+  function kfeSeed(obs, i) {
+    let h = 2166136261 >>> 0;
+    const s = KFE.ver + "|" + i + "|" + JSON.stringify([obs.seat, obs.phase, obs.hand, obs.hist, obs.sizes, obs.parent, obs.pending, obs.attacker, obs.goshi]);
+    for (let j = 0; j < s.length; j++) { h ^= s.charCodeAt(j); h = Math.imul(h, 16777619) >>> 0; }
+    return (h >>> 0) + 1;
+  }
+  function kfePrep(rec, i) {
+    const k = kfAnalyze(rec);
+    if (!rec || rec.practice || !k || !k.me) return null;
+    const mv = rec.moves[i];
+    if (!mv || mv.seat !== k.me || !mv.action) return null;
+    const obs = kfObserve(rec, i, k.me, k.facts);
+    if (!obs) return null;
+    const cands = kfLegalFirst(obs), played = {type: mv.action.type, koma: mv.action.koma || null};
+    if (cands.length < 2 || !cands.some(c => kfeSame(c, played))) return null;
+    const real = rebuildOk(rec, i);
+    if (!real) return null;
+    const me = k.me, st = Object.assign({}, real, {hands: {}, solverCache: {}});
+    for (const s of G.SEATS) st.hands[s] = s === me ? real.hands[s].slice() : new Array(real.hands[s].length).fill("?");
+    st.history = real.history.map(h => (h.act === "bury" && h.seat !== me) ? {seat: h.seat, koma: null, act: "bury"} : {seat: h.seat, koma: h.koma, act: h.act});
+    const known = obs.scores.source === "recorded" && obs.target.source === "recorded" && REC_TARGETS.has(obs.target.value);
+    if (!known) { st.matchScores = {NS: 0, EW: 0}; st.matchTarget = 150; }
+    const cmp = cands.filter(c => !kfeSame(c, played)).sort((a, b) => (G.POINTS[b.koma] || 0) - (G.POINTS[a.koma] || 0)).slice(0, KFE.maxCmp);
+    const myT = G.team(me), opT = myT === "NS" ? "EW" : "NS";
+    return {rec, i, me, obs, st, view: G.makeView(st, me), list: [played].concat(cmp), dropped: cands.length - 1 - cmp.length,
+      eq: known ? {T: obs.target.value, a: obs.scores.value[myT], b: obs.scores.value[opT]} : null, myT,
+      rng: G.mulberry32(kfeSeed(obs, i)), w: 0, c: 0, world: null, row: [], valid: 0, missing: 0, target: KFE.n1, t0: kfNow(), spent: 0,
+      acc: cmp.map(() => ({p: 0, p2: 0, e: 0, e2: 0})), state: "run", res: null};
+  }
+  function kfeRoll(job, first) {
+    try {
+      const sim = G.diagnosticCloneStateForRollout(job.st, job.me, job.world);
+      let ev = G.advance(sim, {type: first.type, koma: first.koma});
+      if (ev.gameOver) return ev.gameOver;
+      for (let it = 0; it < KFE.maxIter && sim.phase !== "over"; it++) {
+        let a = G.policyAction(sim, sim.actor, {noMC: true});
+        if (a.type === "receive" && !G.validReceive(a.koma, sim.pendingAttack)) a = {type: "pass"};
+        if ((a.type === "bury" || a.type === "attack") && !sim.hands[sim.actor].includes(a.koma)) a = {type: a.type, koma: sim.hands[sim.actor][0]};
+        ev = G.advance(sim, a);
+        if (ev.gameOver) return ev.gameOver;
+      }
+    } catch (e) {}
+    return null;
+  }
+  function kfeVal(job, res) {
+    const mine = res.draw ? 0 : (G.team(res.winner) === job.myT ? 1 : -1);
+    const out = {p: res.draw ? 0 : mine * res.pts / 100, e: 0};
+    if (job.eq) {
+      const q = job.eq, pts = Number.isFinite(res.pts) ? res.pts : 0;
+      const W = res.draw ? G.matchEquity(q.a, q.b, res.nextParent ? G.team(res.nextParent) === job.myT : true, q.T)
+        : (mine > 0 ? G.matchEquity(q.a + pts, q.b, true, q.T) : G.matchEquity(q.a, q.b + pts, false, q.T));
+      out.e = W * 100;
+    }
+    return out;
+  }
+  function kfeVerdict(m, se, d) {
+    if (Math.abs(m) >= d && Math.abs(m) > KFE.z * se) return m > 0 ? "alt" : "played";
+    return "small";
+  }
+  function kfeJudge(job) {
+    const n = job.valid;
+    return job.acc.map((a, j) => {
+      const one = (s, s2, d) => { const m = n ? s / n : 0, v = n > 1 ? Math.max(0, (s2 - n * m * m) / (n - 1)) : 0, se = n ? Math.sqrt(v / n) : 0; return {m, se, v: kfeVerdict(m, se, d)}; };
+      return {action: job.list[j + 1], pts: one(a.p, a.p2, KFE.dPts), eq: job.eq ? one(a.e, a.e2, KFE.dEq) : null};
+    });
+  }
+  function kfeFinish(job, why) {
+    const items = job.valid >= KFE.n1 ? kfeJudge(job) : null;
+    job.state = "done";
+    job.res = {ver: KFE.ver, i: job.i, played: job.list[0], n: job.valid, missing: job.missing, main: job.eq ? "eq" : "pts", items, dropped: job.dropped,
+      status: items ? "ok" : "unevaluated", why: items ? (why || null) : (why || "missing"), ms: Math.round(job.spent)};
+    let m = _kfeDone.get(job.rec);
+    if (!m) { m = new Map(); _kfeDone.set(job.rec, m); }
+    m.set(job.i, job.res);
+    return job.res;
+  }
+  // 1 回ぶん（budget ms まで）進める。終わったら true
+  function kfeStep(job, budget) {
+    const t = kfNow();
+    while (job.state === "run") {
+      if (job.c === 0) { job.world = G.sampleWorld(job.view, job.rng); job.row = []; job.w++; }
+      job.row.push(kfeRoll(job, job.list[job.c]));
+      job.c++;
+      if (job.c >= job.list.length) {
+        job.c = 0;
+        if (job.row.every(r => r)) {
+          const v0 = kfeVal(job, job.row[0]);
+          for (let j = 1; j < job.row.length; j++) { const v = kfeVal(job, job.row[j]), a = job.acc[j - 1], dp = v.p - v0.p, de = v.e - v0.e; a.p += dp; a.p2 += dp * dp; a.e += de; a.e2 += de * de; }
+          job.valid++;
+        } else job.missing++;
+        if (job.valid >= job.target) {
+          if (job.target >= KFE.n2 || kfeJudge(job).every(x => (x.eq || x.pts).v !== "small")) { kfeFinish(job, null); break; }
+          job.target = KFE.n2;
+        } else if (job.w >= KFE.n2 * 2) { kfeFinish(job, "missing"); break; }
+      }
+      if (budget != null && kfNow() - t >= budget) break;
+    }
+    job.spent += kfNow() - t;
+    if (job.state === "run" && budget != null && job.spent >= KFE.capMs) kfeFinish(job, "time");
+    return job.state !== "run";
+  }
+  function kfeCompute(rec, i) {
+    const job = kfePrep(rec, i);
+    if (!job) return null;
+    kfeStep(job, null);
+    return job.res;
+  }
+  function kfeCancel() {
+    const j = _kfe;
+    _kfe = null;
+    if (j && j.timer) { try { clearTimeout(j.timer); } catch (e) {} }
+  }
+  function kfeTick(job) {
+    if (_kfe !== job) return;
+    if (!app.review || app.reviewRec !== job.rec || app.review.idx !== job.i) { kfeCancel(); return; }
+    const done = kfeStep(job, KFE.sliceMs);
+    if (done) _kfe = null;
+    kfePaint(job.rec);
+    if (done) return;
+    job.timer = setTimeout(() => kfeTick(job), 0);
+  }
+  function kfeStart(rec, i) {
+    kfeCancel();
+    const job = kfePrep(rec, i);
+    if (!job) return false;
+    _kfe = job;
+    kfePaint(rec);
+    job.timer = setTimeout(() => kfeTick(job), 0);
+    return true;
+  }
+  const KFE_V = {alt: "比べる手の方が良い（推定）", played: "実戦の手の方が良い（推定）", small: "差は小さい・はっきりしない"};
+  function kfeItemText(r, it) {
+    const sg = x => (x > 0 ? "+" : x < 0 ? "−" : "±") + Math.abs(x).toFixed(1);
+    const pts = "局の点 " + sg(it.pts.m * 100) + " 点（±" + (KFE.z * it.pts.se * 100).toFixed(1) + "）";
+    if (!it.eq) return kfActText(it.action) + ": " + KFE_V[it.pts.v] + "。" + pts;
+    const eq = "勝率 " + sg(it.eq.m) + " ポイント（±" + (KFE.z * it.eq.se).toFixed(1) + "）";
+    const split = it.eq.v !== it.pts.v && it.eq.v !== "small" && it.pts.v !== "small";
+    return kfActText(it.action) + ": " + KFE_V[it.eq.v] + "。" + eq + "・" + pts + (split ? "。局の点では「" + KFE_V[it.pts.v] + "」で、勝率とは向きが違います" : "");
+  }
+  function kfeResultText(r) {
+    const head = "第" + (r.i + 1) + "手（" + kfActText(r.played) + "）を、ほかの候補と比べた結果（推定）";
+    if (r.status !== "ok") return [head, "未評価（" + (r.why === "time" ? "時間の上限で、配り方が " + KFE.n1 + " 個に届きませんでした" : "打ち進められない配り方が多く、" + KFE.n1 + " 個に届きませんでした") + "。そろった配り方 " + r.n + " 個）。差が無いという意味ではありません。"];
+    const out = [head].concat(r.items.map(it => kfeItemText(r, it)));
+    out.push("差は「比べる手 − 実戦の手」。" + r.n + " 個の配り方（そろわなかった " + r.missing + " 個は除く）で、4 席とも速い方の打ち方で局の終わりまで打ち進めた時の推定です。強い AI や人が打ち進めた時とは違う事があります。" +
+      "見えていない駒の配り方は、伏せの傾向だけを入れた推定です。" + (r.main === "pts" ? "先取点か局の始まりの点が棋譜に無いので、勝率は出していません。" : "") +
+      (r.dropped > 0 ? "候補が多いので、点の高い駒から " + KFE.maxCmp + " つだけ比べました。" : "") + (r.why === "time" ? "時間の上限で途中までです。" : "") +
+      "悪手・正解の判定ではなく、成績や見直しの件数には入りません。（分析の版 " + r.ver + "）");
+    return out;
+  }
+  function kfePaint(rec) {
+    const list = $("rv-list");
+    if (!list || !app.review || app.reviewRec !== rec) return;
+    let e = $("rv-kfe");
+    if (!e) { e = document.createElement("div"); e.id = "rv-kfe"; e.className = "note"; list.parentNode.insertBefore(e, list); }
+    const i = app.review.idx;
+    if (_kfe && (_kfe.rec !== rec || _kfe.i !== i)) kfeCancel();
+    e.textContent = "";
+    let ok = false;
+    try { const k = kfAnalyze(rec), mv = rec.moves[i]; if (!rec.practice && k && k.me && mv && mv.seat === k.me && mv.action) { const obs = kfObserve(rec, i, k.me, k.facts); ok = !!obs && kfLegalFirst(obs).length >= 2; } } catch (err) { ok = false; }
+    if (!ok) { e.style.display = "none"; return; }
+    e.style.display = "";
+    const mk = (cls, txt, fn) => { const b = document.createElement("button"); b.type = "button"; b.className = "btn small " + cls; b.textContent = txt; b.addEventListener("click", fn); return b; };
+    const done = _kfeDone.get(rec), r = done ? done.get(i) : null;
+    if (_kfe && _kfe.rec === rec && _kfe.i === i) {
+      const p = document.createElement("span"); p.className = "kfe-run"; p.setAttribute("role", "status");
+      p.textContent = "比べています… 配り方 " + _kfe.valid + "／" + _kfe.target + " 個 ";
+      e.appendChild(p); e.appendChild(mk("kfe-stop", "やめる", () => { kfeCancel(); kfePaint(rec); }));
+      return;
+    }
+    if (r) {
+      const box = document.createElement("div"); box.className = "kfe-res"; box.setAttribute("role", "status");
+      kfeResultText(r).forEach((t, n) => { const p = document.createElement("p"); p.className = n === 0 ? "kfe-head" : "kfe-line"; p.textContent = t; box.appendChild(p); });
+      e.appendChild(box);
+      return;
+    }
+    e.appendChild(mk("kfe-go", "この手を比べる（推定）", () => kfeStart(rec, i)));
+    e.appendChild(document.createTextNode("（この手とほかの候補を、当時見えていた物だけから推定で比べます）"));
+  }
+  app._kfe = Object.freeze({K: KFE, verdict: kfeVerdict, compute: kfeCompute, start: kfeStart, cancel: kfeCancel, state: () => _kfe ? {i: _kfe.i, valid: _kfe.valid, target: _kfe.target, state: _kfe.state} : null, result: (rec, i) => { const m = _kfeDone.get(rec); return m ? (m.get(i) || null) : null; }, text: kfeResultText});
   function kfSummaryRender(rec, list) {
     let e = $("rv-kf");
     if (!e) { e = document.createElement("p"); e.id = "rv-kf"; e.className = "note"; list.parentNode.insertBefore(e, list); }
@@ -20335,6 +20523,7 @@ if (typeof document !== "undefined") (() => {
     e2.textContent = t2;
     e2.style.display = t2 ? "" : "none";
     try { kfQuizReviewEntry(rec, list); } catch (err) {}
+    try { kfePaint(rec); } catch (err) {}
   }
   function kfLogAtEnd(rec) {
     try { kfLinesStart(rec); } catch (e) {}
@@ -21316,6 +21505,7 @@ if (typeof document !== "undefined") (() => {
   }
   function openReview() { openReviewOn(app.lastRec); }
   function closeReview(restoreFocus) {
+    try { kfeCancel(); } catch (e) {}
     const back = app._reviewPrevFocus;
     app._reviewPrevFocus = null;
     app._reviewLesson = null;
@@ -25283,6 +25473,10 @@ if (typeof document !== "undefined") (() => {
 
 
   const APP_CHANGELOG = [
+    {v: "v223.21", d: "2026-11-18", tag: "ui", tagJa: "変わった", t: "振り返りで、自分の 1 手をほかの候補と推定で比べられるようにしました", p: [
+      "振り返りで自分の手を開くと、この手を比べる（推定） が出ることがあります（候補が 2 つ以上あった手）。押すと、その時あなたに見えていた物だけから駒の配り方を 256 個（決まらなければ 512 個）作り、実戦の手とほかの候補を同じ配り方で打ち進めて比べます。",
+      "結果は、比べる手の方が良い（推定）・実戦の手の方が良い（推定）・差は小さい はっきりしない の 3 通りです。勝率の差（ポイント）と局の点の差を、揺れの幅（±）と一緒に出します。先取点や点の記録が無い棋譜では、局の点だけを出します。",
+      "これは、4 席とも AI の速い方の打ち方で打ち進めた時の推定です。強い AI や人が打ち進めた時とは違う事があります。悪手や正解の判定ではなく、成績や見直しの件数には入りません。元の対局・保存は変わりません。"]},
     {v: "v223.20", d: "2026-11-18", tag: "ui", tagJa: "使いやすくなった", t: "成績の 選択の傾向 の一覧から、その手を 1 問で開けるようにしました", p: [
       "成績の 選択の傾向（件数） で件数を押して出る一覧に、1問 のボタンを足しました。確認できた上がり筋が在る手（終盤の読み切りに数えた手）にだけ出ます。",
       "1問 を押すと、その手の直前の場面を、答えを見ずに選び直せます。局の後の 今回の1問 と同じ画面です。答えても、元の対局・成績・保存は変わりません。閉じると一覧へ戻ります。"]},
