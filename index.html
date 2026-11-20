@@ -5,6 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>ごいた — 能登の伝承遊戯</title>
   <!-- build: v220.6 に短い入門コース（3 場面・5 着手）と助言つきの 1 局練習を当てた（配信候補 v220.7 の元）。計画: docs/PLAN_短い入門コース_rev4_Opus5.5.md（§14 の裁定）・docs/PLAN_v220.7_入門コース配信_rev2_Opus5.5.md。適用: harness/apply_quickstart_v2.py。エンジン区画（G・G_B・T1）は不変。 -->
+  <!-- build: v225.0「受攻の整合の直し（P0 確定勝ちの保護・推奨の予約）」base=v224.0。エンジンの便。
+       指示: Sonar 2026-11-19（受攻アルゴリズム改善計画・乙）・2026-11-20（推奨の予約は案 E・P1-a は分解で負と分かり外す）。計画: docs/PLAN_v225.0_P0_P1a_推奨の予約_rev0_Opus5.5.md。打ち比べ: docs/exp_JK/。
+       変更: harness/spec/v225_0_apply.py → lib/release.py（版数・CHANGELOG・バッジ・sw.js）。保存の形は v224.0 と同じ。
+       CACHE_NAME: goita-v224.0 → goita-v225.0. -->
   <!-- build: v224.0「相方の合図の文をし攻めに（SKW）」base=v223.21。エンジンの便（文だけ）。
        指示: Sonar 2026-11-16（し攻めの語の訂正・エンジンの中の 1 か所は次のエンジンの便で）・2026-11-18（先に進める）。計画: docs/PLAN_v224.0_し攻めの言い方_rev1_Opus5.5.md。報告: docs/IMPLEMENTATION_REPORT_v224.0_rev1_Opus5.5.md。
        変更: harness/spec/v224_0_apply.py → lib/release.py（版数・CHANGELOG・バッジ・sw.js）。指し手・出る条件・保存の形は v223.21 と同じ。
@@ -2285,7 +2289,7 @@ body.rm *{animation:none!important;transition:none!important}body.rm .pts-fly,bo
 <div id="setup-screen">
   <!-- build v208: 版数表示は APP_CHANGELOG[0] から起動時に上書きされる(JS が動かない場合の保険としてここにも同じ版数を書いておく)。 -->
   <button type="button" class="setup-version" id="btn-version"
-          aria-label="バージョン v224.0 — 更新内容を見る" title="更新内容を見る"><span id="btn-version-num">v224.0</span><span class="sv-i" aria-hidden="true">ⓘ</span></button>
+          aria-label="バージョン v225.0 — 更新内容を見る" title="更新内容を見る"><span id="btn-version-num">v225.0</span><span class="sv-i" aria-hidden="true">ⓘ</span></button>
   <div class="title-block">
     <h1 class="serif">ごいた</h1>
     <div class="title-sub">能登・宇出津に伝わる竹駒の伝承遊戯</div>
@@ -8278,7 +8282,7 @@ const G = (() => {
             const unseenD = Object.assign({}, unseenW);
             for (const X of safe) unseenD[X] = 0;
             let srD = solveWin(view.hand, true, null, unseenD, checkKingAtkOk(view.hand, unseenD));
-            if (srD && view.hand.includes(srD.first) && (!srW || srD.score > srW.score) && shiProtoPlanOk(view, srD, "bury", st)) {
+            if (srD && view.hand.includes(srD.first) && (!srW || srD.score > srW.score) && !(srW && view.hand.includes(srW.first) && st.matchScores && Number.isFinite(st.matchScores[team(seat)]) && Number.isFinite(st.matchTarget) && st.matchTarget > 0 && st.matchScores[team(seat)] + srW.score >= st.matchTarget && shiProtoCertainOk(view, srW, "bury", st)) && shiProtoPlanOk(view, srD, "bury", st)) {   /* v225.0 P0: 確定の上がり(srW)の点でマッチが決まるなら、推定の高い筋(solverDom)より先に確定の筋を返す。点・先取点が数でなければ今までどおり(0 対 0 は有効) */
               st.solverCache[seat] = {k: srD.second, c: false};
               return {type: "bury", koma: srD.first, src: "solverDom",
                       why: "支配局面 — 敵は" + [...safe].join("") + "を受けられない公算大。王王を温存し" + srD.score + "点狙い（ほぼ確実）"};
@@ -9341,7 +9345,7 @@ const G = (() => {
   // policyActionは全席をモデル化し相方(AI)の好手も前提にするため、協力プレイに即した推奨になる。
   function moveHint(st, seat, o) {
     if (!st || st.phase === "over" || st.actor !== seat) return null;
-    const a = policyAction(st, seat, o || {});
+    const _hc = st.solverCache; let a; st.solverCache = _hc && Object.assign({}, _hc); try { a = policyAction(st, seat, o || {}); } finally { st.solverCache = _hc; }   /* v225.0 HINT: 推奨は本番の予約(solverCache)を書かない・消さない(予約の入れ物の浅い写しの上で考え、元に戻す) */
     if (!a) return null;   // パス(komaなし)も有効な推奨として扱う
     const ph = st.phase;
     let label, kind;
@@ -25477,6 +25481,9 @@ if (typeof document !== "undefined") (() => {
 
 
   const APP_CHANGELOG = [
+    {v: "v225.0", d: "2026-11-20", tag: "fix", tagJa: "直した", t: "AIの伏せの判断と、推奨の表示の食い違いを直しました", p: [
+      "伏せる番で、確実に上がれてマッチが決まる筋があるのに、点の高い推定の筋を選ぶことがありました。マッチが決まる時は確実な筋を選ぶようにしました。",
+      "推奨を表示しただけで、その席の次の攻めの予定が書き換わることがありました。推奨は予定を変えないようにしました。"]},
     {v: "v224.0", d: "2026-11-18", tag: "fix", tagJa: "直した", t: "相方の狙いの文で、し攻めの呼び名をそろえました", p: [
       "相方がしで攻めた後、し4枚で乗れる時に出る相方の狙いの文を、し攻めのチャンス、という言い方に直しました。",
       "AIの手、文が出る条件、ほかの文は変えていません。"]},
