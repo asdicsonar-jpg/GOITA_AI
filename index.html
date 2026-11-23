@@ -5,6 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>ごいた — 能登の伝承遊戯</title>
   <!-- build: v220.6 に短い入門コース（3 場面・5 着手）と助言つきの 1 局練習を当てた（配信候補 v220.7 の元）。計画: docs/PLAN_短い入門コース_rev4_Opus5.5.md（§14 の裁定）・docs/PLAN_v220.7_入門コース配信_rev2_Opus5.5.md。適用: harness/apply_quickstart_v2.py。エンジン区画（G・G_B・T1）は不変。 -->
+  <!-- build: v230.0「B6（伏せ 6 枚で し を残す時はしの処分をしない）」base=v229.0。エンジンの便。
+       指示: Sonar 2026-11-23（案 C 段 1・推奨の案で）。計画: docs/PLAN_v230.0_B6_rev0_Opus5.5.md。打ち比べ: docs/exp_JK/。
+       変更: harness/spec/v230_0_apply.py → lib/release.py（版数・CHANGELOG・バッジ・sw.js）。保存の形は v229.0 と同じ。
+       CACHE_NAME: goita-v229.0 → goita-v230.0. -->
   <!-- build: v229.0「Solver の予約を、書いた時の手に結び付ける（R3）」base=v228.0。エンジンの便。
        指示: Sonar 2026-11-22（３を進めて・v229.0 を作る）。計画: docs/PLAN_v229.0_予約の結び付け_rev0_Opus5.5.md。
        変更: harness/spec/v229_0_apply.py → lib/release.py（版数・CHANGELOG・バッジ・sw.js）。保存の形は v228.0 と同じ。
@@ -2305,7 +2309,7 @@ body.rm *{animation:none!important;transition:none!important}body.rm .pts-fly,bo
 <div id="setup-screen">
   <!-- build v208: 版数表示は APP_CHANGELOG[0] から起動時に上書きされる(JS が動かない場合の保険としてここにも同じ版数を書いておく)。 -->
   <button type="button" class="setup-version" id="btn-version"
-          aria-label="バージョン v229.0 — 更新内容を見る" title="更新内容を見る"><span id="btn-version-num">v229.0</span><span class="sv-i" aria-hidden="true">ⓘ</span></button>
+          aria-label="バージョン v230.0 — 更新内容を見る" title="更新内容を見る"><span id="btn-version-num">v230.0</span><span class="sv-i" aria-hidden="true">ⓘ</span></button>
   <div class="title-block">
     <h1 class="serif">ごいた</h1>
     <div class="title-sub">能登・宇出津に伝わる竹駒の伝承遊戯</div>
@@ -3340,7 +3344,7 @@ const G = (() => {
     if (!UMA_KEEP && !keepUmaPair && !umaSafe && BURY_UMA_FIX < 2 &&
         (BURY_UMA_FIX === 0 ? (c["馬"] || 0) >= 1 : (c["馬"] || 0) === 1))
       return {koma: "馬", why: "馬の処分 — 受け手が多く伏せの定石"};
-    if (!enemyShiActive && (SHI_KEEP2 ? (nShi === 1) : (nShi >= 1))) return {koma: "し", why: "しの処分"};
+    if (!enemyShiActive && (SHI_KEEP2 ? (nShi === 1) : (nShi >= 1)) && !(o && o.mc && !o.noMC && hand.length === 6 && nShi <= 2 && (hist.filter(h => h.koma === "し" && (h.act === "attack" || h.act === "receive")).length >= 2 || (c["王"] || 0) === 0))) return {koma: "し", why: "しの処分"};   /* v230.0 B6: 伏せ 6 枚で し 2 枚以下・場に し 2 枚以上か王なしなら し を残す(強いの一番上の判断だけ) */
     const nonProtAll = hand.filter(k => !["王", "飛", "角", "香"].includes(k));
     let nonProt = nonProtAll.filter(k => !komaSafeToAttack(hist, seat, c, k));   // 攻め安全牌(馬/金/銀等)は伏せず温存
     if (!nonProt.length && nonProtAll.length && BRY_KYO && (c["香"] || 0) >= 1 && !komaSafeToAttack(hist, seat, c, "香")) return {koma: "香", why: "攻め安全牌(" + [...new Set(nonProtAll)].join("・") + ")を攻めに残し、敵に受けられうる香を伏せる"};   /* v220.47 BRY(Sonar 11-04): 保護しない駒が全部攻め安全牌なら、それを伏せずに受けられうる香を伏せる */ if (!nonProt.length) nonProt = nonProtAll;   // 全て安全 → 従来通り最安値を伏せる
@@ -25497,6 +25501,10 @@ if (typeof document !== "undefined") (() => {
 
 
   const APP_CHANGELOG = [
+    {v: "v230.0", d: "2026-11-23", tag: "read", tagJa: "読みが良くなった", t: "AIの伏せ方を少し直しました（手駒6枚の時の「し」）", p: [
+      "強いAIが手駒6枚で駒を伏せる時に、「し」を伏せて手放す決まりを少し直しました。",
+      "しが2枚以下で、場にしが2枚以上出ているか、王を持っていない時は、しを残して別の駒を伏せます。",
+      "AIどうしの対局では、マッチの勝率がわずかに上がりました。"]},
     {v: "v229.0", d: "2026-11-22", tag: "fix", tagJa: "直した", t: "AIの読み筋の続きの手の扱いを直しました", p: [
       "強いAIは、伏せや受けを決める時に、次に攻める駒も一緒に決めておくことがあります。",
       "これまでは、決めた伏せや受けと違う手を打った後でも、その次の攻めの駒が残って使われることがありました。今の版からは、決めた時の手を本当に打った時だけ使います。",
