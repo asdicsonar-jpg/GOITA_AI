@@ -5,6 +5,22 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>ごいた — 能登の伝承遊戯</title>
   <!-- build: v220.6 に短い入門コース（3 場面・5 着手）と助言つきの 1 局練習を当てた（配信候補 v220.7 の元）。計画: docs/PLAN_短い入門コース_rev4_Opus5.5.md（§14 の裁定）・docs/PLAN_v220.7_入門コース配信_rev2_Opus5.5.md。適用: harness/apply_quickstart_v2.py。エンジン区画（G・G_B・T1）は不変。 -->
+  <!-- build: v229.0「Solver の予約を、書いた時の手に結び付ける（R3）」base=v228.0。エンジンの便。
+       指示: Sonar 2026-11-22（３を進めて・v229.0 を作る）。計画: docs/PLAN_v229.0_予約の結び付け_rev0_Opus5.5.md。
+       変更: harness/spec/v229_0_apply.py → lib/release.py（版数・CHANGELOG・バッジ・sw.js）。保存の形は v228.0 と同じ。
+       CACHE_NAME: goita-v228.0 → goita-v229.0. -->
+  <!-- build: v228.0「し攻め中の『敵の受け確率0%』の言い方を直す（手は変えない）」base=v227.0。エンジンの便（エンジンの文だけ）。
+       指示: Sonar 2026-11-22（進めてよい）。計画: docs/PLAN_v228.0_受け確率の言い方_rev0_Opus5.5.md。
+       変更: harness/spec/v228_0_apply.py → lib/release.py（版数・CHANGELOG・バッジ・sw.js）。保存の形は v227.0 と同じ。
+       CACHE_NAME: goita-v227.0 → goita-v228.0. -->
+  <!-- build: v227.0「P1-a′（攻めの候補を合法な攻めに・王で攻められない時は し 1 枚を外さない）」base=v226.0。エンジンの便。
+       指示: Sonar 2026-11-21（P1-a′ で v227.0 を作る）。計画: docs/PLAN_v227.0_P1a2_rev0_Opus5.5.md。打ち比べ: docs/exp_JK/。
+       変更: harness/spec/v227_0_apply.py → lib/release.py（版数・CHANGELOG・バッジ・sw.js）。保存の形は v226.0 と同じ。
+       CACHE_NAME: goita-v226.0 → goita-v227.0. -->
+  <!-- build: v226.0「P4-b 方式 C（親の最初の金銀馬への第 1 応答をパスと同駒受けの MC で比べる）」base=v225.0。エンジンの便。
+       指示: Sonar 2026-11-20（P4-b 方式 C を入れる便にする）。計画: docs/PLAN_v226.0_P4b方式C_rev0_Opus5.5.md。打ち比べ: docs/exp_JK/。
+       変更: harness/spec/v226_0_apply.py → lib/release.py（版数・CHANGELOG・バッジ・sw.js）。保存の形は v225.0 と同じ。
+       CACHE_NAME: goita-v225.0 → goita-v226.0. -->
   <!-- build: v225.0「受攻の整合の直し（P0 確定勝ちの保護・推奨の予約）」base=v224.0。エンジンの便。
        指示: Sonar 2026-11-19（受攻アルゴリズム改善計画・乙）・2026-11-20（推奨の予約は案 E・P1-a は分解で負と分かり外す）。計画: docs/PLAN_v225.0_P0_P1a_推奨の予約_rev0_Opus5.5.md。打ち比べ: docs/exp_JK/。
        変更: harness/spec/v225_0_apply.py → lib/release.py（版数・CHANGELOG・バッジ・sw.js）。保存の形は v224.0 と同じ。
@@ -2289,7 +2305,7 @@ body.rm *{animation:none!important;transition:none!important}body.rm .pts-fly,bo
 <div id="setup-screen">
   <!-- build v208: 版数表示は APP_CHANGELOG[0] から起動時に上書きされる(JS が動かない場合の保険としてここにも同じ版数を書いておく)。 -->
   <button type="button" class="setup-version" id="btn-version"
-          aria-label="バージョン v225.0 — 更新内容を見る" title="更新内容を見る"><span id="btn-version-num">v225.0</span><span class="sv-i" aria-hidden="true">ⓘ</span></button>
+          aria-label="バージョン v229.0 — 更新内容を見る" title="更新内容を見る"><span id="btn-version-num">v229.0</span><span class="sv-i" aria-hidden="true">ⓘ</span></button>
   <div class="title-block">
     <h1 class="serif">ごいた</h1>
     <div class="title-sub">能登・宇出津に伝わる竹駒の伝承遊戯</div>
@@ -3003,7 +3019,7 @@ const G = (() => {
       let cur = row.length && row[row.length - 1].atk === null ? row[row.length - 1] : null;
       if (!cur) { cur = {def: null, atk: null}; row.push(cur); }
       cur.atk = a.koma;
-      st.history.push({seat: st.actor, koma: a.koma, act: "attack"});
+      st.history.push({seat: st.actor, koma: a.koma, act: "attack"}); if (st.solverCache) delete st.solverCache[st.actor];
       if (st.hands[st.actor].length === 0) {
         const dbl = !!(cur.def && cur.def.type === "bury" && cur.def.koma === a.koma);
         ev.gameOver = {winner: st.actor, pts: POINTS[a.koma] * (dbl ? 2 : 1), dbl, koma: a.koma};
@@ -4266,7 +4282,7 @@ const G = (() => {
     return 1 - safe;
   }
   /** プランの実リスク: 中間攻め(plan.second)が敵に受けられる確率。 */
-  function planRisk(L, seat, plan) {
+  function recvRiskText(L, seat, k, p) { if (SHI_PROTO >= 6 && k === "し" && L && L.__view && L.__view.seat === seat && shiStarted(L.__view.hist, seat) && !shiCommitReleased(L.__view.hist, seat)) return p > 0 ? "敵の し 受け: 残りあり（し攻め中の数え）" : "敵の し 受け: 残りなしと数えた（相方の し の推定を含む）"; return "敵の受け確率" + Math.round(p * 100) + "%"; }   /* v228.0 RRT: し攻め中は確率でなく数えなので、そう言う */ function planRisk(L, seat, plan) {
     return plan ? pEnemyReceives(L, seat, plan.second) : 0;
   }
 
@@ -5910,9 +5926,9 @@ const G = (() => {
   function attackCandidates(view, c) {
     const nonOu = view.hand.filter(k => k !== "王");
     if (!nonOu.length) return ["王"];
-    let cands = [...new Set(view.hand)];
+    let cands = legalAttacks(view.hand, view.hist, view.seat);   /* v227.0 P1A2: 候補の元を合法な攻めに(攻めに使えない王を入れない) */
     if ((c["王"] || 0) === 2 && isFirstRound(view.hist)) cands = cands.filter(k => k !== "王");
-    if ((c["し"] || 0) === 1 && !enemyShiExhausted(view.hist, view.seat, c)) cands = cands.filter(k => k !== "し");   /* v220.54 SGL: 敵の し が尽きたら、最後の し 1 枚も MC で比べる */
+    if ((c["し"] || 0) === 1 && !enemyShiExhausted(view.hist, view.seat, c) && !(view.hand.includes("王") && !cands.includes("王") && cands.filter(k => k !== "し").length < 2)) cands = cands.filter(k => k !== "し");   /* v227.0 P1A2: 王で攻められない「し・王・X」で候補を 1 つにしない */   /* v220.54 SGL: 敵の し が尽きたら、最後の し 1 枚も MC で比べる */
     if (!cands.length) cands = [...new Set(nonOu)];
     return cands.filter(k => view.hand.includes(k));
   }
@@ -6729,7 +6745,7 @@ const G = (() => {
             // 連結しない(片側だけトグルを倒したテスト後に偽 FAIL が出るため)。定数表と ε は文字列で連結する。
             ledgerRefine, beliefEstApply, setBeliefEst, beliefEstDiag, minEssDiag,
             // v211(RECV8_OU_VETO): フックを含む policyAction と拡張した mcDecideReceive、setter/診断を連結。可変のトグルは連結しない。
-            policyAction, mcDecideReceive, setRecv8OuVeto, recv8OuVetoDiag,
+            policyAction, policyActionCore, p4bTarget, p4bC, setP4bC, mcDecideReceive, setRecv8OuVeto, recv8OuVetoDiag,
             passEvidence, passFactor, setOukH8, oukH8Diag,   // v212(OUK_H8。passFactorC は連結済み)
             setOukH2, oukH2Diag,   // v214(OUK_H2)
             setOukH6, oukH6Diag, attackMC, atkConsWeight, atkConsFactor, setAtkConsW, setAtkConsTrust, atkConsDiag, advance,   // v218(ATK_CONS_W)
@@ -8262,7 +8278,7 @@ const G = (() => {
   }
 
   // AIアクション (noMC: ロールアウト内の再帰禁止)
-  function policyAction(st, seat, opts) {
+  var __P4B_D = 0, P4B_C = 1; function setP4bC(n) { P4B_C = n ? 1 : 0; } function p4bTarget(view) { const h = view.hist; if (!h || h.length !== 2) return false; const p = view.parent; if (h[0].seat !== p || h[0].act !== "bury" || h[1].seat !== p || h[1].act !== "attack") return false; const a = h[1].koma; if (a !== "金" && a !== "銀" && a !== "馬") return false; if (view.pending !== a || view.attacker !== p || nextSeat(p) !== view.seat) return false; if (view.hand.length !== 8 || view.hand.includes("王")) return false; return view.hand.filter(k => k === a).length === 1; } function p4bC(st, seat, opts, base) { if (st.phase !== "respond" || st.actor !== seat) return base; const view = makeView(st, seat); if (!p4bTarget(view)) return base; const o = opts || {}; if (o.noMC || !o.mc) return base; const attack = view.pending; if (!(base && base.type === "receive" && base.koma === attack && base.src === "rule")) return base; const r = mcDecideReceive(st, seat, view, attack, Object.assign({}, o, {mcDets: 96, dd: false, __cands: [null, attack], __pairs: true})); if (!r || r.usedDD || !r.pair) return base; const d = r.pair, tot = d.n + d.missing; if (d.n < 16 || (tot > 0 && d.missing / tot > 0.1)) return base; return (d.mean > 0) ? {type: "pass", src: "mc", why: "MC評価 — 受けずに通す（パス−同駒受け +" + d.mean.toFixed(3) + "・" + d.n + "決定化）"} : base; } function policyAction(st, seat, opts) { __P4B_D++; try { const b = policyActionCore(st, seat, opts); return (__P4B_D === 1 && P4B_C) ? p4bC(st, seat, opts, b) : b; } finally { __P4B_D--; } } function policyActionCore(st, seat, opts) {   /* v226.0 P4B: 親の最初の金銀馬への第 1 応答（8 枚・王 0・同駒 1 枚）でパスと同駒受けを MC で比べる（一番上の判断だけ） */
     const o = opts || {};
     const view = makeView(st, seat);
     if (st.phase === "bury") {
@@ -8283,14 +8299,14 @@ const G = (() => {
             for (const X of safe) unseenD[X] = 0;
             let srD = solveWin(view.hand, true, null, unseenD, checkKingAtkOk(view.hand, unseenD));
             if (srD && view.hand.includes(srD.first) && (!srW || srD.score > srW.score) && !(srW && view.hand.includes(srW.first) && st.matchScores && Number.isFinite(st.matchScores[team(seat)]) && Number.isFinite(st.matchTarget) && st.matchTarget > 0 && st.matchScores[team(seat)] + srW.score >= st.matchTarget && shiProtoCertainOk(view, srW, "bury", st)) && shiProtoPlanOk(view, srD, "bury", st)) {   /* v225.0 P0: 確定の上がり(srW)の点でマッチが決まるなら、推定の高い筋(solverDom)より先に確定の筋を返す。点・先取点が数でなければ今までどおり(0 対 0 は有効) */
-              st.solverCache[seat] = {k: srD.second, c: false};
+              st.solverCache[seat] = {k: srD.second, c: false, n: st.history.length, f: srD.first};
               return {type: "bury", koma: srD.first, src: "solverDom",
                       why: "支配局面 — 敵は" + [...safe].join("") + "を受けられない公算大。王王を温存し" + srD.score + "点狙い（ほぼ確実）"};
             }
           }
         }
         if (srW && view.hand.includes(srW.first) && shiProtoCertainOk(view, srW, "bury", st)) {
-          st.solverCache[seat] = {k: srW.second, c: true};
+          st.solverCache[seat] = {k: srW.second, c: true, n: st.history.length, f: srW.first};
           return {type: "bury", koma: srW.first, src: "solver",
                   why: "Solver — " + srW.score + "点の確実な上がり手順を読み切り"};
         }
@@ -8302,7 +8318,7 @@ const G = (() => {
           srR = hideOuLead(srR, view.hand, view.hist, f => view.hand.includes(f),
                            ban => solveWin(view.hand, true, null, unseenR, kingOkR, ban));
           if (srR && view.hand.includes(srR.first) && shiProtoPlanOk(view, srR, "bury", st)) {
-            st.solverCache[seat] = {k: srR.second, c: true};
+            st.solverCache[seat] = {k: srR.second, c: true, n: st.history.length, f: srR.first};
             return {type: "bury", koma: srR.first, src: "solverRead",
                     why: "Solver — " + srR.score + "点の上がり手順を読み切り（敵の受け筋から駒位置を特定・定石受けなら確定）"};
           }
@@ -8323,9 +8339,9 @@ const G = (() => {
           }
         }
         if (sr && view.hand.includes(sr.first) && shiProtoPlanOk(view, sr, "bury", st)) {
-          st.solverCache[seat] = {k: sr.second, c: false};
+          st.solverCache[seat] = {k: sr.second, c: false, n: st.history.length, f: sr.first};
           const pTxt = COUNT_GATE
-            ? "（相方の" + sr.second + "保持推定" + Math.round((((LBury.pHold[partnerOf(seat)] || {})[sr.second]) || 0) * 100) + "%・敵の受け確率" + Math.round((planRisk(LBury, seat, sr)) * 100) + "%・枚数読み）"
+            ? "（相方の" + sr.second + "保持推定" + Math.round((((LBury.pHold[partnerOf(seat)] || {})[sr.second]) || 0) * 100) + "%・" + recvRiskText(LBury, seat, sr.second, planRisk(LBury, seat, sr)) + "・枚数読み）"
             : "（相方の連携前提・確定ではない）";
           return {type: "bury", koma: sr.first, src: "solverTeam",
                   why: "Solver — " + sr.score + "点の上がり筋" + pTxt};
@@ -8348,7 +8364,7 @@ const G = (() => {
             const firstNeedsCheck = srP.first === "香" || (KYO_UNBLOCK_P >= 2 && srP.first === "し");
             const firstOk = !firstNeedsCheck || pEnemyReceives(LBury, seat, srP.first) <= KYO_UNBLOCK_TH;
             if (riskP <= COUNT_PLAN_RISK && firstOk) {
-              st.solverCache[seat] = {k: srP.second, c: false};
+              st.solverCache[seat] = {k: srP.second, c: false, n: st.history.length, f: srP.first};
               return {type: "bury", koma: srP.first, src: "solverKyoP",
                       why: "Solver — " + srP.score + "点の上がり筋（敵の香受け確率" +
                            Math.round(pEnemyReceives(LBury, seat, "香") * 100) +
@@ -8361,8 +8377,8 @@ const G = (() => {
       return {type: "bury", koma: bc.koma, src: bc.src || "rule", why: bc.why};
     }
     if (st.phase === "attack") {
-      const cachedObj = st.solverCache[seat];
-      delete st.solverCache[seat];
+      const _rv = st.solverCache[seat], _rl = st.history[st.history.length - 1];
+      const cachedObj = (_rv && _rv.n === st.history.length - 1 && _rl && _rl.seat === seat && (_rl.act === "bury" || _rl.act === "receive") && _rl.koma === _rv.f) ? _rv : undefined;
       const cached = cachedObj && cachedObj.k;
       if (cached && view.hand.includes(cached)) {
         let ck = cached;
@@ -8468,7 +8484,7 @@ const G = (() => {
         srW = hideOuLead(srW, view.hand, view.hist, f => lr.includes(f),
                          ban => solveWin(view.hand, false, attack, unseenW, kingOkRW, ban));
         if (srW && lr.includes(srW.first) && shiProtoCertainOk(view, srW, "respond", st) && shiProtoC18Ok(view, srW, attack, st, o)) {
-          st.solverCache[seat] = {k: srW.second, c: true};
+          st.solverCache[seat] = {k: srW.second, c: true, n: st.history.length, f: srW.first};
           return {type: "receive", koma: srW.first, src: "solver",
                   why: "Solver — 受けて" + srW.score + "点の確実な上がり手順"};
         }
@@ -8479,7 +8495,7 @@ const G = (() => {
           srRR = hideOuLead(srRR, view.hand, view.hist, f => lr.includes(f),
                             ban => solveWin(view.hand, false, attack, unseenRR, kingOkRR, ban));
           if (srRR && lr.includes(srRR.first) && shiProtoPlanOk(view, srRR, "respond", st) && (SHI_PROTO < 4 || shiProtoC18OkNC(view, srRR, attack, st, o))) {   // build v220.2(H8・E-5・rev.4): C-18 ゲートを solverRead 経路にも適用(段4限定)
-            st.solverCache[seat] = {k: srRR.second, c: true};
+            st.solverCache[seat] = {k: srRR.second, c: true, n: st.history.length, f: srRR.first};
             return {type: "receive", koma: srRR.first, src: "solverRead",
                     why: "Solver — 受けて" + srRR.score + "点の上がり手順（敵の受け筋から駒位置を特定・定石受けなら確定）"};
           }
@@ -8498,9 +8514,9 @@ const G = (() => {
           }
         }
         if (sr && lr.includes(sr.first) && shiProtoPlanOk(view, sr, "respond", st) && (SHI_PROTO < 4 || shiProtoC18OkNC(view, sr, attack, st, o))) {   // build v220.2(H8・E-5・rev.4): C-18 ゲートを solverTeam 経路にも適用(計画rev.3 §12-3・shiProtoPlanOk 付きの方。段4限定)
-          st.solverCache[seat] = {k: sr.second, c: false};
+          st.solverCache[seat] = {k: sr.second, c: false, n: st.history.length, f: sr.first};
           const pTxt = COUNT_GATE
-            ? "（相方の" + sr.second + "保持推定" + Math.round((((LResp.pHold[partnerOf(seat)] || {})[sr.second]) || 0) * 100) + "%・敵の受け確率" + Math.round((planRisk(LResp, seat, sr)) * 100) + "%・枚数読み）"
+            ? "（相方の" + sr.second + "保持推定" + Math.round((((LResp.pHold[partnerOf(seat)] || {})[sr.second]) || 0) * 100) + "%・" + recvRiskText(LResp, seat, sr.second, planRisk(LResp, seat, sr)) + "・枚数読み）"
             : "（相方の連携前提・確定ではない）";
           return {type: "receive", koma: sr.first, src: "solverTeam",
                   why: "Solver — 受けて" + sr.score + "点の上がり筋" + pTxt};
@@ -8523,7 +8539,7 @@ const G = (() => {
             const firstNeedsCheck = srP.first === "香" || (KYO_UNBLOCK_P >= 2 && srP.first === "し");
             const firstOk = !firstNeedsCheck || pEnemyReceives(LResp, seat, srP.first) <= KYO_UNBLOCK_TH;
             if (riskP <= COUNT_PLAN_RISK && firstOk) {
-              st.solverCache[seat] = {k: srP.second, c: false};
+              st.solverCache[seat] = {k: srP.second, c: false, n: st.history.length, f: srP.first};
               return {type: "receive", koma: srP.first, src: "solverKyoP",
                       why: "Solver — 受けて" + srP.score + "点の上がり筋（敵の香受け確率" +
                            Math.round(pEnemyReceives(LResp, seat, "香") * 100) +
@@ -10001,7 +10017,7 @@ const G = (() => {
           mulberry32, shuffle, fullDeck, counter,
           newGameState, advance, canAttackKing, validReceive, legalReceives, legalAttacks,
           maskHistoryFor, makeView, unseenCounts, solveWin, checkKingAtkOk,
-          policyAction, sampleWorld, setOuHide, setOuDeferAttack, mcDecideReceive,
+          policyAction, sampleWorld, setOuHide, setOuDeferAttack, mcDecideReceive, setP4bC,
           setDominanceMaxpts, enemyNoRecvUncut, setKyoUnblockP, setKyoUnblockTh,
           setLedgerPolicyEvid, setLedgerPolicyKoma, setSamplerUnify, setBuryFix, setLedgerH3Soft,
           setDdAdapt, setDdAdaptMax, setDdAdaptBlock, setDdAdaptZ,
@@ -13707,7 +13723,7 @@ if (typeof document !== "undefined") (() => {
   }
   const isHuman = s => s === app.humanSeat;
   GOITA_ENGINE_REGISTRY.invokeAll("setOuSignal", app.cfg.ouSignal);
-  GOITA_ENGINE_REGISTRY.invoke("standard", "setAtkCwFlat", 1); GOITA_ENGINE_REGISTRY.invoke("standard", "setGoshiModel", 1);   /* v221.0: 攻めの共通の世界（TA-02A）と 5 し の相談のモデル（TA-04）は G だけ。G_B（協力・研究の条件 B）は 0 のまま（D-a） */
+  GOITA_ENGINE_REGISTRY.invoke("standard", "setAtkCwFlat", 1); GOITA_ENGINE_REGISTRY.invoke("standard", "setGoshiModel", 1); GOITA_ENGINE_REGISTRY.invoke("honest", "setP4bC", 0);   /* v221.0: 攻めの共通の世界（TA-02A）と 5 し の相談のモデル（TA-04）は G だけ。G_B（協力・研究の条件 B）は 0 のまま（D-a） */
   
   
   function aiGameNo() { return (app.rec && app.rec.practice && app.rec.gameNo) ? app.rec.gameNo : app.gameNo; }
@@ -25481,6 +25497,22 @@ if (typeof document !== "undefined") (() => {
 
 
   const APP_CHANGELOG = [
+    {v: "v229.0", d: "2026-11-22", tag: "fix", tagJa: "直した", t: "AIの読み筋の続きの手の扱いを直しました", p: [
+      "強いAIは、伏せや受けを決める時に、次に攻める駒も一緒に決めておくことがあります。",
+      "これまでは、決めた伏せや受けと違う手を打った後でも、その次の攻めの駒が残って使われることがありました。今の版からは、決めた時の手を本当に打った時だけ使います。",
+      "ふつうの対局でAIの打つ手が変わることは、ほとんどありません。"]},
+    {v: "v228.0", d: "2026-11-22", tag: "fix", tagJa: "直した", t: "し攻めの最中のAIの説明の文を直しました", p: [
+      "自分たちがしで攻めている最中、AIの読み筋の説明に「敵の受け確率0%」と出ることがありました。",
+      "この時のAIは確率ではなく、しの残りの枚数を数えて決めています。そこで「敵の し 受け: 残りなしと数えた（相方の し の推定を含む）」のように、数えであることが分かる言い方にしました。",
+      "AIの打つ手は変わりません。"]},
+    {v: "v227.0", d: "2026-11-21", tag: "read", tagJa: "読みが良くなった", t: "AIの攻め方を少し直しました（王で攻められない時の残り3枚）", p: [
+      "AIが王を持っていても、まだ王で攻められない時に、攻めに使う駒の候補の作り方を直しました。",
+      "手駒が「し・王・ほかの駒」の3枚の時に、しで攻めるかほかの駒で攻めるかを読み比べてから選ぶようになります。",
+      "AIどうしの対局では、マッチの勝率がわずかに上がりました。"]},
+    {v: "v226.0", d: "2026-11-20", tag: "read", tagJa: "読みが良くなった", t: "強いAIが、親の最初の攻めに受けずに通すことを考えるようになりました", p: [
+      "親が局の最初に金・銀・馬で攻め、すぐ次の番で同じ駒を1枚だけ持っている時（手駒8枚で王なし）、強いAIは今まで必ず受けていました。",
+      "今は、受ける場合と通す場合を読み比べ、通した方が良いと読めた時は通します。推奨の一言にも同じ考えが出ます。",
+      "AIどうしの対局では、マッチの勝率がわずかに上がりました。"]},
     {v: "v225.0", d: "2026-11-20", tag: "fix", tagJa: "直した", t: "AIの伏せの判断と、推奨の表示の食い違いを直しました", p: [
       "伏せる番で、確実に上がれてマッチが決まる筋があるのに、点の高い推定の筋を選ぶことがありました。マッチが決まる時は確実な筋を選ぶようにしました。",
       "推奨を表示しただけで、その席の次の攻めの予定が書き換わることがありました。推奨は予定を変えないようにしました。"]},
